@@ -6497,6 +6497,11 @@
 			with CPUID.16h support and partial CPUID.15h support.
 			Format: <unsigned int>
 
+	tsem_mode=	[TSEM] Set the mode that the Trusted Security Event
+			Modeling LSM is to run in.
+			Format: 1
+			1 -- Disable root domain modeling.
+
 	tsx=		[X86] Control Transactional Synchronization
 			Extensions (TSX) feature in Intel processors that
 			support TSX control.
