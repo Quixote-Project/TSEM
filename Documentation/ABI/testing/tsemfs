@@ -1,5 +1,5 @@
 What:		/sys/fs/tsem
-Date:		November 2022
+Date:		February 2023
 Contact:	Greg Wettstein <greg@enjellic.com>
 Description:
 		The /sys/fs/tsem directory contains files and one
@@ -12,7 +12,7 @@ Description:
 		files is operating in.
 
 What:		/sys/fs/tsem/aggregate
-Date:		November 2022
+Date:		February 2023
 Contact:	Greg Wettstein <greg@enjellic.com>
 Description:
 		The aggregate file contains the ASCII base 16
@@ -22,7 +22,7 @@ Description:
 		Platform Module PCR registers 0 through 8.
 
 What:		/sys/fs/tsem/forensics
-Date:		November 2022
+Date:		February 2023
 Contact:	Greg Wettstein <greg@enjellic.com>
 Description:
 		The forensics file contains the descriptions of
@@ -38,7 +38,7 @@ Description:
 		that is documented below.
 
 What:		/sys/fs/tsem/id
-Date:		November 2022
+Date:		February 2023
 Contact:	Greg Wettstein <greg@enjellic.com>
 Description:
 		The id file contains the ASCII base 10 representation
@@ -55,7 +55,7 @@ Description:
 		that is documented at the end of this document.
 
 What:		/sys/fs/tsem/measurement
-Date:		November 2022
+Date:		February 2023
 Contact:	Greg Wettstein <greg@enjellic.com>
 Description:
 		The measurement file contains the ASCII base 16
@@ -75,7 +75,7 @@ Description:
 		subsequent invocations of a workload.
 
 What:		/sys/fs/tsem/points
-Date:		November 2022
+Date:		February 2023
 Contact:	Greg Wettstein <greg@enjellic.com>
 Description:
 		The points file contains the ASCII base 16
@@ -85,7 +85,7 @@ Description:
 		are represented by the model.
 
 What:		/sys/fs/tsem/state
-Date:		November 2022
+Date:		February 2023
 Contact:	Greg Wettstein <greg@enjellic.com>
 Description:
 		The state file contains the ASCII base 16
@@ -102,7 +102,7 @@ Description:
 		deviated from a defined security behavior.
 
 What:		/sys/fs/tsem/trajectory
-Date:		November 2022
+Date:		February 2023
 Contact:	Greg Wettstein <greg@enjellic.com>
 Description:
 		The trajectory file contains a description of the
@@ -430,7 +430,7 @@ Description:
 				of the address description.
 
 What:		/sys/fs/tsem/ExternalTMA
-Date:		November 2022
+Date:		February 2023
 Contact:	Greg Wettstein <greg@enjellic.com>
 Description:
 		The ExternalTMA directory is a container directory
@@ -492,7 +492,7 @@ Description:
 			logged or enforced.
 
 What:		/sys/fs/tsem/control
-Date:		November 2022
+Date:		February 2023
 Contact:	Greg Wettstein <greg@enjellic.com>
 Description:
 		The control file is the only writable file in the

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 /*
- * Copyright (C) 2022 Enjellic Systems Development, LLC
+ * Copyright (C) 2023 Enjellic Systems Development, LLC
  * Author: Dr. Greg Wettstein <greg@enjellic.com>
  *
  * Implements updates to an external modeling engine.
