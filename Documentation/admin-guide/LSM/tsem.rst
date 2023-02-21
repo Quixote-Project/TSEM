@@ -58,17 +58,23 @@ A quick summary for those interested in experimenting with trust
 orchestration and security modeling but are constrained by: 'Too Busy
 Don't Have Time To Read Any Documentation'.
 
+Access to the securityfs filesystem is required by the trust
+orchestrators.  The filesystem should be automatically mounted by
+major distributions, if not, the following command can be used to
+mount the filesystem:
+
+mount -t securityfs securityfs /sys/kernel/security
+
 A kernel with TSEM support in its list of enabled LSM's must be
 available for use.  A TSEM enabled kernel will have the tsem keyword
 in the following file:
 
 /sys/kernel/security/lsm
 
-The trust orchestrators need to have access to the TSEM management
-filesystem, that after boot, can be mounted with the following
-command:
+The trust orchestrators access the TSEM management filesystem through
+the following directory in the securityfs filesystem:
 
-mount -t tsemfs tsemfs /sys/fs/tsem
+/sys/kernel/security/tsem
 
 For experimentation, or integrating TSEM modeling into a CI
 development workflow, modeling can be restricted to subordinate

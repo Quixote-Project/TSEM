@@ -90,7 +90,7 @@ void tsem_ns_free(struct kref *kref)
 	ctx = container_of(kref, struct tsem_TMA_context, kref);
 
 	if (ctx->external) {
-		tsem_fs_remove_external(ctx->external->dentry);
+		securityfs_remove(ctx->external->dentry);
 		kfree(ctx->external);
 	} else
 		tsem_model_free(ctx);
@@ -207,9 +207,10 @@ int tsem_ns_create(enum tsem_control_type event)
  * This function is called as part of the TSEM LSM initialization
  * process.  It initializes the workqueue that will be used to
  * conduct the asynchronous release of modeling contexts.  The
- * deferral of the namespace clean is needed in order to address
- * the fact that the /sys/fs/tsem pseudo-files cannot be done
- * in atomic context.
+ * deferral of the namespace release is needed in order to address
+ * the fact that the securityfs pseudo-files cannot be removed in
+ * atomic context as well as the memory allocated for the event
+ * description.
  *
  * Return: If the initialization succeeds a return code of 0 is returned.
  *	   A negative return value is returned on failure.

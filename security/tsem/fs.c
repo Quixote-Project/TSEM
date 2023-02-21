@@ -4,36 +4,24 @@
  * Copyright (C) 2023 Enjellic Systems Development, LLC
  * Author: Dr. Greg Wettstein <greg@enjellic.com>
  *
- * Implements the sysfs based control plane.
+ * Implements the securityfs based control plane.
  */
 
 #include <linux/seq_file.h>
-#include <linux/sysfs.h>
-#include <linux/fs_context.h>
-#include <linux/namei.h>
 #include <linux/poll.h>
-#include <uapi/linux/magic.h>
 
 #include "tsem.h"
 
-static int fs_init_context(struct fs_context *context);
-static int fs_get_tree(struct fs_context *context);
-
-static struct file_system_type fs_definition = {
-	.name = "tsemfs",
-	.init_fs_context = fs_init_context,
-	.kill_sb = kill_litter_super
-};
-
-static struct fs_context_operations fs_operations = {
-	.get_tree = fs_get_tree
-};
-
-static struct vfsmount *fs_mount;
-
-static int fs_mount_cnt;
-
-static struct dentry *external_dentry;
+static struct dentry *control;
+static struct dentry *tsem_dir;
+static struct dentry *points;
+static struct dentry *forensics;
+static struct dentry *measurement_file;
+static struct dentry *trajectory;
+static struct dentry *state;
+static struct dentry *id;
+static struct dentry *aggregate;
+static struct dentry *external_tma;
 
 struct control_commands {
 	char *cmd;
@@ -667,133 +655,93 @@ static const struct file_operations export_ops = {
 	.release = seq_release,
 };
 
-static int fs_fill(struct super_block *sb, struct fs_context *fc)
-{
-	int retn;
-
-	static const struct tree_descr root_files[] = {
-		[2] = {"control", &control_ops, 0200},
-		[3] = {"id", &id_ops, 0400},
-		[4] = {"trajectory", &trajectory_ops, 0400},
-		[5] = {"forensics", &forensics_ops, 0400},
-		[6] = {"points", &point_ops, 0400},
-		[7] = {"measurement", &measurement_ops, 0400},
-		[8] = {"state", &state_ops, 0400},
-		[9] = {"aggregate", &aggregate_ops, 0400},
-		{""}
-	};
-
-	retn = simple_fill_super(sb, TSEMFS_MAGIC, root_files);
-	if (retn)
-		pr_warn("Unable to create TSEM root filesystem.\n");
-
-	return retn;
-}
-
-static int fs_init_context(struct fs_context *fc)
-{
-	fc->ops = &fs_operations;
-	return 0;
-}
-
-static int fs_get_tree(struct fs_context *fc)
-{
-	return get_tree_single(fc, fs_fill);
-}
-
-static int create_update_directory(void)
-{
-	int retn = 0;
-	struct dentry *root, *dentry;
-	struct inode *root_dir, *inode;
-	static const char *name = "ExternalTMA";
-
-	root = fs_mount->mnt_root;
-	root_dir = d_inode(root);
-
-	inode_lock(root_dir);
-	dentry = lookup_one_len(name, root, strlen(name));
-	if (IS_ERR(dentry)) {
-		retn = PTR_ERR(dentry);
-		goto done;
-	}
-
-	if (d_really_is_positive(dentry)) {
-		retn = -EEXIST;
-		goto done_dentry;
-	}
-
-	inode = new_inode(root_dir->i_sb);
-	if (!inode) {
-		retn = -ENOMEM;
-		goto done_dentry;
-	}
-
-	inode->i_ino = get_next_ino();
-	inode->i_mode = 0755 | S_IFDIR;
-	inode->i_atime = inode->i_mtime = inode->i_ctime = current_time(inode);
-	inode->i_private = NULL;
-	inode->i_fop = &export_ops;
-	inode->i_op = &simple_dir_inode_operations;
-	inode->i_fop = &simple_dir_operations;
-	inc_nlink(inode);
-	inc_nlink(root_dir);
-
-	d_instantiate(dentry, inode);
-	dget(dentry);
-	external_dentry = dentry;
-	inode_unlock(root_dir);
-	return 0;
-
- done_dentry:
-	dput(dentry);
-
- done:
-	inode_unlock(root_dir);
-	return retn;
-}
-
 /**
- * tesm_fs_init() - Initialize the TSEM control filesystem.
+ * tesm_fs_init() - Initialize the TSEM control filesystem heirarchy
  *
  * This function is called as part of the TSEM LSM initialization
- * process.  It creates the /sys/fs/tsem mount point and populates
- * the filesystem to be mounted there with the control plane file and
- * internal TMA model information files.
+ * process.  The purpose of this function is to create the TSEM
+ * control plane, based on the securityfs filesystem, by creating the
+ * /sys/kernel/security/tsem directory and populating that directory
+ * with the control plane files and internal TMA model information
+ * files.  The /sys/kernel/security/tsem/ExternalTMA directory is
+ * also created.  This directory will be used to hold the modeling
+ * domain specific files that will emit the security event descriptions
+ * for the domain.
  *
  * Return: If filesystem initialization is successful a return code of 0
  *	   is returned.  A negative return value is returned if an error
- *	   is encoutnered.
+ *	   is encountered.
  */
 int __init tsem_fs_init(void)
 {
-	int retn;
+	int retn = -1;
 
-	retn = sysfs_create_mount_point(fs_kobj, "tsem");
-	if (retn) {
-		pr_warn("Unable to create TSEM filesystem mount point.\n");
-		return retn;
-	}
-
-	retn = register_filesystem(&fs_definition);
-	if (retn) {
-		pr_warn("Unable to register TSEM filesystem.\n");
+	tsem_dir = securityfs_create_dir("tsem", NULL);
+	if (tsem_dir == NULL)
 		goto done;
-	}
 
-	fs_mount = kern_mount(&fs_definition);
-	if (IS_ERR(fs_mount)) {
-		pr_warn("Unable to mount TSEM filesystem.\n");
-		retn = PTR_ERR(fs_mount);
-		fs_mount = NULL;
-	}
+	control = securityfs_create_file("control", 0200, tsem_dir, NULL,
+					 &control_ops);
+	if (IS_ERR(control))
+		goto err;
 
-	retn = create_update_directory();
+	points = securityfs_create_file("points", 0400, tsem_dir, NULL,
+					&point_ops);
+	if (IS_ERR(points))
+		goto err;
+
+	forensics = securityfs_create_file("forensics", 0400, tsem_dir, NULL,
+					   &forensics_ops);
+	if (IS_ERR(forensics))
+		goto err;
+
+	measurement_file = securityfs_create_file("measurement", 0400,
+						  tsem_dir, NULL,
+						  &measurement_ops);
+	if (IS_ERR(measurement_file))
+		goto err;
+
+	trajectory = securityfs_create_file("trajectory", 0400, tsem_dir, NULL,
+					    &trajectory_ops);
+	if (IS_ERR(trajectory))
+		goto err;
+
+	state = securityfs_create_file("state", 0400, tsem_dir, NULL,
+				       &state_ops);
+	if (IS_ERR(state))
+		goto err;
+
+	id = securityfs_create_file("id", 0400, tsem_dir, NULL, &id_ops);
+	if (IS_ERR(control))
+		goto err;
+
+	aggregate = securityfs_create_file("aggregate", 0400, tsem_dir, NULL,
+					   &aggregate_ops);
+	if (IS_ERR(aggregate))
+		goto err;
+
+	external_tma = securityfs_create_dir("ExternalTMA", tsem_dir);
+	if (IS_ERR(external_tma))
+		goto err;
+
+	retn = 0;
 
  done:
-	if (retn)
-		sysfs_remove_mount_point(fs_kobj, "tsem");
 	return retn;
+
+ err:
+	securityfs_remove(control);
+	securityfs_remove(points);
+	securityfs_remove(forensics);
+	securityfs_remove(measurement_file);
+	securityfs_remove(trajectory);
+	securityfs_remove(state);
+	securityfs_remove(id);
+	securityfs_remove(aggregate);
+	securityfs_remove(external_tma);
+
+	return retn;
+
 }
 
 /**
@@ -805,90 +753,17 @@ int __init tsem_fs_init(void)
  * event descriptions for a namespace.  This routine will create the
  * following file:
  *
- * /sys/fs/tsem/ExternalTMA/N
+ * /sys/kernel/security/tsem/ExternalTMA/N
  *
  * Where N is replaced with the security model context identifier.
  *
  * Return: If creation of the update file is successful a pointer to the
  *	   dentry of the file is returned.  If an error was encountered
- *	   an error code is encoded in the pointer.
+ *	   the pointer with an encoded error will be returned.
  */
 struct dentry *tsem_fs_create_external(const char *name)
 {
-	int retn = 0;
-	struct dentry *dentry;
-	struct inode *root_dir, *inode;
 
-	retn = simple_pin_fs(&fs_definition, &fs_mount, &fs_mount_cnt);
-	if (retn)
-		return ERR_PTR(retn);
-
-	root_dir = d_inode(external_dentry);
-	inode_lock(root_dir);
-
-	dentry = lookup_one_len(name, external_dentry, strlen(name));
-	if (IS_ERR(dentry)) {
-		retn = PTR_ERR(dentry);
-		goto done;
-	}
-	if (d_really_is_positive(dentry)) {
-		WARN_ON_ONCE(1);
-		retn = -EEXIST;
-		goto done_dentry;
-	}
-
-	inode = new_inode(root_dir->i_sb);
-	if (!inode) {
-		retn = -ENOMEM;
-		goto done_dentry;
-	}
-
-	inode->i_ino = get_next_ino();
-	inode->i_mode = 0400 | S_IFREG;
-	inode->i_atime = inode->i_mtime = inode->i_ctime = current_time(inode);
-	inode->i_private = NULL;
-	inode->i_fop = &export_ops;
-
-	d_instantiate(dentry, inode);
-	dget(dentry);
-	inode_unlock(root_dir);
-	return dentry;
-
- done_dentry:
-	dput(dentry);
-
- done:
-	inode_unlock(root_dir);
-	simple_release_fs(&fs_mount, &fs_mount_cnt);
-	if (retn)
-		dentry = ERR_PTR(retn);
-	return dentry;
-}
-
-/**
- * tesm_fs_remove_external() - Remove an external modeling update file.
- * @dentry: A pointer to the dentry of the file to be removed.
- *
- * This function is used to remove the update file for an externally
- * modeled security domain.
- */
-void tsem_fs_remove_external(struct dentry *dentry)
-{
-	struct inode *root_dir;
-
-	if (!dentry || IS_ERR(dentry)) {
-		WARN_ON_ONCE(1);
-		return;
-	}
-
-	root_dir = d_inode(dentry->d_parent);
-
-	inode_lock(root_dir);
-	if (simple_positive(dentry)) {
-		simple_unlink(root_dir, dentry);
-		dput(dentry);
-	}
-	inode_unlock(root_dir);
-
-	simple_release_fs(&fs_mount, &fs_mount_cnt);
+	return securityfs_create_file(name, 0400, external_tma, NULL,
+				      &export_ops);
 }

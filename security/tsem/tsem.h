@@ -321,7 +321,6 @@ extern const char * const tsem_names[TSEM_EVENT_CNT];
 
 extern int tsem_fs_init(void);
 extern struct dentry *tsem_fs_create_external(const char *name);
-extern void tsem_fs_remove_external(struct dentry *dentry);
 
 extern struct tsem_model *tsem_model_allocate(void);
 extern void tsem_model_free(struct tsem_TMA_context *ctx);
