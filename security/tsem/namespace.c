@@ -11,8 +11,6 @@
 
 static u64 context_id;
 
-static struct workqueue_struct *release_wq;
-
 struct lsm_blob_sizes tsem_blob_sizes __lsm_ro_after_init = {
 	.lbs_task = sizeof(struct tsem_task),
 	.lbs_inode = sizeof(struct tsem_inode)
@@ -76,18 +74,13 @@ static struct tsem_external *allocate_external(void)
 	return external;
 }
 
-/**
- * tsem_ns_free() - Releases the namespace model infrastructure.
- * @kref: A pointer to the reference counting structure for the namespace.
- *
- * This function is called when the last reference to a kernel
- * based TMA model structure is released.
- */
-void tsem_ns_free(struct kref *kref)
+static void wq_put(struct work_struct *work)
 {
+	struct tsem_TMA_work *tsem_work;
 	struct tsem_TMA_context *ctx;
 
-	ctx = container_of(kref, struct tsem_TMA_context, kref);
+	tsem_work = container_of(work, struct tsem_TMA_work, work);
+	ctx = tsem_work->ctx;
 
 	if (ctx->external) {
 		securityfs_remove(ctx->external->dentry);
@@ -98,60 +91,47 @@ void tsem_ns_free(struct kref *kref)
 	kfree(ctx);
 }
 
-static void wq_put(struct work_struct *work)
+static void ns_free(struct kref *kref)
 {
-	struct tsem_TMA_work *tsem_work;
 	struct tsem_TMA_context *ctx;
 
-	tsem_work = container_of(work, struct tsem_TMA_work, work);
-	ctx = tsem_work->ctx;
-	kref_put(&ctx->kref, tsem_ns_free);
-}
-
-/**
- * tsem_ns_get() - Obtain a reference on a TSEM TMA namespace.
- * @ctx: A pointer to the TMA modeling context for which a reference is
- *	 to be released.
- *
- * This function is called to release a reference to a TMA modeling
- * domain.
- */
-void tsem_ns_put(struct tsem_TMA_context *ctx)
-{
-	if (kref_read(&ctx->kref) > 1) {
-		kref_put(&ctx->kref, tsem_ns_free);
-		return;
-	}
+	ctx = container_of(kref, struct tsem_TMA_context, kref);
+	ctx->work.ctx = ctx;
 
 	INIT_WORK(&ctx->work.work, wq_put);
-	ctx->work.ctx = ctx;
-	if (!queue_work(release_wq, &ctx->work.work))
+	if (!queue_work(system_wq, &ctx->work.work))
 		WARN_ON_ONCE(1);
 }
 
 /**
- * tsem_ns_put() - Obtain a reference on a TSEM TMA namespace.
- * @ctx: A pointer to the TMA modeling context for which a reference is
- *	 to be acquired.
+ * tsem_ns_put() - Release a reference to a modeling context.
+ * @ctx: A pointer to the TMA context for which a reference is
+ *	 to be released.
  *
- * This function is called on each invocation of the tsem_task_alloc
- * event to obtain a reference against the current modeling domain.
+ * This function is called to release a reference to a TMA modeling
+ * domain.  The release of the last reference calls the ns_free()
+ * function that schedules the actual work to release the resources
+ * associated with the namespace to a workqueue.
  */
-void tsem_ns_get(struct tsem_TMA_context *ctx)
+void tsem_ns_put(struct tsem_TMA_context *ctx)
 {
-	kref_get(&ctx->kref);
+	kref_put(&ctx->kref, ns_free);
 }
 
 /**
- * tsem_ns_namespace() - Create a TSEM modeling namespace.
+ * tsem_ns_create() - Create a TSEM modeling namespace.
  * @event: The numeric identifer of the control message that is to
  *	   be processed.
  *
  * This function is used to create either an internally or externally
- * modeled TSEM namespace.  The boolean argument to this function
- * selects the type of namespace that is being created.  Specification
- * of an internal namespace causes the ->model pointer to be initialized
- * with a tsem_model structure.
+ * modeled TSEM namespace.  The type of the namespace to be created
+ * is specified with the tsem_control_type enumeration value.  A
+ * request for an internally model namespace causes a new structure to be
+ * allocated that will hold the description of the security model.
+ * An externally modeled domain will have a control structure allocated
+ * that manages the export of security event descriptions to the
+ * trust orchestrator that is responsible for running the TMA
+ * implementation.
  *
  * Return: This function returns 0 if the namespace was created and
  *	   a negative error value on error.
@@ -197,31 +177,6 @@ int tsem_ns_create(enum tsem_control_type event)
 		else
 			retn = tsem_model_add_aggregate();
 	}
-
-	return retn;
-}
-
-/**
- * tsem_ns_init() - Initialize TSEM namespace processing.
- *
- * This function is called as part of the TSEM LSM initialization
- * process.  It initializes the workqueue that will be used to
- * conduct the asynchronous release of modeling contexts.  The
- * deferral of the namespace release is needed in order to address
- * the fact that the securityfs pseudo-files cannot be removed in
- * atomic context as well as the memory allocated for the event
- * description.
- *
- * Return: If the initialization succeeds a return code of 0 is returned.
- *	   A negative return value is returned on failure.
- */
-int __init tsem_ns_init(void)
-{
-	int retn = 0;
-
-	release_wq = create_workqueue("tsem_ns_release");
-	if (IS_ERR(release_wq))
-		retn = PTR_ERR(release_wq);
 
 	return retn;
 }

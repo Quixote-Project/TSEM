@@ -333,10 +333,8 @@ extern void tsem_model_load_base(u8 *mapping);
 extern int tsem_model_add_aggregate(void);
 extern void tsem_model_compute_state(void);
 
-extern int tsem_ns_init(void);
 extern int tsem_ns_create(enum tsem_control_type type);
 extern void tsem_ns_put(struct tsem_TMA_context *ctx);
-extern void tsem_ns_get(struct tsem_TMA_context *ctx);
 
 extern int tsem_export_show(struct seq_file *m);
 extern int tsem_export_event(struct tsem_event *ep);
