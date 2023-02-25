@@ -44,108 +44,108 @@ static void trigger_event(struct tsem_TMA_context *ctx)
 	wake_up_interruptible(&ctx->external->wq);
 }
 
-static void show_event_coe(struct tsem_event *ep, struct seq_file *page)
+static void show_event_coe(struct tsem_event *ep, struct seq_file *sf)
 {
-	seq_printf(page, "export pid{%u} ", ep->pid);
+	seq_printf(sf, "export pid{%u} ", ep->pid);
 
-	seq_printf(page, "event{process=%s, filename=%s, ", ep->comm,
+	seq_printf(sf, "event{process=%s, filename=%s, ", ep->comm,
 			   ep->pathname == NULL ? "none" : ep->pathname);
-	seq_printf(page, "type=%s, task_id=%*phN} ", tsem_names[ep->event],
+	seq_printf(sf, "type=%s, task_id=%*phN} ", tsem_names[ep->event],
 		   WP256_DIGEST_SIZE, ep->task_id);
 
-	seq_printf(page, "COE{uid=%d, euid=%d, suid=%d, gid=%d, ", ep->COE.uid,
+	seq_printf(sf, "COE{uid=%d, euid=%d, suid=%d, gid=%d, ", ep->COE.uid,
 		   ep->COE.euid, ep->COE.suid, ep->COE.gid);
-	seq_printf(page, "egid=%d, sgid=%d, fsuid=%d, fsgid=%d, ",
+	seq_printf(sf, "egid=%d, sgid=%d, fsuid=%d, fsgid=%d, ",
 		   ep->COE.egid, ep->COE.sgid, ep->COE.fsuid, ep->COE.fsgid);
-	seq_printf(page, "cap=0x%llx} ", ep->COE.capability.value);
+	seq_printf(sf, "cap=0x%llx} ", ep->COE.capability.value);
 }
 
-static void show_file(struct tsem_event *ep, struct seq_file *page)
+static void show_file(struct tsem_event *ep, struct seq_file *sf)
 {
-	seq_printf(page, "file{flags=%u, uid=%d, gid=%d, mode=0%o, ",
+	seq_printf(sf, "file{flags=%u, uid=%d, gid=%d, mode=0%o, ",
 		ep->file.flags, ep->file.uid, ep->file.gid, ep->file.mode);
-	seq_printf(page, "name_length=%u, name=%*phN, s_magic=0x%0x, ",
+	seq_printf(sf, "name_length=%u, name=%*phN, s_magic=0x%0x, ",
 		   ep->file.name_length, WP256_DIGEST_SIZE, ep->file.name,
 		   ep->file.s_magic);
-	seq_printf(page, "s_id=%s, s_uuid=%*phN, digest=%*phN}\n",
+	seq_printf(sf, "s_id=%s, s_uuid=%*phN, digest=%*phN}\n",
 		   ep->file.s_id, (int) sizeof(ep->file.s_uuid),
 		   ep->file.s_uuid, WP256_DIGEST_SIZE, ep->file.digest);
 }
 
-static void show_mmap_file(struct tsem_event *ep, struct seq_file *page)
+static void show_mmap_file(struct tsem_event *ep, struct seq_file *sf)
 {
-	show_event_coe(ep, page);
+	show_event_coe(ep, sf);
 
-	seq_printf(page, "%s{type=%u, reqprot=%u, ", tsem_names[ep->event],
+	seq_printf(sf, "%s{type=%u, reqprot=%u, ", tsem_names[ep->event],
 		   ep->CELL.mmap_file.anonymous, ep->CELL.mmap_file.reqprot);
-	seq_printf(page, "prot=%u, flags=%u}", ep->CELL.mmap_file.prot,
+	seq_printf(sf, "prot=%u, flags=%u}", ep->CELL.mmap_file.prot,
 		   ep->CELL.mmap_file.flags);
 
 	if (!ep->CELL.mmap_file.anonymous) {
-		seq_puts(page, " ");
-		show_file(ep, page);
+		seq_puts(sf, " ");
+		show_file(ep, sf);
 	} else
-		seq_puts(page, "\n");
+		seq_puts(sf, "\n");
 }
 
-static void show_ipv4_socket(struct tsem_event *ep, struct seq_file *page)
+static void show_ipv4_socket(struct tsem_event *ep, struct seq_file *sf)
 {
 	struct sockaddr_in *ipv4 = &ep->CELL.socket_connect.u.ipv4;
 
-	show_event_coe(ep, page);
-	seq_printf(page, "%s{family=%u, port=%u, addr=%u}\n",
+	show_event_coe(ep, sf);
+	seq_printf(sf, "%s{family=%u, port=%u, addr=%u}\n",
 		   tsem_names[ep->event], ipv4->sin_family, ipv4->sin_port,
 		   ipv4->sin_addr.s_addr);
 }
 
-static void show_ipv6_socket(struct tsem_event *ep, struct seq_file *page)
+static void show_ipv6_socket(struct tsem_event *ep, struct seq_file *sf)
 {
 	struct sockaddr_in6 *ipv6 = &ep->CELL.socket_connect.u.ipv6;
 
-	show_event_coe(ep, page);
+	show_event_coe(ep, sf);
 
-	seq_printf(page, "%s{family=%u, port=%u, flow=%u, ",
+	seq_printf(sf, "%s{family=%u, port=%u, flow=%u, ",
 		   tsem_names[ep->event], ipv6->sin6_family,
 		   ipv6->sin6_port, ipv6->sin6_flowinfo);
-	seq_printf(page, "scope=%u, addr=%*phN}\n", ipv6->sin6_scope_id,
+	seq_printf(sf, "scope=%u, addr=%*phN}\n", ipv6->sin6_scope_id,
 		       (int) sizeof(ipv6->sin6_addr.in6_u.u6_addr8),
 		       ipv6->sin6_addr.in6_u.u6_addr8);
 }
 
-static void show_socket(struct tsem_event *ep, struct seq_file *page)
+static void show_socket(struct tsem_event *ep, struct seq_file *sf)
 {
 	struct tsem_socket_connect_args *scp = &ep->CELL.socket_connect;
 
-	show_event_coe(ep, page);
+	show_event_coe(ep, sf);
 
-	seq_printf(page, "%s{family=%u, addr=%*phN}\n", tsem_names[ep->event],
+	seq_printf(sf, "%s{family=%u, addr=%*phN}\n", tsem_names[ep->event],
 		   scp->family, WP256_DIGEST_SIZE, scp->u.mapping);
 }
 
-static void show_socket_create(struct tsem_event *ep, struct seq_file *page)
+static void show_socket_create(struct tsem_event *ep, struct seq_file *sf)
 {
-	show_event_coe(ep, page);
+	show_event_coe(ep, sf);
 
-	seq_printf(page, "%s{family=%u, type=%u, ", tsem_names[ep->event],
+	seq_printf(sf, "%s{family=%u, type=%u, ", tsem_names[ep->event],
 		   ep->CELL.socket_create.family, ep->CELL.socket_create.type);
-	seq_printf(page, "protocol=%u, kern=%u}\n",
+	seq_printf(sf, "protocol=%u, kern=%u}\n",
 		   ep->CELL.socket_create.protocol,
 		   ep->CELL.socket_create.kern);
 }
 
-static void show_socket_accept(struct tsem_event *ep, struct seq_file *page)
+static void show_socket_accept(struct tsem_event *ep, struct seq_file *sf)
 {
 	u8 *p;
 	int size;
 	struct tsem_socket_accept_args *sap = &ep->CELL.socket_accept;
 
-	show_event_coe(ep, page);
+	show_event_coe(ep, sf);
 
-	seq_printf(page, "%s{family=%u, type=%u, port=%u, addr=",
+	seq_printf(sf, "%s{family=%u, type=%u, port=%u, addr=",
 		   tsem_names[ep->event], sap->family, sap->type, sap->port);
 
 	if (sap->family == AF_INET) {
-		seq_printf(page, "%u}\n", sap->ipv4);
+		seq_printf(sf, "%u}\n", sap->ipv4);
 		return;
 	}
 
@@ -156,33 +156,33 @@ static void show_socket_accept(struct tsem_event *ep, struct seq_file *page)
 		p = sap->tsip->digest;
 		size = sizeof(sap->tsip->digest);
 	}
-	seq_printf(page, "%*phN}\n", size, p);
+	seq_printf(sf, "%*phN}\n", size, p);
 }
 
-static void show_socket_events(struct tsem_event *ep, struct seq_file *page)
+static void show_socket_events(struct tsem_event *ep, struct seq_file *sf)
 {
 	switch (ep->event) {
 	case TSEM_SOCKET_CREATE:
-		show_socket_create(ep, page);
+		show_socket_create(ep, sf);
 		break;
 
 	case TSEM_SOCKET_CONNECT:
 	case TSEM_SOCKET_BIND:
 		switch (ep->CELL.socket_connect.family) {
 		case AF_INET:
-			show_ipv4_socket(ep, page);
+			show_ipv4_socket(ep, sf);
 			break;
 		case AF_INET6:
-			show_ipv6_socket(ep, page);
+			show_ipv6_socket(ep, sf);
 			break;
 		default:
-			show_socket(ep, page);
+			show_socket(ep, sf);
 			break;
 		}
 		break;
 
 	case TSEM_SOCKET_ACCEPT:
-		show_socket_accept(ep, page);
+		show_socket_accept(ep, sf);
 		break;
 
 	default:
@@ -190,26 +190,26 @@ static void show_socket_events(struct tsem_event *ep, struct seq_file *page)
 	}
 }
 
-static void show_task_kill(struct tsem_event *ep, struct seq_file *page)
+static void show_task_kill(struct tsem_event *ep, struct seq_file *sf)
 {
 	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
 
-	show_event_coe(ep, page);
+	show_event_coe(ep, sf);
 
-	seq_printf(page, "%s{cross=%u, signal=%u, target=%*phN}\n",
+	seq_printf(sf, "%s{cross=%u, signal=%u, target=%*phN}\n",
 		   tsem_names[ep->event], args->cross_model,
 		   args->signal, WP256_DIGEST_SIZE, args->target);
 }
 
-static void show_event_generic(struct tsem_event *ep, struct seq_file *page)
+static void show_event_generic(struct tsem_event *ep, struct seq_file *sf)
 {
-	show_event_coe(ep, page);
+	show_event_coe(ep, sf);
 
-	seq_printf(page, "%s{type=%s}\n", tsem_names[ep->event],
+	seq_printf(sf, "%s{type=%s}\n", tsem_names[ep->event],
 		   tsem_names[ep->CELL.event_type]);
 }
 
-int tsem_export_show(struct seq_file *page)
+int tsem_export_show(struct seq_file *sf)
 {
 	ssize_t retn = -ENODATA;
 	struct export_event *mp;
@@ -227,7 +227,7 @@ int tsem_export_show(struct seq_file *page)
 
 	switch (mp->type) {
 	case AGGREGATE_EVENT:
-		seq_printf(page, "aggregate %*phN\n", WP256_DIGEST_SIZE,
+		seq_printf(sf, "aggregate %*phN\n", WP256_DIGEST_SIZE,
 			   mp->u.aggregate);
 		break;
 
@@ -235,27 +235,27 @@ int tsem_export_show(struct seq_file *page)
 		ep = mp->u.ep;
 		switch (ep->event) {
 		case TSEM_FILE_OPEN:
-			show_event_coe(ep, page);
-			show_file(ep, page);
+			show_event_coe(ep, sf);
+			show_file(ep, sf);
 			break;
 
 		case TSEM_MMAP_FILE:
-			show_mmap_file(ep, page);
+			show_mmap_file(ep, sf);
 			break;
 
 		case TSEM_SOCKET_CREATE:
 		case TSEM_SOCKET_CONNECT:
 		case TSEM_SOCKET_BIND:
 		case TSEM_SOCKET_ACCEPT:
-			show_socket_events(ep, page);
+			show_socket_events(ep, sf);
 			break;
 
 		case TSEM_TASK_KILL:
-			show_task_kill(ep, page);
+			show_task_kill(ep, sf);
 			break;
 
 		case TSEM_GENERIC_EVENT:
-			show_event_generic(ep, page);
+			show_event_generic(ep, sf);
 			break;
 
 		default:
@@ -265,7 +265,7 @@ int tsem_export_show(struct seq_file *page)
 		break;
 
 	case LOG_EVENT:
-		seq_printf(page, "log process{%s} event{%s} action{%s}\n",
+		seq_printf(sf, "log process{%s} event{%s} action{%s}\n",
 			    mp->u.action.comm, tsem_names[mp->u.action.type],
 			    tsem_actions[mp->u.action.action]);
 		break;
