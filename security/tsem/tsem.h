@@ -319,8 +319,11 @@ extern enum tsem_action_type tsem_root_actions[TSEM_EVENT_CNT];
 extern struct tsem_TMA_context root_TMA_context;
 extern const char * const tsem_names[TSEM_EVENT_CNT];
 
-extern int tsem_fs_init(void);
 extern struct dentry *tsem_fs_create_external(const char *name);
+extern void tsem_fs_show_field(struct seq_file *c, const char *field);
+extern void tsem_fs_show_key(struct seq_file *c, char *, char *key,
+			     char *fmt, ...);
+extern int tsem_fs_init(void);
 
 extern struct tsem_model *tsem_model_allocate(void);
 extern void tsem_model_free(struct tsem_TMA_context *ctx);

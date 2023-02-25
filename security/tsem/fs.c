@@ -133,23 +133,41 @@ static int config_point(enum tsem_control_type type, u8 *arg)
 
 static void show_event(struct seq_file *c, struct tsem_event *ep, char *file)
 {
-	seq_printf(c, "event{process=%s, filename=%s, type=%s, task_id=%*phN}",
-		   ep->comm, file ? file : "none", tsem_names[ep->event],
-		   WP256_DIGEST_SIZE, ep->task_id);
-	seq_printf(c, " COE{uid=%d, euid=%d, suid=%d, gid=%d, egid=%d, sgid=%d, fsuid=%d, fsgid=%d, cap=0x%llx} ",
-		   ep->COE.uid, ep->COE.euid, ep->COE.suid, ep->COE.gid,
-		   ep->COE.egid, ep->COE.sgid, ep->COE.fsuid, ep->COE.fsgid,
-		   ep->COE.capability.value);
+	tsem_fs_show_field(c, "event");
+	tsem_fs_show_key(c, ",", "process", "%s", ep->comm);
+	tsem_fs_show_key(c, ",", "filename", "%s", file ? file : "none");
+	tsem_fs_show_key(c, ",", "type", "%s", tsem_names[ep->event]);
+	tsem_fs_show_key(c, "}, ", "task_id", "%*phN",
+			 WP256_DIGEST_SIZE, ep->task_id);
+
+	tsem_fs_show_field(c, "COE");
+	tsem_fs_show_key(c, ",", "uid", "%d", ep->COE.uid);
+	tsem_fs_show_key(c, ",", "euid", "%d", ep->COE.euid);
+	tsem_fs_show_key(c, ",", "suid", "%d", ep->COE.suid);
+	tsem_fs_show_key(c, ",", "gid", "%d", ep->COE.gid);
+	tsem_fs_show_key(c, ",", "egid", "%d", ep->COE.egid);
+	tsem_fs_show_key(c, ",", "sgid", "%d", ep->COE.sgid);
+	tsem_fs_show_key(c, ",", "fsuid", "%d", ep->COE.fsuid);
+	tsem_fs_show_key(c, ",", "fsgid", "%d", ep->COE.fsgid);
+	tsem_fs_show_key(c, "}, ", "cap", "0x%llx", ep->COE.capability.value);
 }
 
 static void show_file(struct seq_file *c, struct tsem_event *ep)
 {
-	seq_printf(c, "file{flags=%u, uid=%d, gid=%d, mode=0%o, name_length=%u, name=%*phN, s_magic=0x%0x, s_id=%s, s_uuid=%*phN, digest=%*phN}\n",
-		   ep->file.flags, ep->file.uid, ep->file.gid, ep->file.mode,
-		   ep->file.name_length, WP256_DIGEST_SIZE, ep->file.name,
-		   ep->file.s_magic, ep->file.s_id,
-		   (int) sizeof(ep->file.s_uuid), ep->file.s_uuid,
-		   WP256_DIGEST_SIZE, ep->file.digest);
+	tsem_fs_show_field(c, "file");
+	tsem_fs_show_key(c, ",", "flags", "%u", ep->file.flags);
+	tsem_fs_show_key(c, ",", "uid", "%d", ep->file.uid);
+	tsem_fs_show_key(c, ",", "gid", "%d", ep->file.gid);
+	tsem_fs_show_key(c, ",", "mode", "0%o", ep->file.mode);
+	tsem_fs_show_key(c, ",", "name_length", "%u", ep->file.name_length);
+	tsem_fs_show_key(c, ",", "name", "%*phN", WP256_DIGEST_SIZE,
+			 ep->file.name);
+	tsem_fs_show_key(c, ",", "s_magic", "%0x%0x", ep->file.s_magic);
+	tsem_fs_show_key(c, ",", "s_id", "%s", ep->file.s_id);
+	tsem_fs_show_key(c, ",", "s_uuid", "%*phN", sizeof(ep->file.s_uuid),
+		 ep->file.s_uuid);
+	tsem_fs_show_key(c, "}", "digest", "%*phN", WP256_DIGEST_SIZE,
+		 ep->file.digest);
 }
 
 static void show_mmap(struct seq_file *c, struct tsem_event *ep)
@@ -157,14 +175,17 @@ static void show_mmap(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_mmap_file_args *args = &ep->CELL.mmap_file;
 
 	show_event(c, ep, args->file ? ep->pathname : NULL);
-	seq_printf(c, "%s{type=%u, reqprot=%u, prot=%u, flags=%u} ",
-		   tsem_names[ep->event], args->file == NULL,
-		   args->reqprot, args->prot, args->flags);
 
-	if (!args->file)
-		seq_puts(c, "\n");
-	else
+	tsem_fs_show_field(c, tsem_names[ep->event]);
+	tsem_fs_show_key(c, ",", "type", "%u", args->file == NULL);
+	tsem_fs_show_key(c, ",", "reqprot", "%u", args->reqprot);
+	tsem_fs_show_key(c, ",", "prot", "%u", args->prot);
+	tsem_fs_show_key(c, "}", "flags", "%u", args->flags);
+
+	if (args->file) {
+		seq_puts(c, ", ");
 		show_file(c, ep);
+	}
 }
 
 static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
@@ -172,9 +193,12 @@ static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_socket_create_args *args = &ep->CELL.socket_create;
 
 	show_event(c, ep, NULL);
-	seq_printf(c, "%s{family=%u, type=%u, protocol=%u, kern=%u}\n",
-		   tsem_names[ep->event], args->family, args->type,
-		   args->protocol, args->kern);
+
+	tsem_fs_show_field(c, tsem_names[ep->event]);
+	tsem_fs_show_key(c, ",", "family", "%u", args->family);
+	tsem_fs_show_key(c, ",", "type", "%u", args->type);
+	tsem_fs_show_key(c, ",", "protocol", "%u", args->protocol);
+	tsem_fs_show_key(c, "}", "kern", "%u", args->kern);
 }
 
 static void show_socket(struct seq_file *c, struct tsem_event *ep)
@@ -184,25 +208,28 @@ static void show_socket(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_socket_connect_args *scp = &ep->CELL.socket_connect;
 
 	show_event(c, ep, NULL);
-	seq_printf(c, "%s{family=%u, ", tsem_names[ep->event], scp->family);
+
+	tsem_fs_show_field(c, tsem_names[ep->event]);
+	tsem_fs_show_key(c, ",", "family", "%u", scp->family);
 
 	switch (scp->family) {
 	case AF_INET:
 		ipv4 = (struct sockaddr_in *) &scp->u.ipv4;
-		seq_printf(c, "port=%u, addr=%u}\n", ipv4->sin_port,
-			   ipv4->sin_addr.s_addr);
+		tsem_fs_show_key(c, ",", "port", "%u", ipv4->sin_port);
+		tsem_fs_show_key(c, "}", "addr", "%u", ipv4->sin_addr.s_addr);
 		break;
 	case AF_INET6:
 		ipv6 = (struct sockaddr_in6 *) &scp->u.ipv6;
-		seq_printf(c, "port=%u, flow=%u, scope=%u, addr=%*phN}\n",
-			   ipv6->sin6_port, ipv6->sin6_flowinfo,
-			   ipv6->sin6_scope_id,
-			   (int) sizeof(ipv6->sin6_addr.in6_u.u6_addr8),
-			   ipv6->sin6_addr.in6_u.u6_addr8);
+		tsem_fs_show_key(c, ",", "port", "%u", ipv6->sin6_port);
+		tsem_fs_show_key(c, ",", "flow", "%u", ipv6->sin6_flowinfo);
+		tsem_fs_show_key(c, ",", "scope", "%u", ipv6->sin6_scope_id);
+		tsem_fs_show_key(c, "}", "addr", "%*phN",
+			 (int) sizeof(ipv6->sin6_addr.in6_u.u6_addr8),
+			 ipv6->sin6_addr.in6_u.u6_addr8);
 		break;
 	default:
-		seq_printf(c, "addr=%*phN}\n", WP256_DIGEST_SIZE,
-			   scp->u.mapping);
+		tsem_fs_show_key(c, "}", "addr", "%*phN", WP256_DIGEST_SIZE,
+				 scp->u.mapping);
 		break;
 	}
 }
@@ -212,21 +239,24 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_socket_accept_args *sap = &ep->CELL.socket_accept;
 
 	show_event(c, ep, NULL);
-	seq_printf(c, "%s{family=%u, type=%u, port=%u, addr=",
-		   tsem_names[ep->event], sap->family, sap->type, sap->port);
+
+	tsem_fs_show_field(c, tsem_names[ep->event]);
+	tsem_fs_show_key(c, ",", "family", "%u", sap->family);
+	tsem_fs_show_key(c, ",", "type", "%u", sap->type);
+	tsem_fs_show_key(c, ",", "port", "%u", sap->port);
 
 	switch (sap->family) {
 	case AF_INET:
-		seq_printf(c, "%u}\n", sap->ipv4);
+		tsem_fs_show_key(c, "}", "addr", "%u", sap->ipv4);
 		break;
 	case AF_INET6:
-		seq_printf(c, "%*phN}\n",
-			   (int) sizeof(sap->ipv6.in6_u.u6_addr8),
-			   sap->ipv6.in6_u.u6_addr8);
+		tsem_fs_show_key(c, "}", "addr", "%*phN",
+			 (int) sizeof(sap->ipv6.in6_u.u6_addr8),
+			 sap->ipv6.in6_u.u6_addr8);
 		break;
 	default:
-		seq_printf(c, "%*phN}\n", (int) sizeof(sap->tsip->digest),
-			   sap->tsip->digest);
+		tsem_fs_show_key(c, "}", "addr", "%*phN",
+			 (int) sizeof(sap->tsip->digest), sap->tsip->digest);
 		break;
 	}
 }
@@ -236,20 +266,27 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
 
 	show_event(c, ep, NULL);
-	seq_printf(c, "%s{cross=%u, signal=%u, target=%*phN}\n",
-		   tsem_names[ep->event], args->cross_model, args->signal,
-		   WP256_DIGEST_SIZE, args->target);
+
+	tsem_fs_show_field(c, tsem_names[ep->event]);
+	tsem_fs_show_key(c, ",", "cross", "%u", args->cross_model);
+	tsem_fs_show_key(c, ",", "signal", "%u", args->signal);
+	tsem_fs_show_key(c, "}", "target", "*%phN",
+			 WP256_DIGEST_SIZE, args->target);
 }
 
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep, NULL);
-	seq_printf(c, "%s{type=%s}\n", tsem_names[ep->event],
-		   tsem_names[ep->CELL.event_type]);
+
+	tsem_fs_show_field(c, tsem_names[ep->event]);
+	tsem_fs_show_key(c, "}", "type", "%s",
+			 tsem_names[ep->CELL.event_type]);
 }
 
 static void show_trajectory_event(struct seq_file *c, struct tsem_event *ep)
 {
+	seq_putc(c, '{');
+
 	switch (ep->event) {
 	case TSEM_FILE_OPEN:
 		show_event(c, ep, ep->pathname);
@@ -277,6 +314,8 @@ static void show_trajectory_event(struct seq_file *c, struct tsem_event *ep)
 	default:
 		break;
 	}
+
+	seq_puts(c, "}\n");
 }
 
 static void *trajectory_start(struct seq_file *c, loff_t *pos)
@@ -656,6 +695,79 @@ static const struct file_operations export_ops = {
 };
 
 /**
+ * tesm_fs_create_external() - Create an external TMA update file.
+ * @id: A pointer to the ASCII representation of the modeling domain
+ *      that the export file is being created for.
+ *
+ * This function is used to create a pseudo-file that will output security
+ * event descriptions for a namespace.  This routine will create the
+ * following file:
+ *
+ * /sys/kernel/security/tsem/ExternalTMA/N
+ *
+ * Where N is replaced with the security model context identifier.
+ *
+ * Return: If creation of the update file is successful a pointer to the
+ *	   dentry of the file is returned.  If an error was encountered
+ *	   the pointer with an encoded code will be returned.
+ */
+struct dentry *tsem_fs_create_external(const char *name)
+{
+
+	return securityfs_create_file(name, 0400, external_tma, NULL,
+				      &export_ops);
+}
+
+/**
+ * tesm_fs_show_field() - Output a JSON field description
+ * @sf: A pointer to the seq_file structure that the field description
+ *	is to be written to.
+ * @f:  A pointer to null terminated character buffer containing the
+ *      name of the field to encode
+ *
+ * This function is used to generate a JSON field description that
+ * is used to name a sequence of key/value pairs describing the
+ * characteristcis of the field.
+ */
+void tsem_fs_show_field(struct seq_file *c, const char *field)
+{
+	seq_printf(c, "\"%s\": {", field);
+}
+
+/**
+ * tesm_fs_tsem_fs_show_key() - Output a JSON key/value pair
+ * @sf: A pointer to the seq_file structure that the field description
+ *	is to be written to.
+ * @term: A pointer to a null-terminated character buffer containing
+ *	  the string that is to be used for terminating the key/value
+ *	  pair.
+ * @key: A pointer to the null-terminated character buffer containing
+ *	 the key description.
+ * @fmt: The printf format that is to be used for formatting the
+ *	 value of the key.
+ *
+ * This function is a variadic function that is used to encode a
+ * JSON key/value pair that provides one of characteristics of an
+ * event description field.
+ */
+void tsem_fs_show_key(struct seq_file *c, char *term, char *key,
+		      char *fmt, ...)
+{
+	va_list args;
+
+	seq_printf(c, "\"%s\": \"", key);
+
+	va_start(args, fmt);
+	seq_vprintf(c, fmt, args);
+	va_end(args);
+
+	if (term[0] == ',')
+		seq_printf(c, "\"%s ", term);
+	else
+		seq_printf(c, "\"%s", term);
+}
+
+/**
  * tesm_fs_init() - Initialize the TSEM control filesystem heirarchy
  *
  * This function is called as part of the TSEM LSM initialization
@@ -742,28 +854,4 @@ int __init tsem_fs_init(void)
 
 	return retn;
 
-}
-
-/**
- * tesm_fs_create_external() - Create an external TMA update file.
- * @id: A pointer to the ASCII representation of the modeling domain
- *      that the export file is being created for.
- *
- * This function is used to create a pseudo-file that will output security
- * event descriptions for a namespace.  This routine will create the
- * following file:
- *
- * /sys/kernel/security/tsem/ExternalTMA/N
- *
- * Where N is replaced with the security model context identifier.
- *
- * Return: If creation of the update file is successful a pointer to the
- *	   dentry of the file is returned.  If an error was encountered
- *	   the pointer with an encoded error will be returned.
- */
-struct dentry *tsem_fs_create_external(const char *name)
-{
-
-	return securityfs_create_file(name, 0400, external_tma, NULL,
-				      &export_ops);
 }
