@@ -111,6 +111,7 @@ static int add_trajectory_point(struct tsem_event *ep)
 		return -ENOMEM;
 	entry->ep = ep;
 	tsem_event_get(ep);
+	ep->pid = 0;
 
 	mutex_lock(&model->trajectory_mutex);
 	list_add_tail(&entry->list, &model->trajectory_list);
@@ -133,6 +134,7 @@ static int add_forensic_point(struct tsem_event *ep)
 		return -ENOMEM;
 	entry->ep = ep;
 	tsem_event_get(ep);
+	ep->pid = 0;
 
 	mutex_lock(&model->forensics_mutex);
 	list_add_tail(&entry->list, &model->forensics_list);

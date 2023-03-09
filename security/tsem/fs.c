@@ -134,6 +134,8 @@ static int config_point(enum tsem_control_type type, u8 *arg)
 static void show_event(struct seq_file *c, struct tsem_event *ep, char *file)
 {
 	tsem_fs_show_field(c, "event");
+	if (ep->pid)
+		tsem_fs_show_key(c, ",", "pid", "%u", ep->pid);
 	tsem_fs_show_key(c, ",", "process", "%s", ep->comm);
 	tsem_fs_show_key(c, ",", "filename", "%s", file ? file : "none");
 	tsem_fs_show_key(c, ",", "type", "%s", tsem_names[ep->event]);
@@ -162,7 +164,7 @@ static void show_file(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, ",", "name_length", "%u", ep->file.name_length);
 	tsem_fs_show_key(c, ",", "name", "%*phN", WP256_DIGEST_SIZE,
 			 ep->file.name);
-	tsem_fs_show_key(c, ",", "s_magic", "%0x%0x", ep->file.s_magic);
+	tsem_fs_show_key(c, ",", "s_magic", "0x%0x", ep->file.s_magic);
 	tsem_fs_show_key(c, ",", "s_id", "%s", ep->file.s_id);
 	tsem_fs_show_key(c, ",", "s_uuid", "%*phN", sizeof(ep->file.s_uuid),
 		 ep->file.s_uuid);
@@ -283,41 +285,6 @@ static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
 			 tsem_names[ep->CELL.event_type]);
 }
 
-static void show_trajectory_event(struct seq_file *c, struct tsem_event *ep)
-{
-	seq_putc(c, '{');
-
-	switch (ep->event) {
-	case TSEM_FILE_OPEN:
-		show_event(c, ep, ep->pathname);
-		show_file(c, ep);
-		break;
-	case TSEM_MMAP_FILE:
-		show_mmap(c, ep);
-		break;
-	case TSEM_SOCKET_CREATE:
-		show_socket_create(c, ep);
-		break;
-	case TSEM_SOCKET_CONNECT:
-	case TSEM_SOCKET_BIND:
-		show_socket(c, ep);
-		break;
-	case TSEM_SOCKET_ACCEPT:
-		show_socket_accept(c, ep);
-		break;
-	case TSEM_TASK_KILL:
-		show_task_kill(c, ep);
-		break;
-	case TSEM_GENERIC_EVENT:
-		show_event_generic(c, ep);
-		break;
-	default:
-		break;
-	}
-
-	seq_puts(c, "}\n");
-}
-
 static void *trajectory_start(struct seq_file *c, loff_t *pos)
 {
 	struct tsem_model *model = tsem_model(current);
@@ -348,7 +315,9 @@ static int trajectory_show(struct seq_file *c, void *trajectory)
 	pt = list_entry(trajectory, struct tsem_trajectory, list);
 	ep = pt->ep;
 
-	show_trajectory_event(c, ep);
+	seq_putc(c, '{');
+	tsem_fs_show_trajectory(c, ep);
+	seq_puts(c, "}\n");
 
 	return 0;
 }
@@ -544,7 +513,9 @@ static int forensics_show(struct seq_file *c, void *event)
 	pt = list_entry(event, struct tsem_trajectory, list);
 	ep = pt->ep;
 
-	show_trajectory_event(c, ep);
+	seq_putc(c, '{');
+	tsem_fs_show_trajectory(c, ep);
+	seq_puts(c, "}\n");
 
 	return 0;
 }
@@ -658,11 +629,6 @@ static const struct file_operations aggregate_ops = {
 	.release = seq_release,
 };
 
-static int export_show(struct seq_file *m, void *v)
-{
-	return tsem_export_show(m);
-}
-
 static __poll_t export_poll(struct file *file, struct poll_table_struct *wait)
 {
 	struct tsem_TMA_context *ctx = tsem_context(current);
@@ -683,7 +649,7 @@ static int export_open(struct inode *inode, struct file *file)
 {
 	if (!capable(TSEM_CONTROL_CAPABILITY))
 		return -EACCES;
-	return single_open(file, &export_show, NULL);
+	return single_open(file, &tsem_export_show, NULL);
 }
 
 static const struct file_operations export_ops = {
@@ -695,7 +661,7 @@ static const struct file_operations export_ops = {
 };
 
 /**
- * tesm_fs_create_external() - Create an external TMA update file.
+ * tsem_fs_create_external() - Create an external TMA update file.
  * @id: A pointer to the ASCII representation of the modeling domain
  *      that the export file is being created for.
  *
@@ -716,6 +682,47 @@ struct dentry *tsem_fs_create_external(const char *name)
 
 	return securityfs_create_file(name, 0400, external_tma, NULL,
 				      &export_ops);
+}
+
+/**
+ * tsem_fs_show_export() - Generate the output of a security event.
+ * @sf: A pointer to the seq_file structure to which output will
+ *      be set.
+ * @ep: A pointer to the event description that is to be output.
+ *
+ * This function is used to generate a record that will be output to
+ * the pseudo-file that outputs the security events for the
+ * domain being modeled.
+ */
+void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
+{
+	switch (ep->event) {
+	case TSEM_FILE_OPEN:
+		show_event(c, ep, ep->pathname);
+		show_file(c, ep);
+		break;
+	case TSEM_MMAP_FILE:
+		show_mmap(c, ep);
+		break;
+	case TSEM_SOCKET_CREATE:
+		show_socket_create(c, ep);
+		break;
+	case TSEM_SOCKET_CONNECT:
+	case TSEM_SOCKET_BIND:
+		show_socket(c, ep);
+		break;
+	case TSEM_SOCKET_ACCEPT:
+		show_socket_accept(c, ep);
+		break;
+	case TSEM_TASK_KILL:
+		show_task_kill(c, ep);
+		break;
+	case TSEM_GENERIC_EVENT:
+		show_event_generic(c, ep);
+		break;
+	default:
+		break;
+	}
 }
 
 /**
