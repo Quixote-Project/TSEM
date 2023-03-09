@@ -53,11 +53,11 @@ int tsem_export_show(struct seq_file *sf, void *v)
 	if (!ctx->id)
 		return -EPERM;
 
-	mutex_lock(&ctx->external->measurement_mutex);
-	if (list_empty(&ctx->external->measurement_list))
+	mutex_lock(&ctx->external->export_mutex);
+	if (list_empty(&ctx->external->export_list))
 		goto done;
-	mp = list_first_entry(&ctx->external->measurement_list,
-			      struct export_event, list);
+	mp = list_first_entry(&ctx->external->export_list, struct export_event,
+			      list);
 
 	seq_putc(sf, '{');
 	tsem_fs_show_field(sf, "export");
@@ -94,7 +94,7 @@ int tsem_export_show(struct seq_file *sf, void *v)
 	retn = 0;
 
  done:
-	mutex_unlock(&ctx->external->measurement_mutex);
+	mutex_unlock(&ctx->external->export_mutex);
 	return retn;
 }
 
@@ -117,9 +117,9 @@ int tsem_export_event(struct tsem_event *ep)
 	mp->u.ep = ep;
 	tsem_event_get(ep);
 
-	mutex_lock(&ctx->external->measurement_mutex);
-	list_add_tail(&mp->list, &ctx->external->measurement_list);
-	mutex_unlock(&ctx->external->measurement_mutex);
+	mutex_lock(&ctx->external->export_mutex);
+	list_add_tail(&mp->list, &ctx->external->export_list);
+	mutex_unlock(&ctx->external->export_mutex);
 
 	task->trust_status |= TSEM_TASK_TRUST_PENDING;
 	trigger_event(ctx);
@@ -164,9 +164,9 @@ int tsem_export_action(enum tsem_event_type event)
 	exp->u.action.action = ctx->actions[event];
 	strcpy(exp->u.action.comm, current->comm);
 
-	mutex_lock(&ctx->external->measurement_mutex);
-	list_add_tail(&exp->list, &ctx->external->measurement_list);
-	mutex_unlock(&ctx->external->measurement_mutex);
+	mutex_lock(&ctx->external->export_mutex);
+	list_add_tail(&exp->list, &ctx->external->export_list);
+	mutex_unlock(&ctx->external->export_mutex);
 
 	trigger_event(ctx);
 
@@ -196,9 +196,9 @@ int tsem_export_aggregate(void)
 	memcpy(exp->u.aggregate, tsem_trust_aggregate(),
 	       sizeof(exp->u.aggregate));
 
-	mutex_lock(&ctx->external->measurement_mutex);
-	list_add_tail(&exp->list, &ctx->external->measurement_list);
-	mutex_unlock(&ctx->external->measurement_mutex);
+	mutex_lock(&ctx->external->export_mutex);
+	list_add_tail(&exp->list, &ctx->external->export_list);
+	mutex_unlock(&ctx->external->export_mutex);
 
 	trigger_event(ctx);
 

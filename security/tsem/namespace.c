@@ -53,8 +53,8 @@ static struct tsem_external *allocate_external(void)
 	if (!external)
 		return NULL;
 
-	mutex_init(&external->measurement_mutex);
-	INIT_LIST_HEAD(&external->measurement_list);
+	mutex_init(&external->export_mutex);
+	INIT_LIST_HEAD(&external->export_list);
 
 	init_waitqueue_head(&external->wq);
 

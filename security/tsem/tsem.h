@@ -279,8 +279,8 @@ struct tsem_model {
 
 struct tsem_external {
 	char *filename;
-	struct mutex measurement_mutex;
-	struct list_head measurement_list;
+	struct mutex export_mutex;
+	struct list_head export_list;
 	struct dentry *dentry;
 	bool have_event;
 	wait_queue_head_t wq;
