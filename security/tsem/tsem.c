@@ -407,6 +407,8 @@ static int tsem_task_alloc(struct task_struct *new, unsigned long flags)
 
 	new_task->trust_status = old_task->trust_status;
 	new_task->context = old_task->context;
+	memcpy(new_task->task_key, old_task->task_key,
+	       sizeof(new_task->task_key));
 	if (!new_task->context->id)
 		return 0;
 
@@ -421,8 +423,7 @@ static void tsem_task_free(struct task_struct *task)
 
 	if (!ctx->id)
 		return;
-	if (ctx->id)
-		tsem_ns_put(ctx);
+	tsem_ns_put(ctx);
 }
 
 static int tsem_task_kill(struct task_struct *target,

@@ -11,6 +11,15 @@
 
 static u64 context_id;
 
+struct context_key {
+	struct list_head list;
+	u64 context_id;
+	u8 key[WP256_DIGEST_SIZE];
+};
+
+DEFINE_MUTEX(context_id_mutex);
+LIST_HEAD(context_id_list);
+
 struct lsm_blob_sizes tsem_blob_sizes __lsm_ro_after_init = {
 	.lbs_task = sizeof(struct tsem_task),
 	.lbs_inode = sizeof(struct tsem_inode)
@@ -43,22 +52,97 @@ struct tsem_TMA_context root_TMA_context = {
 	.model = &root_model
 };
 
-static struct tsem_external *allocate_external(void)
+static void remove_task_key(u64 context_id)
+{
+	struct context_key *entry, *tmp_entry;
+
+	list_for_each_entry_safe(entry, tmp_entry, &context_id_list, list) {
+		if (context_id == entry->context_id) {
+			list_del(&entry->list);
+			kfree(entry);
+			break;
+		}
+	}
+}
+
+static int generate_task_key(char *keystr, u64 context_id,
+			     struct tsem_task *t_ttask,
+			     struct tsem_task *p_ttask)
+{
+	int retn;
+	unsigned int size;
+	bool found_key, valid_key = false;
+	u8 tma_key[WP256_DIGEST_SIZE];
+	struct context_key *entry;
+	struct crypto_shash *tfm = NULL;
+
+	tfm = crypto_alloc_shash("sha256", 0, 0);
+	if (IS_ERR(tfm)) {
+		retn = PTR_ERR(tfm);
+		tfm = NULL;
+		goto done;
+	}
+	size = crypto_shash_digestsize(tfm);
+
+	while (!valid_key) {
+		get_random_bytes(t_ttask->task_key, sizeof(t_ttask->task_key));
+		retn = tsem_ns_event_key(tfm, t_ttask->task_key, tma_key,
+					 p_ttask->task_key);
+		if (retn)
+			goto done;
+
+		if (list_empty(&context_id_list))
+			break;
+
+		found_key = false;
+		list_for_each_entry(entry, &context_id_list, list) {
+			if (memcmp(entry->key, p_ttask->task_key, size) == 0)
+				found_key = true;
+		}
+		if (!found_key)
+			valid_key = true;
+	}
+
+	entry = kzalloc(sizeof(struct context_key), GFP_KERNEL);
+	if (!entry) {
+		retn = -ENOMEM;
+		goto done;
+	}
+
+	entry->context_id = context_id;
+	memcpy(entry->key, p_ttask->task_key, sizeof(entry->key));
+	list_add_tail(&entry->list, &context_id_list);
+	retn = 0;
+
+ done:
+	memset(tma_key, '\0', sizeof(tma_key));
+
+	crypto_free_shash(tfm);
+	return retn;
+}
+
+static struct tsem_external *allocate_external(u64 context_id, char *keystr)
 {
 	int retn = -ENOMEM;
-	struct tsem_external *external;
 	char bufr[20 + 1];
+	struct tsem_external *external;
+	struct tsem_task *t_ttask = tsem_task(current);
+	struct tsem_task *p_ttask = tsem_task(current->real_parent);
 
 	external = kzalloc(sizeof(struct tsem_external), GFP_KERNEL);
 	if (!external)
-		return NULL;
+		goto done;
+
+	retn = generate_task_key(keystr, context_id, t_ttask, p_ttask);
+	if (retn)
+		goto done;
 
 	mutex_init(&external->export_mutex);
 	INIT_LIST_HEAD(&external->export_list);
 
 	init_waitqueue_head(&external->wq);
 
-	scnprintf(bufr, sizeof(bufr), "%llu", context_id + 1);
+	scnprintf(bufr, sizeof(bufr), "%llu", context_id);
 	external->dentry = tsem_fs_create_external(bufr);
 	if (IS_ERR(external->dentry)) {
 		retn = PTR_ERR(external->dentry);
@@ -66,9 +150,13 @@ static struct tsem_external *allocate_external(void)
 	} else
 		retn = 0;
 
+ done:
 	if (retn) {
+		memset(t_ttask->task_key, '\0', sizeof(t_ttask->task_key));
+		memset(p_ttask->task_key, '\0', sizeof(p_ttask->task_key));
 		kfree(external);
-		external = NULL;
+		remove_task_key(context_id);
+		external = ERR_PTR(retn);
 	}
 
 	return external;
@@ -83,6 +171,10 @@ static void wq_put(struct work_struct *work)
 	ctx = tsem_work->ctx;
 
 	if (ctx->external) {
+		mutex_lock(&context_id_mutex);
+		remove_task_key(ctx->id);
+		mutex_unlock(&context_id_mutex);
+
 		securityfs_remove(ctx->external->dentry);
 		kfree(ctx->external);
 	} else
@@ -119,9 +211,51 @@ void tsem_ns_put(struct tsem_TMA_context *ctx)
 }
 
 /**
+ * tsem_ns_event_key() - Generate TMA authentication key.
+ * @tfm: A pointer to the structure defining the hash function to
+ *	 be used for generating the authentication key.
+ * @task_key: A pointer to the buffer containing the task identification
+ *	      key that was randomly generated for the modeling domain.
+ * @keystr: A pointer to the buffer containing the TMA authentication key
+ *	    in ASCII hexadecimal form.
+ *
+ * This function generates the authentication key that will be used
+ * to validate a call by a TMA to set the trust status of the process.
+ *
+ * Return: This function returns 0 if the key was properly generated
+ *	   or a negative value if a hashing error occurred.
+ */
+int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key, char *keystr,
+		      u8 *key)
+{
+	bool retn;
+	u8 tma_key[WP256_DIGEST_SIZE];
+	unsigned int size = crypto_shash_digestsize(tfm);
+	SHASH_DESC_ON_STACK(shash, tfm);
+
+	retn = hex2bin(tma_key, keystr, sizeof(tma_key));
+	if (retn)
+		return retn;
+
+	shash->tfm = tfm;
+	retn = crypto_shash_init(shash);
+	if (retn)
+		return retn;
+
+	retn = crypto_shash_update(shash, task_key, size);
+	if (retn)
+		return retn;
+
+	return crypto_shash_finup(shash, tma_key, size, key);
+}
+
+/**
  * tsem_ns_create() - Create a TSEM modeling namespace.
  * @event: The numeric identifer of the control message that is to
  *	   be processed.
+ * @key:   A pointer to a null-terminated buffer containing the key
+ *	   that will be used to authenticate the TMA's ability to set
+ *	   the trust status of a process.
  *
  * This function is used to create either an internally or externally
  * modeled TSEM namespace.  The type of the namespace to be created
@@ -136,16 +270,21 @@ void tsem_ns_put(struct tsem_TMA_context *ctx)
  * Return: This function returns 0 if the namespace was created and
  *	   a negative error value on error.
  */
-int tsem_ns_create(enum tsem_control_type event)
+int tsem_ns_create(enum tsem_control_type event, char *key)
 {
 	int retn = -ENOMEM;
+	u64 new_id;
 	struct tsem_task *tsk = tsem_task(current);
 	struct tsem_TMA_context *new_ctx;
 	struct tsem_model *model = NULL;
 
+
 	new_ctx = kzalloc(sizeof(struct tsem_TMA_context), GFP_KERNEL);
 	if (!new_ctx)
-		goto done;
+		return retn;
+
+	mutex_lock(&context_id_mutex);
+	new_id = context_id + 1;
 
 	if (event == TSEM_CONTROL_INTERNAL) {
 		model = tsem_model_allocate();
@@ -154,23 +293,28 @@ int tsem_ns_create(enum tsem_control_type event)
 		new_ctx->model = model;
 	}
 	if (event == TSEM_CONTROL_EXTERNAL) {
-		new_ctx->external = allocate_external();
-		if (!new_ctx->external)
+		new_ctx->external = allocate_external(new_id, key);
+		if (IS_ERR(new_ctx->external)) {
+			retn = PTR_ERR(new_ctx->external);
+			new_ctx->external = NULL;
 			goto done;
+		}
 	}
 
 	kref_init(&new_ctx->kref);
-	new_ctx->id = ++context_id;
+	new_ctx->id = new_id;
 	memcpy(new_ctx->actions, tsk->context->actions,
 	       sizeof(new_ctx->actions));
 	retn = 0;
 
  done:
 	if (retn) {
+		remove_task_key(new_id);
 		kfree(new_ctx->external);
 		kfree(new_ctx);
 		kfree(model);
 	} else {
+		context_id = new_id;
 		tsk->context = new_ctx;
 		if (event == TSEM_CONTROL_EXTERNAL)
 			retn = tsem_export_aggregate();
@@ -178,5 +322,6 @@ int tsem_ns_create(enum tsem_control_type event)
 			retn = tsem_model_add_aggregate();
 	}
 
+	mutex_unlock(&context_id_mutex);
 	return retn;
 }

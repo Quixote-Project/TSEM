@@ -10,7 +10,6 @@
 #define ZERO_FILE "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 #include <linux/iversion.h>
-#include <crypto/hash.h>
 
 #include "tsem.h"
 #include "../integrity/integrity.h"

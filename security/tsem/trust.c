@@ -7,7 +7,6 @@
  * Implements management of a TPM trust root for the in kernel TMA.
  */
 
-#include <crypto/hash.h>
 #include <linux/tpm.h>
 
 #include "tsem.h"

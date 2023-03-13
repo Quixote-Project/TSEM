@@ -7,8 +7,6 @@
  * This file implements mapping of events into security event points.
  */
 
-#include <crypto/hash.h>
-
 #include "tsem.h"
 
 const u8 generic_cell[WP256_DIGEST_SIZE] = {

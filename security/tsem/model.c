@@ -8,7 +8,6 @@
  */
 
 #include <linux/list_sort.h>
-#include <crypto/hash.h>
 
 #include "tsem.h"
 

@@ -28,15 +28,15 @@ struct control_commands {
 	enum tsem_control_type type;
 };
 
-static struct control_commands commands[9] = {
+static struct control_commands commands[] = {
 	{"internal", TSEM_CONTROL_INTERNAL},
 	{"external", TSEM_CONTROL_EXTERNAL},
 	{"enforce", TSEM_CONTROL_ENFORCE},
 	{"seal", TSEM_CONTROL_SEAL},
-	{"trusted ", TSEM_CONTROL_TRUSTED},
-	{"untrusted ", TSEM_CONTROL_UNTRUSTED},
-	{"state ", TSEM_CONTROL_MAP_STATE},
-	{"pseudonym ", TSEM_CONTROL_MAP_PSEUDONYM},
+	{"trusted", TSEM_CONTROL_TRUSTED},
+	{"untrusted", TSEM_CONTROL_UNTRUSTED},
+	{"state", TSEM_CONTROL_MAP_STATE},
+	{"pseudonym", TSEM_CONTROL_MAP_PSEUDONYM},
 	{"base ", TSEM_CONTROL_MAP_BASE}
 };
 
@@ -53,17 +53,35 @@ static bool can_access_fs(void)
 	return true;
 }
 
-static int control_COE(pid_t pid, unsigned long cmd)
+static int control_COE(unsigned long cmd, pid_t pid, char *keystr)
 {
 	bool wakeup = false;
 	int retn = -ESRCH;
+	u8 event_key[WP256_DIGEST_SIZE];
 	struct task_struct *COE;
 	struct tsem_task *task;
+	struct tsem_task *tma = tsem_task(current);
+	struct crypto_shash *tfm = NULL;
+
+	tfm = crypto_alloc_shash("sha256", 0, 0);
+	if (IS_ERR(tfm))
+		return PTR_ERR(tfm);
 
 	rcu_read_lock();
 	COE = find_task_by_vpid(pid);
 	if (COE != NULL) {
 		task = tsem_task(COE);
+		retn = tsem_ns_event_key(tfm, task->task_key, keystr,
+					 event_key);
+		if (retn)
+			goto done;
+
+		if (memcmp(tma->task_key, event_key, sizeof(tma->task_key))) {
+			pr_warn("tsem: Invalid process release request.\n");
+			retn = -EINVAL;
+			goto done;
+		}
+
 		if (cmd == TSEM_CONTROL_UNTRUSTED)
 			task->trust_status = TSEM_TASK_UNTRUSTED;
 		if (cmd == TSEM_CONTROL_TRUSTED) {
@@ -71,15 +89,17 @@ static int control_COE(pid_t pid, unsigned long cmd)
 			if (tsem_task_trusted(COE))
 				task->trust_status = TSEM_TASK_TRUSTED;
 		}
-
 		retn = 0;
 		wakeup = true;
 	}
+
+ done:
 	rcu_read_unlock();
 
 	if (wakeup)
 		wake_up_process(COE);
 
+	crypto_free_shash(tfm);
 	return retn;
 }
 
@@ -111,8 +131,6 @@ static int config_point(enum tsem_control_type type, u8 *arg)
 	int retn = -EINVAL;
 	u8 mapping[WP256_DIGEST_SIZE];
 
-	if (*++arg == '\0')
-		goto done;
 	if (strlen(arg) != sizeof(mapping) * 2)
 		goto done;
 	if (hex2bin(mapping, arg, sizeof(mapping)))
@@ -407,7 +425,7 @@ static int open_control(struct inode *inode, struct file *filp)
 static ssize_t write_control(struct file *file, const char __user *buf,
 			     size_t datalen, loff_t *ppos)
 {
-	char *p, *arg, cmdbufr[76];
+	char *p, *key, *arg, cmdbufr[128];
 	unsigned int lp;
 	ssize_t retn = -EINVAL;
 	long pid;
@@ -430,6 +448,10 @@ static ssize_t write_control(struct file *file, const char __user *buf,
 	*p = '\0';
 
 	arg = strchr(cmdbufr, ' ');
+	if (arg != NULL) {
+		*arg = '\0';
+		++arg;
+	}
 
 	for (lp = 0; lp < ARRAY_SIZE(commands); ++lp) {
 		if (!strncmp(cmdbufr, commands[lp].cmd,
@@ -441,8 +463,12 @@ static ssize_t write_control(struct file *file, const char __user *buf,
 
 	switch (type) {
 	case TSEM_CONTROL_EXTERNAL:
+		if (!arg)
+			goto done;
+		retn = tsem_ns_create(type, arg);
+		break;
 	case TSEM_CONTROL_INTERNAL:
-		retn = tsem_ns_create(type);
+		retn = tsem_ns_create(type, NULL);
 		break;
 	case TSEM_CONTROL_ENFORCE:
 	case TSEM_CONTROL_SEAL:
@@ -450,17 +476,25 @@ static ssize_t write_control(struct file *file, const char __user *buf,
 		break;
 	case TSEM_CONTROL_TRUSTED:
 	case TSEM_CONTROL_UNTRUSTED:
-		p = strchr(cmdbufr, ' ');
-		if (!p)
+		if (!arg)
 			goto done;
-		*p++ = '\0';
-		if (kstrtol(p, 0, &pid))
+
+		key = strchr(arg, ' ');
+		if (!key)
 			goto done;
-		retn = control_COE(pid, type);
+		*key++ = '\0';
+		if (strlen(key) != WP256_DIGEST_SIZE * 2)
+			goto done;
+
+		if (kstrtol(arg, 0, &pid))
+			goto done;
+		retn = control_COE(type, pid, key);
 		break;
 	case TSEM_CONTROL_MAP_STATE:
 	case TSEM_CONTROL_MAP_PSEUDONYM:
 	case TSEM_CONTROL_MAP_BASE:
+		if (!arg)
+			goto done;
 		retn = config_point(type, arg);
 		break;
 	}
