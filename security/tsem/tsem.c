@@ -19,6 +19,8 @@
 
 static int tsem_ready __lsm_ro_after_init;
 
+static bool tsem_available __lsm_ro_after_init;
+
 static bool no_root_modeling __lsm_ro_after_init;
 
 static int __init set_modeling_mode(char *mode_value)
@@ -1739,6 +1741,9 @@ static int __init set_ready(void)
 {
 	int retn;
 
+	if (!tsem_available)
+		return 0;
+
 	retn = tsem_model_add_aggregate();
 	if (retn)
 		goto done;
@@ -1786,6 +1791,7 @@ static int __init tsem_init(void)
 
 	pr_info("tsem: Initialized %s modeling.\n",
 		no_root_modeling ? "domain only" : "full");
+	tsem_available = true;
 	tsk->trust_status = TSEM_TASK_TRUSTED;
 	return 0;
 }
