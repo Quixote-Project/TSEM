@@ -70,9 +70,8 @@ static int generate_task_key(char *keystr, u64 context_id,
 			     struct tsem_task *p_ttask)
 {
 	int retn;
-	unsigned int size;
 	bool found_key, valid_key = false;
-	u8 tma_key[WP256_DIGEST_SIZE];
+	unsigned int size;
 	struct context_key *entry;
 	struct crypto_shash *tfm = NULL;
 
@@ -86,7 +85,7 @@ static int generate_task_key(char *keystr, u64 context_id,
 
 	while (!valid_key) {
 		get_random_bytes(t_ttask->task_key, sizeof(t_ttask->task_key));
-		retn = tsem_ns_event_key(tfm, t_ttask->task_key, tma_key,
+		retn = tsem_ns_event_key(tfm, t_ttask->task_key, keystr,
 					 p_ttask->task_key);
 		if (retn)
 			goto done;
@@ -115,8 +114,6 @@ static int generate_task_key(char *keystr, u64 context_id,
 	retn = 0;
 
  done:
-	memset(tma_key, '\0', sizeof(tma_key));
-
 	crypto_free_shash(tfm);
 	return retn;
 }
@@ -235,7 +232,7 @@ int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key, char *keystr,
 
 	retn = hex2bin(tma_key, keystr, sizeof(tma_key));
 	if (retn)
-		return retn;
+		return -EINVAL;
 
 	shash->tfm = tfm;
 	retn = crypto_shash_init(shash);
