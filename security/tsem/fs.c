@@ -200,12 +200,14 @@ static void show_mmap(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, ",", "type", "%u", args->file == NULL);
 	tsem_fs_show_key(c, ",", "reqprot", "%u", args->reqprot);
 	tsem_fs_show_key(c, ",", "prot", "%u", args->prot);
-	tsem_fs_show_key(c, "}", "flags", "%u", args->flags);
 
 	if (args->file) {
-		seq_puts(c, ", ");
+		tsem_fs_show_key(c, ",", "flags", "%u", args->flags);
 		show_file(c, ep);
+		seq_putc(c, '}');
 	}
+	else
+		tsem_fs_show_key(c, "}", "flags", "%u", args->flags);
 }
 
 static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
