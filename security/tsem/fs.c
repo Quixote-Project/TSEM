@@ -174,7 +174,11 @@ static void show_event(struct seq_file *c, struct tsem_event *ep, char *file)
 
 static void show_file(struct seq_file *c, struct tsem_event *ep)
 {
-	tsem_fs_show_field(c, "file");
+	if (ep->event == TSEM_FILE_OPEN)
+		tsem_fs_show_field(c, "file_open");
+	else
+		tsem_fs_show_field(c, "file");
+
 	tsem_fs_show_key(c, ",", "flags", "%u", ep->file.flags);
 	tsem_fs_show_key(c, ",", "uid", "%d", ep->file.uid);
 	tsem_fs_show_key(c, ",", "gid", "%d", ep->file.gid);
