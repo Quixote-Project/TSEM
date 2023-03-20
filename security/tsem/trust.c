@@ -11,8 +11,6 @@
 
 #include "tsem.h"
 
-#define TSEM_TRUST_ROOT 11
-
 static u8 hardware_aggregate[WP256_DIGEST_SIZE];
 
 static struct tpm_chip *tpm;
@@ -127,7 +125,8 @@ int tsem_trust_add_event(u8 *coefficient)
 		memcpy(digests[bank].digest, coefficient, amt);
 	}
 
-	return tpm_pcr_extend(tpm, TSEM_TRUST_ROOT, digests);
+	return tpm_pcr_extend(tpm, CONFIG_SECURITY_TSEM_ROOT_MODEL_PCR,
+			      digests);
 }
 
 late_initcall(trust_init);

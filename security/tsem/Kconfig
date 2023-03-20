@@ -1,0 +1,36 @@
+config SECURITY_TSEM
+	bool "Trusted Security Event Modeling"
+	depends on SECURITY
+	depends on NET && INET
+	select SECURITY_NETWORK
+	select SECURITYFS
+	select CRYPTO
+	select CRYPTO_SHA256
+	select CRYPTO_HASH_INFO
+	select TCG_TPM if HAS_IOMEM && !UML
+	select TCG_TIS if TCG_TPM && X86
+	select TCG_CRB if TCG_TPM && ACPI
+	default n
+	help
+	  This option selects support for Trusted Security Event
+	  Modeling (TSEM).  TSEM implements the ability to model
+	  the security state of either the system at large or in a
+	  restricted namespace on the basis of the LSM security
+	  events and attributes that occur in the scope of the model.
+	  The model may be implemented either in the kernel proper
+	  or exported to an external Trusted Modeling Agent (TMA).
+	  If you are unsure how to answer this question, answer N.
+
+config SECURITY_TSEM_ROOT_MODEL_PCR
+	int "TPM PCR index for root domain"
+	depends on SECURITY_TSEM
+	range 8 14
+	default 11
+	help
+	  This configuration variable determines the TPM Platform
+	  Configuration Register (PCR) that the coefficients of
+	  security events for the root modeling domain are extended
+	  into.  The default value is one register above the default
+	  value that IMA uses for its integrity measurements, in order
+	  to avoid a conflict between the two sub-systems.  If unsure,
+	  leave the value at its default value of 11.
