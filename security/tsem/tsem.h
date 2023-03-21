@@ -150,7 +150,7 @@ struct tsem_COE {
 	union {
 		kernel_cap_t mask;
 		u64 value;
-	} capability;
+	} capeff;
 };
 
 struct tsem_file {

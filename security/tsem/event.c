@@ -19,8 +19,6 @@ static struct kmem_cache *event_cachep;
 static void get_COE(struct tsem_COE *COE)
 
 {
-	kernel_cap_t eff, per, inh;
-
 	COE->uid = from_kuid(&init_user_ns, current_uid());
 	COE->euid = from_kuid(&init_user_ns, current_euid());
 	COE->suid = from_kuid(&init_user_ns, current_suid());
@@ -32,9 +30,7 @@ static void get_COE(struct tsem_COE *COE)
 	COE->fsuid = from_kuid(&init_user_ns, current_fsuid());
 	COE->fsgid = from_kgid(&init_user_ns, current_fsgid());
 
-	if (security_capget(current, &eff, &inh, &per) != 0)
-		eff = CAP_FULL_SET;
-	COE->capability.mask = eff;
+	COE->capeff.mask = current_cred()->cap_effective;
 }
 
 static char *get_path(struct file *file)

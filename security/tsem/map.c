@@ -76,8 +76,8 @@ static int get_COE_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 	if (retn)
 		goto done;
 
-	p = (u8 *) &ep->COE.capability;
-	size = sizeof(ep->COE.capability);
+	p = (u8 *) &ep->COE.capeff;
+	size = sizeof(ep->COE.capeff);
 	retn = crypto_shash_finup(shash, p, size, mapping);
 
  done:

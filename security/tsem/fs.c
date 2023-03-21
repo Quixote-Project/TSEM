@@ -169,7 +169,7 @@ static void show_event(struct seq_file *c, struct tsem_event *ep, char *file)
 	tsem_fs_show_key(c, ",", "sgid", "%d", ep->COE.sgid);
 	tsem_fs_show_key(c, ",", "fsuid", "%d", ep->COE.fsuid);
 	tsem_fs_show_key(c, ",", "fsgid", "%d", ep->COE.fsgid);
-	tsem_fs_show_key(c, "}, ", "cap", "0x%llx", ep->COE.capability.value);
+	tsem_fs_show_key(c, "}, ", "capeff", "0x%llx", ep->COE.capeff.value);
 }
 
 static void show_file(struct seq_file *c, struct tsem_event *ep)
