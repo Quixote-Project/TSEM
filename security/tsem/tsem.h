@@ -279,7 +279,6 @@ struct tsem_model {
 };
 
 struct tsem_external {
-	char *filename;
 	struct mutex export_mutex;
 	struct list_head export_list;
 	struct dentry *dentry;
