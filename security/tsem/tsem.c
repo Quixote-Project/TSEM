@@ -1254,10 +1254,10 @@ static int tsem_msg_queue_msgrcv(struct kern_ipc_perm *perm,
 		scnprintf(msg, sizeof(msg),
 			  "id=%d, mode=%u, target=%s, type=%ld, mode=%d",
 			  perm->id, perm->mode, target->comm, type, mode);
-		return return_trapped_task(TSEM_MSG_QUEUE_MSGSND, msg);
+		return return_trapped_task(TSEM_MSG_QUEUE_MSGRCV, msg);
 	}
 
-	return model_generic_event(TSEM_MSG_QUEUE_MSGSND);
+	return model_generic_event(TSEM_MSG_QUEUE_MSGRCV);
 }
 
 static int tsem_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
@@ -1325,10 +1325,10 @@ static int tsem_netlink_send(struct sock *sk, struct sk_buff *skb)
 			  "uid=%d, gid=%d",
 			  from_kuid(&init_user_ns, cred->uid),
 			  from_kgid(&init_user_ns, cred->gid));
-		return return_trapped_task(TSEM_KEY_PERMISSION, msg);
+		return return_trapped_task(TSEM_NETLINK_SEND, msg);
 	}
 
-	return model_generic_event(TSEM_KEY_PERMISSION);
+	return model_generic_event(TSEM_NETLINK_SEND);
 }
 
 static int tsem_inode_create(struct inode *dir,
@@ -1384,12 +1384,12 @@ static int tsem_inode_symlink(struct inode *dir, struct dentry *dentry,
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "target=%s", dentry->d_name.name);
-		return return_trapped_task(TSEM_INODE_UNLINK, msg);
+		return return_trapped_task(TSEM_INODE_SYMLINK, msg);
 	}
 
 	if (bypass_inode(dir))
 		return 0;
-	return model_generic_event(TSEM_INODE_UNLINK);
+	return model_generic_event(TSEM_INODE_SYMLINK);
 }
 
 static int tsem_inode_mkdir(struct inode *dir, struct dentry *dentry,
