@@ -10,6 +10,7 @@
 #define ZERO_FILE "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 #include <linux/iversion.h>
+#include <linux/user_namespace.h>
 
 #include "tsem.h"
 #include "../integrity/integrity.h"
@@ -19,16 +20,23 @@ static struct kmem_cache *event_cachep;
 static void get_COE(struct tsem_COE *COE)
 
 {
-	COE->uid = from_kuid(&init_user_ns, current_uid());
-	COE->euid = from_kuid(&init_user_ns, current_euid());
-	COE->suid = from_kuid(&init_user_ns, current_suid());
+	struct user_namespace *ns;
 
-	COE->gid = from_kgid(&init_user_ns, current_gid());
-	COE->egid = from_kgid(&init_user_ns, current_egid());
-	COE->sgid = from_kgid(&init_user_ns, current_sgid());
+	if (tsem_context(current)->use_current_ns)
+		ns = current_user_ns();
+	else
+		ns = &init_user_ns;
 
-	COE->fsuid = from_kuid(&init_user_ns, current_fsuid());
-	COE->fsgid = from_kgid(&init_user_ns, current_fsgid());
+	COE->uid = from_kuid(ns, current_uid());
+	COE->euid = from_kuid(ns, current_euid());
+	COE->suid = from_kuid(ns, current_suid());
+
+	COE->gid = from_kgid(ns, current_gid());
+	COE->egid = from_kgid(ns, current_egid());
+	COE->sgid = from_kgid(ns, current_sgid());
+
+	COE->fsuid = from_kuid(ns, current_fsuid());
+	COE->fsgid = from_kgid(ns, current_fsgid());
 
 	COE->capeff.mask = current_cred()->cap_effective;
 }
@@ -233,6 +241,7 @@ static int get_file_cell(struct file *file, struct tsem_event *ep)
 	int retn = 1;
 	struct crypto_shash *tfm;
 	struct inode *inode;
+	struct user_namespace *ns;
 
 	inode = file_inode(file);
 	inode_lock(inode);
@@ -257,10 +266,15 @@ static int get_file_cell(struct file *file, struct tsem_event *ep)
 	if (retn)
 		goto done;
 
+	if (tsem_context(current)->use_current_ns)
+		ns = current_user_ns();
+	else
+		ns = &init_user_ns;
+
 	ep->file.flags = file->f_flags;
 
-	ep->file.uid = from_kuid(&init_user_ns, inode->i_uid);
-	ep->file.gid = from_kgid(&init_user_ns, inode->i_gid);
+	ep->file.uid = from_kuid(ns, inode->i_uid);
+	ep->file.gid = from_kgid(ns, inode->i_gid);
 	ep->file.mode = inode->i_mode;
 	ep->file.s_magic = inode->i_sb->s_magic;
 	memcpy(ep->file.s_id, inode->i_sb->s_id, sizeof(ep->file.s_id));

@@ -149,6 +149,39 @@ static int config_point(enum tsem_control_type type, u8 *arg)
 	return retn;
 }
 
+static int config_namespace(enum tsem_control_type type, const char *arg)
+{
+	char **argv;
+	int argc, retn = -EINVAL;
+	enum tsem_ns_config ns;
+
+	argv = argv_split(GFP_KERNEL, arg, &argc);
+	if (!argv)
+		return -ENOMEM;
+
+	if (!strcmp(argv[0], "init"))
+		ns = TSEM_NS_INIT;
+	else if (!strcmp(argv[0], "current"))
+		ns = TSEM_NS_CURRENT;
+	else
+		goto done;
+
+	if (type == TSEM_CONTROL_INTERNAL) {
+		retn = tsem_ns_create(type, ns, NULL);
+		goto done;
+	}
+
+	if (argc != 2)
+		goto done;
+	if (strlen(argv[1]) != WP256_DIGEST_SIZE * 2)
+		goto done;
+	retn = tsem_ns_create(type, ns, argv[1]);
+
+ done:
+	argv_free(argv);
+	return retn;
+}
+
 static void show_event(struct seq_file *c, struct tsem_event *ep, char *file)
 {
 	tsem_fs_show_field(c, "event");
@@ -161,14 +194,14 @@ static void show_event(struct seq_file *c, struct tsem_event *ep, char *file)
 			 WP256_DIGEST_SIZE, ep->task_id);
 
 	tsem_fs_show_field(c, "COE");
-	tsem_fs_show_key(c, ",", "uid", "%d", ep->COE.uid);
-	tsem_fs_show_key(c, ",", "euid", "%d", ep->COE.euid);
-	tsem_fs_show_key(c, ",", "suid", "%d", ep->COE.suid);
-	tsem_fs_show_key(c, ",", "gid", "%d", ep->COE.gid);
-	tsem_fs_show_key(c, ",", "egid", "%d", ep->COE.egid);
-	tsem_fs_show_key(c, ",", "sgid", "%d", ep->COE.sgid);
-	tsem_fs_show_key(c, ",", "fsuid", "%d", ep->COE.fsuid);
-	tsem_fs_show_key(c, ",", "fsgid", "%d", ep->COE.fsgid);
+	tsem_fs_show_key(c, ",", "uid", "%u", ep->COE.uid);
+	tsem_fs_show_key(c, ",", "euid", "%u", ep->COE.euid);
+	tsem_fs_show_key(c, ",", "suid", "%u", ep->COE.suid);
+	tsem_fs_show_key(c, ",", "gid", "%u", ep->COE.gid);
+	tsem_fs_show_key(c, ",", "egid", "%u", ep->COE.egid);
+	tsem_fs_show_key(c, ",", "sgid", "%u", ep->COE.sgid);
+	tsem_fs_show_key(c, ",", "fsuid", "%u", ep->COE.fsuid);
+	tsem_fs_show_key(c, ",", "fsgid", "%u", ep->COE.fsgid);
 	tsem_fs_show_key(c, "}, ", "capeff", "0x%llx", ep->COE.capeff.value);
 }
 
@@ -180,8 +213,8 @@ static void show_file(struct seq_file *c, struct tsem_event *ep)
 		tsem_fs_show_field(c, "file");
 
 	tsem_fs_show_key(c, ",", "flags", "%u", ep->file.flags);
-	tsem_fs_show_key(c, ",", "uid", "%d", ep->file.uid);
-	tsem_fs_show_key(c, ",", "gid", "%d", ep->file.gid);
+	tsem_fs_show_key(c, ",", "uid", "%u", ep->file.uid);
+	tsem_fs_show_key(c, ",", "gid", "%u", ep->file.gid);
 	tsem_fs_show_key(c, ",", "mode", "0%o", ep->file.mode);
 	tsem_fs_show_key(c, ",", "name_length", "%u", ep->file.name_length);
 	tsem_fs_show_key(c, ",", "name", "%*phN", WP256_DIGEST_SIZE,
@@ -469,12 +502,10 @@ static ssize_t write_control(struct file *file, const char __user *buf,
 
 	switch (type) {
 	case TSEM_CONTROL_EXTERNAL:
+	case TSEM_CONTROL_INTERNAL:
 		if (!arg)
 			goto done;
-		retn = tsem_ns_create(type, arg);
-		break;
-	case TSEM_CONTROL_INTERNAL:
-		retn = tsem_ns_create(type, NULL);
+		retn = config_namespace(type, arg);
 		break;
 	case TSEM_CONTROL_ENFORCE:
 	case TSEM_CONTROL_SEAL:
@@ -725,7 +756,7 @@ struct dentry *tsem_fs_create_external(const char *name)
 }
 
 /**
- * tsem_fs_show_export() - Generate the output of a security event.
+ * tsem_fs_show_trajectory() - Generate the output of a security event.
  * @sf: A pointer to the seq_file structure to which output will
  *      be set.
  * @ep: A pointer to the event description that is to be output.

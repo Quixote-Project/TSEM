@@ -47,8 +47,6 @@ struct tsem_model root_model = {
 
 struct tsem_TMA_context root_TMA_context = {
 	.kref = KREF_INIT(2),
-	.id = 0,
-	.external = false,
 	.model = &root_model
 };
 
@@ -65,7 +63,7 @@ static void remove_task_key(u64 context_id)
 	}
 }
 
-static int generate_task_key(char *keystr, u64 context_id,
+static int generate_task_key(const char *keystr, u64 context_id,
 			     struct tsem_task *t_ttask,
 			     struct tsem_task *p_ttask)
 {
@@ -118,7 +116,8 @@ static int generate_task_key(char *keystr, u64 context_id,
 	return retn;
 }
 
-static struct tsem_external *allocate_external(u64 context_id, char *keystr)
+static struct tsem_external *allocate_external(u64 context_id,
+					       const char *keystr)
 {
 	int retn = -ENOMEM;
 	char bufr[20 + 1];
@@ -222,8 +221,8 @@ void tsem_ns_put(struct tsem_TMA_context *ctx)
  * Return: This function returns 0 if the key was properly generated
  *	   or a negative value if a hashing error occurred.
  */
-int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key, char *keystr,
-		      u8 *key)
+int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key,
+		      const char *keystr, u8 *key)
 {
 	bool retn;
 	u8 tma_key[WP256_DIGEST_SIZE];
@@ -248,8 +247,10 @@ int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key, char *keystr,
 
 /**
  * tsem_ns_create() - Create a TSEM modeling namespace.
- * @event: The numeric identifer of the control message that is to
- *	   be processed.
+ * @type:  The type of namespace being created.
+ * @ns:    The enumeration type that specifies whether the security
+ *	   event descriptions should reference the initial user
+ *	   namespace or the current user namespace.
  * @key:   A pointer to a null-terminated buffer containing the key
  *	   that will be used to authenticate the TMA's ability to set
  *	   the trust status of a process.
@@ -267,7 +268,8 @@ int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key, char *keystr,
  * Return: This function returns 0 if the namespace was created and
  *	   a negative error value on error.
  */
-int tsem_ns_create(enum tsem_control_type event, char *key)
+int tsem_ns_create(const enum tsem_control_type type,
+		   const enum tsem_ns_config ns, const char *key)
 {
 	int retn = -ENOMEM;
 	u64 new_id;
@@ -283,13 +285,13 @@ int tsem_ns_create(enum tsem_control_type event, char *key)
 	mutex_lock(&context_id_mutex);
 	new_id = context_id + 1;
 
-	if (event == TSEM_CONTROL_INTERNAL) {
+	if (type == TSEM_CONTROL_INTERNAL) {
 		model = tsem_model_allocate();
 		if (!model)
 			goto done;
 		new_ctx->model = model;
 	}
-	if (event == TSEM_CONTROL_EXTERNAL) {
+	if (type == TSEM_CONTROL_EXTERNAL) {
 		new_ctx->external = allocate_external(new_id, key);
 		if (IS_ERR(new_ctx->external)) {
 			retn = PTR_ERR(new_ctx->external);
@@ -300,6 +302,8 @@ int tsem_ns_create(enum tsem_control_type event, char *key)
 
 	kref_init(&new_ctx->kref);
 	new_ctx->id = new_id;
+	if (ns == TSEM_NS_CURRENT)
+		new_ctx->use_current_ns = true;
 	memcpy(new_ctx->actions, tsk->context->actions,
 	       sizeof(new_ctx->actions));
 	retn = 0;
@@ -313,7 +317,7 @@ int tsem_ns_create(enum tsem_control_type event, char *key)
 	} else {
 		context_id = new_id;
 		tsk->context = new_ctx;
-		if (event == TSEM_CONTROL_EXTERNAL)
+		if (type == TSEM_CONTROL_EXTERNAL)
 			retn = tsem_export_aggregate();
 		else
 			retn = tsem_model_add_aggregate();

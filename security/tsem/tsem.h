@@ -124,6 +124,11 @@ enum tsem_control_type {
 	TSEM_CONTROL_MAP_BASE
 };
 
+enum tsem_ns_config {
+	TSEM_NS_INIT = 1,
+	TSEM_NS_CURRENT
+};
+
 enum tsem_task_trust {
 	TSEM_TASK_TRUSTED = 1,
 	TSEM_TASK_UNTRUSTED = 2,
@@ -296,6 +301,7 @@ struct tsem_TMA_context {
 	struct tsem_TMA_work work;
 	u64 id;
 	bool sealed;
+	bool use_current_ns;
 	enum tsem_action_type actions[TSEM_EVENT_CNT];
 	struct tsem_model *model;
 	struct tsem_external *external;
@@ -340,8 +346,10 @@ extern void tsem_model_compute_state(void);
 
 extern void tsem_ns_put(struct tsem_TMA_context *ctx);
 extern int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key,
-			     char *keystr, u8 *key);
-extern int tsem_ns_create(enum tsem_control_type type, char *key);
+			     const char *keystr, u8 *key);
+extern int tsem_ns_create(const enum tsem_control_type type,
+			  const enum tsem_ns_config ns,
+			  const char *key);
 
 extern int tsem_export_show(struct seq_file *m, void *v);
 extern int tsem_export_event(struct tsem_event *ep);
