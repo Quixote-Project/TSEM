@@ -57,13 +57,13 @@ static int control_COE(unsigned long cmd, pid_t pid, char *keystr)
 {
 	bool wakeup = false;
 	int retn = -ESRCH;
-	u8 event_key[WP256_DIGEST_SIZE];
+	u8 event_key[HASH_MAX_DIGESTSIZE];
 	struct task_struct *COE;
 	struct tsem_task *task;
 	struct tsem_task *tma = tsem_task(current);
 	struct crypto_shash *tfm = NULL;
 
-	tfm = crypto_alloc_shash("sha256", 0, 0);
+	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
 	if (IS_ERR(tfm))
 		return PTR_ERR(tfm);
 
@@ -76,7 +76,8 @@ static int control_COE(unsigned long cmd, pid_t pid, char *keystr)
 		if (retn)
 			goto done;
 
-		if (memcmp(tma->task_key, event_key, sizeof(tma->task_key))) {
+		if (memcmp(tma->task_key, event_key,
+			   tsem_digestsize())) {
 			pr_warn("tsem: Invalid process release request.\n");
 			retn = -EINVAL;
 			goto done;
@@ -129,11 +130,11 @@ static int config_context(unsigned long cmd, char *bufr)
 static int config_point(enum tsem_control_type type, u8 *arg)
 {
 	int retn = -EINVAL;
-	u8 mapping[WP256_DIGEST_SIZE];
+	u8 mapping[HASH_MAX_DIGESTSIZE];
 
-	if (strlen(arg) != sizeof(mapping) * 2)
+	if (strlen(arg) != tsem_digestsize() * 2)
 		goto done;
-	if (hex2bin(mapping, arg, sizeof(mapping)))
+	if (hex2bin(mapping, arg, tsem_digestsize()))
 		goto done;
 
 	if (type == TSEM_CONTROL_MAP_STATE)
@@ -173,7 +174,7 @@ static int config_namespace(enum tsem_control_type type, const char *arg)
 
 	if (argc != 2)
 		goto done;
-	if (strlen(argv[1]) != WP256_DIGEST_SIZE * 2)
+	if (strlen(argv[1]) != tsem_digestsize() * 2)
 		goto done;
 	retn = tsem_ns_create(type, ns, argv[1]);
 
@@ -190,8 +191,8 @@ static void show_event(struct seq_file *c, struct tsem_event *ep, char *file)
 	tsem_fs_show_key(c, ",", "process", "%s", ep->comm);
 	tsem_fs_show_key(c, ",", "filename", "%s", file ? file : "none");
 	tsem_fs_show_key(c, ",", "type", "%s", tsem_names[ep->event]);
-	tsem_fs_show_key(c, "}, ", "task_id", "%*phN",
-			 WP256_DIGEST_SIZE, ep->task_id);
+	tsem_fs_show_key(c, "}, ", "task_id", "%*phN", tsem_digestsize(),
+			 ep->task_id);
 
 	tsem_fs_show_field(c, "COE");
 	tsem_fs_show_key(c, ",", "uid", "%u", ep->COE.uid);
@@ -217,14 +218,14 @@ static void show_file(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, ",", "gid", "%u", ep->file.gid);
 	tsem_fs_show_key(c, ",", "mode", "0%o", ep->file.mode);
 	tsem_fs_show_key(c, ",", "name_length", "%u", ep->file.name_length);
-	tsem_fs_show_key(c, ",", "name", "%*phN", WP256_DIGEST_SIZE,
+	tsem_fs_show_key(c, ",", "name", "%*phN", tsem_digestsize(),
 			 ep->file.name);
 	tsem_fs_show_key(c, ",", "s_magic", "0x%0x", ep->file.s_magic);
 	tsem_fs_show_key(c, ",", "s_id", "%s", ep->file.s_id);
 	tsem_fs_show_key(c, ",", "s_uuid", "%*phN", sizeof(ep->file.s_uuid),
 		 ep->file.s_uuid);
-	tsem_fs_show_key(c, "}", "digest", "%*phN", WP256_DIGEST_SIZE,
-		 ep->file.digest);
+	tsem_fs_show_key(c, "}", "digest", "%*phN", tsem_digestsize(),
+			 ep->file.digest);
 }
 
 static void show_mmap(struct seq_file *c, struct tsem_event *ep)
@@ -242,8 +243,7 @@ static void show_mmap(struct seq_file *c, struct tsem_event *ep)
 		tsem_fs_show_key(c, ",", "flags", "%u", args->flags);
 		show_file(c, ep);
 		seq_putc(c, '}');
-	}
-	else
+	} else
 		tsem_fs_show_key(c, "}", "flags", "%u", args->flags);
 }
 
@@ -287,7 +287,7 @@ static void show_socket(struct seq_file *c, struct tsem_event *ep)
 			 ipv6->sin6_addr.in6_u.u6_addr8);
 		break;
 	default:
-		tsem_fs_show_key(c, "}", "addr", "%*phN", WP256_DIGEST_SIZE,
+		tsem_fs_show_key(c, "}", "addr", "%*phN", tsem_digestsize(),
 				 scp->u.mapping);
 		break;
 	}
@@ -314,8 +314,8 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 			 sap->ipv6.in6_u.u6_addr8);
 		break;
 	default:
-		tsem_fs_show_key(c, "}", "addr", "%*phN",
-			 (int) sizeof(sap->tsip->digest), sap->tsip->digest);
+		tsem_fs_show_key(c, "}", "addr", "%*phN", tsem_digestsize(),
+				 sap->tsip->digest);
 		break;
 	}
 }
@@ -329,8 +329,8 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "cross", "%u", args->cross_model);
 	tsem_fs_show_key(c, ",", "signal", "%u", args->signal);
-	tsem_fs_show_key(c, "}", "target", "*%phN",
-			 WP256_DIGEST_SIZE, args->target);
+	tsem_fs_show_key(c, "}", "target", "*%phN", tsem_digestsize(),
+			 args->target);
 }
 
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
@@ -427,7 +427,7 @@ static int point_show(struct seq_file *c, void *point)
 	struct tsem_event_point *id;
 
 	id = list_entry(point, struct tsem_event_point, list);
-	seq_printf(c, "%*phN\n", WP256_DIGEST_SIZE, id->point);
+	seq_printf(c, "%*phN\n", tsem_digestsize(), id->point);
 	return 0;
 }
 
@@ -520,7 +520,7 @@ static ssize_t write_control(struct file *file, const char __user *buf,
 		if (!key)
 			goto done;
 		*key++ = '\0';
-		if (strlen(key) != WP256_DIGEST_SIZE * 2)
+		if (strlen(key) != tsem_digestsize() * 2)
 			goto done;
 
 		if (kstrtol(arg, 0, &pid))
@@ -616,8 +616,7 @@ static int measurement_show(struct seq_file *c, void *event)
 {
 	struct tsem_model *model = tsem_model(current);
 
-	seq_printf(c, "%*phN\n", (int) sizeof(model->measurement),
-		   model->measurement);
+	seq_printf(c, "%*phN\n", tsem_digestsize(), model->measurement);
 	return 0;
 }
 
@@ -662,7 +661,7 @@ static int state_show(struct seq_file *m, void *v)
 	struct tsem_model *model = tsem_model(current);
 
 	tsem_model_compute_state();
-	seq_printf(m, "%*phN\n", WP256_DIGEST_SIZE, model->state);
+	seq_printf(m, "%*phN\n", tsem_digestsize(), model->state);
 	return 0;
 }
 
@@ -682,7 +681,7 @@ static const struct file_operations state_ops = {
 
 static int aggregate_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "%*phN\n", WP256_DIGEST_SIZE, tsem_trust_aggregate());
+	seq_printf(m, "%*phN\n", tsem_digestsize(), tsem_trust_aggregate());
 	return 0;
 }
 

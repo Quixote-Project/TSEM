@@ -11,7 +11,7 @@
 
 #include "tsem.h"
 
-static u8 hardware_aggregate[WP256_DIGEST_SIZE];
+static u8 hardware_aggregate[HASH_MAX_DIGESTSIZE];
 
 static struct tpm_chip *tpm;
 
@@ -22,7 +22,7 @@ void __init generate_aggregate(struct crypto_shash *tfm)
 {
 	int retn = 0, lp;
 	struct tpm_digest pcr;
-	u8 digest[WP256_DIGEST_SIZE];
+	u8 digest[HASH_MAX_DIGESTSIZE];
 	SHASH_DESC_ON_STACK(shash, tfm);
 
 	shash->tfm = tfm;
@@ -41,7 +41,8 @@ void __init generate_aggregate(struct crypto_shash *tfm)
 		if (retn)
 			goto done;
 		memcpy(digest, pcr.digest, sizeof(digest));
-		retn = crypto_shash_update(shash, digest, WP256_DIGEST_SIZE);
+		retn = crypto_shash_update(shash, digest,
+					   crypto_shash_digestsize(tfm));
 		if (retn)
 			goto done;
 	}
@@ -72,7 +73,7 @@ static int __init trust_init(void)
 	for (lp = 0; lp < tpm->nr_allocated_banks; lp++)
 		digests[lp].alg_id = tpm->allocated_banks[lp].alg_id;
 
-	tfm = crypto_alloc_shash("sha256", 0, 0);
+	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
 	if (IS_ERR(tfm))
 		retn = PTR_ERR(tfm);
 	else {

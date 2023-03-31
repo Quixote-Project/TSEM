@@ -27,7 +27,7 @@ struct export_event {
 	struct list_head list;
 	enum export_type type;
 	union {
-		u8 *aggregate[WP256_DIGEST_SIZE];
+		u8 *aggregate[HASH_MAX_DIGESTSIZE];
 		struct tsem_event *ep;
 		struct action_description action;
 	} u;
@@ -66,7 +66,7 @@ int tsem_export_show(struct seq_file *sf, void *v)
 	case AGGREGATE_EVENT:
 		tsem_fs_show_key(sf, "}, ", "type", "%s", "aggregate");
 		tsem_fs_show_field(sf, "aggregate");
-		tsem_fs_show_key(sf, "}", "value", "%*phN", WP256_DIGEST_SIZE,
+		tsem_fs_show_key(sf, "}", "value", "%*phN", tsem_digestsize(),
 				 mp->u.aggregate);
 		break;
 
@@ -193,8 +193,7 @@ int tsem_export_aggregate(void)
 		return -ENOMEM;
 
 	exp->type = AGGREGATE_EVENT;
-	memcpy(exp->u.aggregate, tsem_trust_aggregate(),
-	       sizeof(exp->u.aggregate));
+	memcpy(exp->u.aggregate, tsem_trust_aggregate(), tsem_digestsize());
 
 	mutex_lock(&ctx->external->export_mutex);
 	list_add_tail(&exp->list, &ctx->external->export_list);

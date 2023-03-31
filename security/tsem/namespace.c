@@ -14,7 +14,7 @@ static u64 context_id;
 struct context_key {
 	struct list_head list;
 	u64 context_id;
-	u8 key[WP256_DIGEST_SIZE];
+	u8 key[HASH_MAX_DIGESTSIZE];
 };
 
 DEFINE_MUTEX(context_id_mutex);
@@ -47,6 +47,8 @@ struct tsem_model root_model = {
 
 struct tsem_TMA_context root_TMA_context = {
 	.kref = KREF_INIT(2),
+	.digest = "sha256",
+	.digestsize = SHA256_DIGEST_SIZE,
 	.model = &root_model
 };
 
@@ -73,7 +75,7 @@ static int generate_task_key(const char *keystr, u64 context_id,
 	struct context_key *entry;
 	struct crypto_shash *tfm = NULL;
 
-	tfm = crypto_alloc_shash("sha256", 0, 0);
+	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
 	if (IS_ERR(tfm)) {
 		retn = PTR_ERR(tfm);
 		tfm = NULL;
@@ -82,7 +84,7 @@ static int generate_task_key(const char *keystr, u64 context_id,
 	size = crypto_shash_digestsize(tfm);
 
 	while (!valid_key) {
-		get_random_bytes(t_ttask->task_key, sizeof(t_ttask->task_key));
+		get_random_bytes(t_ttask->task_key, size);
 		retn = tsem_ns_event_key(tfm, t_ttask->task_key, keystr,
 					 p_ttask->task_key);
 		if (retn)
@@ -107,7 +109,7 @@ static int generate_task_key(const char *keystr, u64 context_id,
 	}
 
 	entry->context_id = context_id;
-	memcpy(entry->key, p_ttask->task_key, sizeof(entry->key));
+	memcpy(entry->key, p_ttask->task_key, size);
 	list_add_tail(&entry->list, &context_id_list);
 	retn = 0;
 
@@ -148,8 +150,8 @@ static struct tsem_external *allocate_external(u64 context_id,
 
  done:
 	if (retn) {
-		memset(t_ttask->task_key, '\0', sizeof(t_ttask->task_key));
-		memset(p_ttask->task_key, '\0', sizeof(p_ttask->task_key));
+		memset(t_ttask->task_key, '\0', tsem_digestsize());
+		memset(p_ttask->task_key, '\0', tsem_digestsize());
 		kfree(external);
 		remove_task_key(context_id);
 		external = ERR_PTR(retn);
@@ -225,11 +227,11 @@ int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key,
 		      const char *keystr, u8 *key)
 {
 	bool retn;
-	u8 tma_key[WP256_DIGEST_SIZE];
+	u8 tma_key[HASH_MAX_DIGESTSIZE];
 	unsigned int size = crypto_shash_digestsize(tfm);
 	SHASH_DESC_ON_STACK(shash, tfm);
 
-	retn = hex2bin(tma_key, keystr, sizeof(tma_key));
+	retn = hex2bin(tma_key, keystr, size);
 	if (retn)
 		return -EINVAL;
 
@@ -302,6 +304,8 @@ int tsem_ns_create(const enum tsem_control_type type,
 
 	kref_init(&new_ctx->kref);
 	new_ctx->id = new_id;
+	new_ctx->digest = "sha256";
+	new_ctx->digestsize = SHA256_DIGEST_SIZE;
 	if (ns == TSEM_NS_CURRENT)
 		new_ctx->use_current_ns = true;
 	memcpy(new_ctx->actions, tsk->context->actions,

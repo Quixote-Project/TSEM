@@ -165,18 +165,18 @@ struct tsem_file {
 	u32 flags;
 
 	u32 name_length;
-	u8 name[WP256_DIGEST_SIZE];
+	u8 name[HASH_MAX_DIGESTSIZE];
 
 	u32 s_magic;
 	u8 s_id[32];
 	u8 s_uuid[16];
 
-	u8 digest[WP256_DIGEST_SIZE];
+	u8 digest[HASH_MAX_DIGESTSIZE];
 };
 
 struct tsem_event_point {
 	struct list_head list;
-	u8 point[WP256_DIGEST_SIZE];
+	u8 point[HASH_MAX_DIGESTSIZE];
 	bool valid;
 };
 
@@ -203,7 +203,7 @@ struct tsem_socket_connect_args {
 	union {
 		struct sockaddr_in ipv4;
 		struct sockaddr_in6 ipv6;
-		u8 mapping[WP256_DIGEST_SIZE];
+		u8 mapping[HASH_MAX_DIGESTSIZE];
 	} u;
 };
 
@@ -219,7 +219,7 @@ struct tsem_socket_accept_args {
 struct tsem_task_kill_args {
 	u32 cross_model;
 	u32 signal;
-	u8 target[WP256_DIGEST_SIZE];
+	u8 target[HASH_MAX_DIGESTSIZE];
 };
 
 struct tsem_event {
@@ -228,8 +228,8 @@ struct tsem_event {
 	pid_t pid;
 	char *pathname;
 	char comm[TASK_COMM_LEN];
-	u8 task_id[WP256_DIGEST_SIZE];
-	u8 mapping[WP256_DIGEST_SIZE];
+	u8 task_id[HASH_MAX_DIGESTSIZE];
+	u8 mapping[HASH_MAX_DIGESTSIZE];
 	struct tsem_COE COE;
 	struct tsem_file file;
 	union {
@@ -261,9 +261,9 @@ struct tsem_trajectory {
 
 struct tsem_model {
 	bool have_aggregate;
-	u8 base[WP256_DIGEST_SIZE];
-	u8 measurement[WP256_DIGEST_SIZE];
-	u8 state[WP256_DIGEST_SIZE];
+	u8 base[HASH_MAX_DIGESTSIZE];
+	u8 measurement[HASH_MAX_DIGESTSIZE];
+	u8 state[HASH_MAX_DIGESTSIZE];
 
 	unsigned int point_count;
 	struct mutex point_mutex;
@@ -300,6 +300,8 @@ struct tsem_TMA_context {
 	struct kref kref;
 	struct tsem_TMA_work work;
 	u64 id;
+	char *digest;
+	unsigned int digestsize;
 	bool sealed;
 	bool use_current_ns;
 	enum tsem_action_type actions[TSEM_EVENT_CNT];
@@ -309,15 +311,15 @@ struct tsem_TMA_context {
 
 struct tsem_task {
 	int trust_status;
-	u8 task_id[WP256_DIGEST_SIZE];
-	u8 task_key[WP256_DIGEST_SIZE];
+	u8 task_id[HASH_MAX_DIGESTSIZE];
+	u8 task_key[HASH_MAX_DIGESTSIZE];
 	struct tsem_TMA_context *context;
 };
 
 struct tsem_inode {
 	enum tsem_inode_state status;
 	u64 version;
-	u8 digest[WP256_DIGEST_SIZE];
+	u8 digest[HASH_MAX_DIGESTSIZE];
 	struct mutex mutex;
 };
 
@@ -397,4 +399,14 @@ static inline struct tsem_model *tsem_model(struct task_struct *task)
 static inline struct tsem_inode *tsem_inode(struct inode *inode)
 {
 	return inode->i_security + tsem_blob_sizes.lbs_inode;
+}
+
+static inline char *tsem_digest(void)
+{
+	return tsem_context(current)->digest;
+}
+
+static inline unsigned int tsem_digestsize(void)
+{
+	return tsem_context(current)->digestsize;
 }

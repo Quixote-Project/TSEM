@@ -179,7 +179,7 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 	loff_t size;
 	struct inode *inode = NULL;
 	struct tsem_inode *tsip;
-	u8 measurement[WP256_DIGEST_SIZE];
+	u8 measurement[HASH_MAX_DIGESTSIZE];
 	struct tsem_TMA_context *ctx = tsem_context(current);
 	struct crypto_shash *tfm;
 
@@ -193,7 +193,7 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 		if (retn < 0)
 			goto done;
 		if (retn) {
-			memcpy(tfp->digest, measurement, sizeof(tfp->digest));
+			memcpy(tfp->digest, measurement, tsem_digestsize());
 			retn = 0;
 			goto done;
 		}
@@ -201,20 +201,20 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 
 	size = i_size_read(inode);
 	if (!size) {
-		if (!hex2bin(measurement, ZERO_FILE, sizeof(measurement)))
-			memcpy(tfp->digest, measurement, sizeof(tfp->digest));
+		if (!hex2bin(measurement, ZERO_FILE, tsem_digestsize()))
+			memcpy(tfp->digest, measurement, tsem_digestsize());
 		else
-			memset(tfp->digest, '\0', sizeof(tfp->digest));
+			memset(tfp->digest, '\0', tsem_digestsize());
 		goto done;
 	}
 
 	if (inode_eq_iversion(inode, tsip->version) &&
 	    tsip->status == TSEM_INODE_COLLECTED) {
-		memcpy(tfp->digest, tsip->digest, sizeof(tfp->digest));
+		memcpy(tfp->digest, tsip->digest, tsem_digestsize());
 		goto done;
 	}
 
-	tfm = crypto_alloc_shash("sha256", 0, 0);
+	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
 	if (IS_ERR(tfm)) {
 		retn = PTR_ERR(tfm);
 		goto done;
@@ -225,8 +225,8 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 	if (retn)
 		tsip->status = 0;
 	else {
-		memcpy(tfp->digest, measurement, sizeof(tfp->digest));
-		memcpy(tsip->digest, measurement, sizeof(tsip->digest));
+		memcpy(tfp->digest, measurement, tsem_digestsize());
+		memcpy(tsip->digest, measurement, tsem_digestsize());
 		tsip->status = TSEM_INODE_COLLECTED;
 		tsip->version = inode_query_iversion(inode);
 	}
@@ -252,7 +252,7 @@ static int get_file_cell(struct file *file, struct tsem_event *ep)
 		goto done;
 	}
 
-	tfm = crypto_alloc_shash("sha256", 0, 0);
+	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
 	if (IS_ERR(tfm)) {
 		retn = PTR_ERR(tfm);
 		goto done;
@@ -311,7 +311,7 @@ static int get_socket_mapping(struct crypto_shash *tfm,
 		retn = crypto_shash_finup(shash, p, size, scp->u.mapping);
 		break;
 	}
-	memcpy(scp->tsip->digest, scp->u.mapping, sizeof(scp->tsip->digest));
+	memcpy(scp->tsip->digest, scp->u.mapping, tsem_digestsize());
 
  done:
 	return retn;
@@ -334,7 +334,7 @@ static int get_socket_cell(struct tsem_event *ep)
 		memcpy(&scp->u.ipv6, scp->addr, sizeof(scp->u.ipv6));
 		break;
 	default:
-		tfm = crypto_alloc_shash("sha256", 0, 0);
+		tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
 		if (IS_ERR(tfm)) {
 			retn = PTR_ERR(tfm);
 			tfm = NULL;
@@ -378,7 +378,7 @@ struct tsem_event *tsem_event_allocate(enum tsem_event_type event,
 	ep->event = event;
 	ep->pid = task_pid_nr(current);
 	memcpy(ep->comm, current->comm, sizeof(ep->comm));
-	memcpy(ep->task_id, task->task_id, sizeof(ep->task_id));
+	memcpy(ep->task_id, task->task_id, tsem_digestsize());
 
 	get_COE(&ep->COE);
 	switch (event) {

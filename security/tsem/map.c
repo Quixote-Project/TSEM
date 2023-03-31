@@ -9,11 +9,15 @@
 
 #include "tsem.h"
 
-const u8 generic_cell[WP256_DIGEST_SIZE] = {
+const u8 generic_cell[] = {
 	0x61, 0x87, 0x8a, 0xe5, 0x8a, 0x7c, 0x22, 0xb4,
 	0xea, 0xb9, 0x32, 0xed, 0x3f, 0xdf, 0x34, 0x54,
 	0x39, 0x9b, 0xeb, 0x48, 0xd7, 0x44, 0xa7, 0x0e,
-	0xab, 0x80, 0xc1, 0xd1, 0x99, 0xd8, 0x69, 0xc8
+	0xab, 0x80, 0xc1, 0xd1, 0x99, 0xd8, 0x69, 0xc8,
+	0xec, 0x15, 0x05, 0x32, 0x0b, 0x90, 0xcb, 0x8c,
+	0xd8, 0x09, 0x07, 0x06, 0x1c, 0x62, 0x8e, 0xd0,
+	0x4d, 0xb7, 0x31, 0xaa, 0x7b, 0x60, 0x21, 0x5c,
+	0x16, 0x8c, 0xa6, 0x38, 0x87, 0x20, 0xca, 0xd8
 };
 
 static int get_COE_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
@@ -161,7 +165,7 @@ static int get_cell_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 			goto done;
 
 		p = (u8 *) &ep->file.name;
-		size = sizeof(ep->file.name);
+		size = tsem_digestsize();
 		retn = crypto_shash_update(shash, p, size);
 		if (retn)
 			goto done;
@@ -185,7 +189,7 @@ static int get_cell_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 			goto done;
 
 		p = (u8 *) &ep->file.digest;
-		size = sizeof(ep->file.digest);
+		size = tsem_digestsize();
 		retn = crypto_shash_finup(shash, p, size, mapping);
 		break;
 
@@ -266,7 +270,7 @@ static int get_cell_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 
 		default:
 			p = (u8 *) scp->u.mapping;
-			size = sizeof(scp->u.mapping);
+			size = tsem_digestsize();
 			retn = crypto_shash_finup(shash, p, size, mapping);
 			if (retn)
 				goto done;
@@ -312,7 +316,7 @@ static int get_cell_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 
 		default:
 			p = sap->tsip->digest;
-			size = sizeof(sap->tsip->digest);
+			size = tsem_digestsize();
 			retn = crypto_shash_finup(shash, p, size, mapping);
 			if (retn)
 				goto done;
@@ -348,7 +352,7 @@ static int get_cell_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 			goto done;
 
 		p = (u8 *) generic_cell;
-		size = sizeof(generic_cell);
+		size = tsem_digestsize();
 		retn = crypto_shash_finup(shash, p, size, mapping);
 		if (retn)
 			goto done;
@@ -368,6 +372,7 @@ static int get_event_mapping(struct crypto_shash *tfm, int event, u8 *task_id,
 	int retn = 0;
 	u32 event_id = (u32) event;
 	SHASH_DESC_ON_STACK(shash, tfm);
+	unsigned int digest_size = crypto_shash_digestsize(tfm);
 
 	shash->tfm = tfm;
 	retn = crypto_shash_init(shash);
@@ -379,14 +384,14 @@ static int get_event_mapping(struct crypto_shash *tfm, int event, u8 *task_id,
 	if (retn)
 		goto done;
 	if (task_id) {
-		retn = crypto_shash_update(shash, task_id, WP256_DIGEST_SIZE);
+		retn = crypto_shash_update(shash, task_id, digest_size);
 		if (retn)
 			goto done;
 	}
-	retn = crypto_shash_update(shash, COE_id, WP256_DIGEST_SIZE);
+	retn = crypto_shash_update(shash, COE_id, digest_size);
 	if (retn)
 		goto done;
-	retn = crypto_shash_finup(shash, cell_id, WP256_DIGEST_SIZE, mapping);
+	retn = crypto_shash_finup(shash, cell_id, digest_size, mapping);
 
  done:
 	return retn;
@@ -396,11 +401,11 @@ static int map_event(enum tsem_event_type event, struct tsem_event *ep,
 		     u8 *task_id, u8 *event_mapping)
 {
 	int retn;
-	u8 COE_mapping[WP256_DIGEST_SIZE];
-	u8 cell_mapping[WP256_DIGEST_SIZE];
+	u8 COE_mapping[HASH_MAX_DIGESTSIZE];
+	u8 cell_mapping[HASH_MAX_DIGESTSIZE];
 	struct crypto_shash *tfm = NULL;
 
-	tfm = crypto_alloc_shash("sha256", 0, 0);
+	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
 	if (IS_ERR(tfm)) {
 		retn = PTR_ERR(tfm);
 		tfm = NULL;
@@ -437,7 +442,7 @@ static int map_event(enum tsem_event_type event, struct tsem_event *ep,
 int tsem_map_task(struct file *file, u8 *task_id)
 {
 	int retn = 0;
-	u8 null_taskid[WP256_DIGEST_SIZE];
+	u8 null_taskid[HASH_MAX_DIGESTSIZE];
 	struct tsem_event *ep;
 	struct tsem_event_parameters params;
 
@@ -449,7 +454,7 @@ int tsem_map_task(struct file *file, u8 *task_id)
 		goto done;
 	}
 
-	memset(null_taskid, '\0', sizeof(null_taskid));
+	memset(null_taskid, '\0', tsem_digestsize());
 	retn = map_event(TSEM_BPRM_SET_CREDS, ep, null_taskid, task_id);
 	tsem_event_put(ep);
 
