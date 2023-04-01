@@ -159,24 +159,29 @@ static int config_namespace(enum tsem_control_type type, const char *arg)
 	argv = argv_split(GFP_KERNEL, arg, &argc);
 	if (!argv)
 		return -ENOMEM;
+	if (argc < 2)
+		goto done;
 
-	if (!strcmp(argv[0], "init"))
+	if (!crypto_has_shash(argv[0], 0, 0))
+		goto done;
+
+	if (!strcmp(argv[1], "init"))
 		ns = TSEM_NS_INIT;
-	else if (!strcmp(argv[0], "current"))
+	else if (!strcmp(argv[1], "current"))
 		ns = TSEM_NS_CURRENT;
 	else
 		goto done;
 
 	if (type == TSEM_CONTROL_INTERNAL) {
-		retn = tsem_ns_create(type, ns, NULL);
+		retn = tsem_ns_create(type, argv[0], ns, NULL);
 		goto done;
 	}
 
-	if (argc != 2)
+	if (argc != 3)
 		goto done;
-	if (strlen(argv[1]) != tsem_digestsize() * 2)
+	if (strlen(argv[2]) != tsem_digestsize() * 2)
 		goto done;
-	retn = tsem_ns_create(type, ns, argv[1]);
+	retn = tsem_ns_create(type, argv[0], ns, argv[2]);
 
  done:
 	argv_free(argv);

@@ -300,7 +300,7 @@ struct tsem_TMA_context {
 	struct kref kref;
 	struct tsem_TMA_work work;
 	u64 id;
-	char *digest;
+	const char *digest;
 	unsigned int digestsize;
 	bool sealed;
 	bool use_current_ns;
@@ -349,9 +349,8 @@ extern void tsem_model_compute_state(void);
 extern void tsem_ns_put(struct tsem_TMA_context *ctx);
 extern int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key,
 			     const char *keystr, u8 *key);
-extern int tsem_ns_create(const enum tsem_control_type type,
-			  const enum tsem_ns_config ns,
-			  const char *key);
+extern int tsem_ns_create(const enum tsem_control_type type, const char *,
+			  const enum tsem_ns_config ns, const char *key);
 
 extern int tsem_export_show(struct seq_file *m, void *v);
 extern int tsem_export_event(struct tsem_event *ep);
@@ -401,7 +400,7 @@ static inline struct tsem_inode *tsem_inode(struct inode *inode)
 	return inode->i_security + tsem_blob_sizes.lbs_inode;
 }
 
-static inline char *tsem_digest(void)
+static inline const char *tsem_digest(void)
 {
 	return tsem_context(current)->digest;
 }

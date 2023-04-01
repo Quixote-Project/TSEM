@@ -178,6 +178,7 @@ static void wq_put(struct work_struct *work)
 	} else
 		tsem_model_free(ctx);
 
+	kfree(ctx->digest);
 	kfree(ctx);
 }
 
@@ -249,13 +250,16 @@ int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key,
 
 /**
  * tsem_ns_create() - Create a TSEM modeling namespace.
- * @type:  The type of namespace being created.
- * @ns:    The enumeration type that specifies whether the security
- *	   event descriptions should reference the initial user
- *	   namespace or the current user namespace.
- * @key:   A pointer to a null-terminated buffer containing the key
- *	   that will be used to authenticate the TMA's ability to set
- *	   the trust status of a process.
+ * @type:   The type of namespace being created.
+ * @digest: A null terminated character buffer containing the name
+ *	    of the hash function that is to be used for the modeling
+ *	    domain.
+ * @ns:     The enumeration type that specifies whether the security
+ *	    event descriptions should reference the initial user
+ *	    namespace or the current user namespace.
+ * @key:    A pointer to a null-terminated buffer containing the key
+ *	    that will be used to authenticate the TMA's ability to set
+ *	    the trust status of a process.
  *
  * This function is used to create either an internally or externally
  * modeled TSEM namespace.  The type of the namespace to be created
@@ -270,15 +274,28 @@ int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key,
  * Return: This function returns 0 if the namespace was created and
  *	   a negative error value on error.
  */
-int tsem_ns_create(const enum tsem_control_type type,
+int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 		   const enum tsem_ns_config ns, const char *key)
 {
 	int retn = -ENOMEM;
+	const char *use_digest;
+	unsigned int digestsize;
 	u64 new_id;
 	struct tsem_task *tsk = tsem_task(current);
 	struct tsem_TMA_context *new_ctx;
 	struct tsem_model *model = NULL;
+	struct crypto_shash *tfm = NULL;
 
+	tfm = crypto_alloc_shash(digest, 0, 0);
+	if (IS_ERR(tfm))
+		return PTR_ERR(tfm);
+
+	digestsize = crypto_shash_digestsize(tfm);
+	crypto_free_shash(tfm);
+
+	use_digest = kstrdup(digest, GFP_KERNEL);
+	if (!use_digest)
+		return retn;
 
 	new_ctx = kzalloc(sizeof(struct tsem_TMA_context), GFP_KERNEL);
 	if (!new_ctx)
@@ -303,9 +320,11 @@ int tsem_ns_create(const enum tsem_control_type type,
 	}
 
 	kref_init(&new_ctx->kref);
+
 	new_ctx->id = new_id;
-	new_ctx->digest = "sha256";
-	new_ctx->digestsize = SHA256_DIGEST_SIZE;
+	new_ctx->digest = use_digest;
+	new_ctx->digestsize = digestsize;
+
 	if (ns == TSEM_NS_CURRENT)
 		new_ctx->use_current_ns = true;
 	memcpy(new_ctx->actions, tsk->context->actions,
