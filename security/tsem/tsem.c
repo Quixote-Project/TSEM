@@ -646,7 +646,6 @@ static int tsem_inode_alloc_security(struct inode *inode)
 	return 0;
 }
 
-#ifdef CONFIG_SECURITY_NETWORK
 static int tsem_unix_stream_connect(struct sock *sock, struct sock *other,
 				    struct sock *newsk)
 {
@@ -930,7 +929,6 @@ static int tsem_socket_shutdown(struct socket *sock, int how)
 
 	return model_generic_event(TSEM_SOCKET_SHUTDOWN);
 }
-#endif
 
 static int tsem_kernel_module_request(char *kmod_name)
 {
