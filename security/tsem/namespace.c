@@ -248,6 +248,37 @@ int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key,
 	return crypto_shash_finup(shash, tma_key, size, key);
 }
 
+static int configure_digest(const char *digest, char **name,
+			    unsigned int *digestsize, u8 *zero_digest)
+{
+	int retn = 0;
+	char *digestname;
+	struct crypto_shash *tfm = NULL;
+	SHASH_DESC_ON_STACK(shash, tfm);
+
+	tfm = crypto_alloc_shash(digest, 0, 0);
+	if (IS_ERR(tfm))
+		return PTR_ERR(tfm);
+
+	*digestsize = crypto_shash_digestsize(tfm);
+
+	shash->tfm = tfm;
+	retn = crypto_shash_digest(shash, NULL, 0, zero_digest);
+	if (retn)
+		goto done;
+
+	digestname = kstrdup(digest, GFP_KERNEL);
+	if (!digestname)
+		retn = -ENOMEM;
+	else
+		*name = digestname;
+
+ done:
+	crypto_free_shash(tfm);
+
+	return retn;
+}
+
 /**
  * tsem_ns_create() - Create a TSEM modeling namespace.
  * @type:   The type of namespace being created.
@@ -278,23 +309,16 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 		   const enum tsem_ns_config ns, const char *key)
 {
 	int retn = -ENOMEM;
-	const char *use_digest;
+	char *use_digest;
+	u8 zero_digest[HASH_MAX_DIGESTSIZE];
 	unsigned int digestsize;
 	u64 new_id;
 	struct tsem_task *tsk = tsem_task(current);
 	struct tsem_TMA_context *new_ctx;
 	struct tsem_model *model = NULL;
-	struct crypto_shash *tfm = NULL;
 
-	tfm = crypto_alloc_shash(digest, 0, 0);
-	if (IS_ERR(tfm))
-		return PTR_ERR(tfm);
-
-	digestsize = crypto_shash_digestsize(tfm);
-	crypto_free_shash(tfm);
-
-	use_digest = kstrdup(digest, GFP_KERNEL);
-	if (!use_digest)
+	retn = configure_digest(digest, &use_digest, &digestsize, zero_digest);
+	if (retn)
 		return retn;
 
 	new_ctx = kzalloc(sizeof(struct tsem_TMA_context), GFP_KERNEL);
@@ -324,6 +348,7 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 	new_ctx->id = new_id;
 	new_ctx->digest = use_digest;
 	new_ctx->digestsize = digestsize;
+	memcpy(new_ctx->zero_digest, zero_digest, digestsize);
 
 	if (ns == TSEM_NS_CURRENT)
 		new_ctx->use_current_ns = true;

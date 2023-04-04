@@ -11,17 +11,6 @@
 
 #include "tsem.h"
 
-const u8 pseudonym_digest[] = {
-	0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14,
-	0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24,
-	0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c,
-	0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55,
-	0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14,
-	0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24,
-	0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c,
-	0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55
-};
-
 struct state_point {
 	struct list_head list;
 	struct tsem_event_point *point;
@@ -285,21 +274,18 @@ void tsem_model_compute_state(void)
  * tsem_model_has_pseudonym() - Test for a model pseudonym.
  * @tsip: A pointer to the TSEM inode security structure.
  * @ep: A pointer to the TSEM event description structure.
- * @mapping: A byte array into which the pseudonym state is
- *	     to be copied.
  *
  * This function is used to test whether a pseudonym has been
- * declared for a modeling domain.  The pseudonym state point is
- * made available via the array pointed to by the mapping variable.
+ * declared for a modeling domain.  It is up to the caller to
+ * populate the event description structure with a suitable
+ * value for the pseudonym digest.
  *
  * Return: If an error occurs during the pseudonym probe a negative
  *	   return value is returned.  A zero return value indicates that
  *	   a pseudonym was not present.  A value of one indicates that a
- *	   psuedonym had been defined and the mapping variable contains
- *	   the pseudonym state point.
+ *	   pseudonym has been defined.
  */
-int tsem_model_has_pseudonym(struct tsem_inode *tsip, struct tsem_file *ep,
-			     u8 *mapping)
+int tsem_model_has_pseudonym(struct tsem_inode *tsip, struct tsem_file *ep)
 {
 	int retn = 0;
 	u8 pseudo_mapping[HASH_MAX_DIGESTSIZE];
@@ -327,9 +313,6 @@ int tsem_model_has_pseudonym(struct tsem_inode *tsip, struct tsem_file *ep,
 	retn = 0;
 
  done:
-	if (retn)
-		memcpy(mapping, pseudonym_digest, tsem_digestsize());
-
 	mutex_unlock(&model->pseudonym_mutex);
 	crypto_free_shash(tfm);
 	return retn;

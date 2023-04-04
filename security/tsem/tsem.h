@@ -301,10 +301,11 @@ struct tsem_TMA_context {
 	struct kref kref;
 	struct tsem_TMA_work work;
 	u64 id;
-	const char *digest;
-	unsigned int digestsize;
 	bool sealed;
 	bool use_current_ns;
+	const char *digest;
+	unsigned int digestsize;
+	u8 zero_digest[HASH_MAX_DIGESTSIZE];
 	enum tsem_action_type actions[TSEM_EVENT_CNT];
 	struct tsem_model *model;
 	struct tsem_external *external;
@@ -376,7 +377,7 @@ extern int tsem_model_event(struct tsem_event *ep);
 extern int tsem_model_load_point(u8 *point);
 extern int tsem_model_load_pseudonym(u8 *mapping);
 extern int tsem_model_has_pseudonym(struct tsem_inode *tsip,
-				    struct tsem_file *ep, u8 *mapping);
+				    struct tsem_file *ep);
 extern void tsem_model_load_base(u8 *mapping);
 extern int tsem_model_add_aggregate(void);
 extern void tsem_model_compute_state(void);

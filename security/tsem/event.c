@@ -7,8 +7,6 @@
  * This file manages the data structures used to define a security event.
  */
 
-#define ZERO_FILE "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-
 #include <linux/iversion.h>
 #include <linux/user_namespace.h>
 
@@ -219,11 +217,12 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 
 	mutex_lock(&tsip->mutex);
 	if (!ctx->external) {
-		retn = tsem_model_has_pseudonym(tsip, tfp, measurement);
+		retn = tsem_model_has_pseudonym(tsip, tfp);
 		if (retn < 0)
 			goto done;
 		if (retn) {
-			memcpy(tfp->digest, measurement, tsem_digestsize());
+			memcpy(tfp->digest, ctx->zero_digest,
+			       tsem_digestsize());
 			retn = 0;
 			goto done;
 		}
@@ -231,10 +230,7 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 
 	size = i_size_read(inode);
 	if (!size) {
-		if (!hex2bin(measurement, ZERO_FILE, tsem_digestsize()))
-			memcpy(tfp->digest, measurement, tsem_digestsize());
-		else
-			memset(tfp->digest, '\0', tsem_digestsize());
+		memcpy(tfp->digest, ctx->zero_digest, tsem_digestsize());
 		goto done;
 	}
 
