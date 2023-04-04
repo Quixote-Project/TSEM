@@ -643,7 +643,24 @@ static int tsem_inode_alloc_security(struct inode *inode)
 	struct tsem_inode *tsip = tsem_inode(inode);
 
 	mutex_init(&tsip->mutex);
+	INIT_LIST_HEAD(&tsip->digest_list);
+
 	return 0;
+}
+
+static void tsem_inode_free_security(struct inode *inode)
+{
+	struct tsem_inode_digest *digest, *tmp_digest;
+
+	if (bypass_inode(inode))
+		return;
+
+	list_for_each_entry_safe(digest, tmp_digest,
+				 &tsem_inode(inode)->digest_list, list) {
+		list_del(&digest->list);
+		kfree(digest->name);
+		kfree(digest);
+	}
 }
 
 static int tsem_unix_stream_connect(struct sock *sock, struct sock *other,
@@ -1642,6 +1659,7 @@ static struct security_hook_list tsem_hooks[] __lsm_ro_after_init = {
 
 	LSM_HOOK_INIT(bprm_creds_for_exec, tsem_bprm_creds_for_exec),
 	LSM_HOOK_INIT(inode_alloc_security, tsem_inode_alloc_security),
+	LSM_HOOK_INIT(inode_free_security, tsem_inode_free_security),
 
 	LSM_HOOK_INIT(file_open, tsem_file_open),
 	LSM_HOOK_INIT(mmap_file, tsem_mmap_file),

@@ -214,6 +214,7 @@ struct tsem_socket_accept_args {
 	__be16 port;
 	__be32 ipv4;
 	struct in6_addr ipv6;
+	u8 mapping[HASH_MAX_DIGESTSIZE];
 };
 
 struct tsem_task_kill_args {
@@ -316,11 +317,45 @@ struct tsem_task {
 	struct tsem_TMA_context *context;
 };
 
-struct tsem_inode {
-	enum tsem_inode_state status;
+/**
+ * struct tsem_inode_digest - Hash function specific file checksum.
+ * @list:	The list structure used to link multiple digest values
+ *		for an inode.
+ * @version:	The version number of the inode that generated the digest
+ *		value that is currently represented.
+ * @name:	A pointer to a null-terminated character buffer containing
+ *		the name of the hash function that generated the current
+ *		digest value.
+ * @value:	The digest value of the file.
+ *
+ * A linked list of these structures is maintained for each inode that
+ * is modeled by TSEM and is used to support multiple hash specific
+ * digest values for a file represented by the inode.  The tsem_inode
+ * structure that represents the TSEM security status of the inode
+ * contains the pointer to this list of structures.
+ *
+ * The version member of the structure contains the inode version number
+ * that was in effect when the last digest value of this type was computed.
+ * This version number value is used to detect changes and to trigger an
+ * update of the digest value.
+ *
+ * The name member of structure contains the name of the hash function
+ * that generated the checksum value.  This name is used to locate the
+ * correct structure by comparing its value against the hash function
+ * that is being used for the modeling domain that is accessing the
+ * inode.
+ */
+struct tsem_inode_digest {
+	struct list_head list;
+	char *name;
 	u64 version;
-	u8 digest[HASH_MAX_DIGESTSIZE];
+	u8 value[HASH_MAX_DIGESTSIZE];
+};
+
+struct tsem_inode {
 	struct mutex mutex;
+	struct list_head digest_list;
+	enum tsem_inode_state status;
 };
 
 extern struct lsm_blob_sizes tsem_blob_sizes;
@@ -349,8 +384,9 @@ extern void tsem_model_compute_state(void);
 extern void tsem_ns_put(struct tsem_TMA_context *ctx);
 extern int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key,
 			     const char *keystr, u8 *key);
-extern int tsem_ns_create(const enum tsem_control_type type, const char *,
-			  const enum tsem_ns_config ns, const char *key);
+extern int tsem_ns_create(const enum tsem_control_type type,
+			  const char *digest, const enum tsem_ns_config ns,
+			  const char *key);
 
 extern int tsem_export_show(struct seq_file *m, void *v);
 extern int tsem_export_event(struct tsem_event *ep);

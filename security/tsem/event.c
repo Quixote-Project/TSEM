@@ -90,6 +90,36 @@ static int add_file_name(struct crypto_shash *tfm, struct tsem_event *ep)
 	return retn;
 }
 
+static struct tsem_inode_digest *find_digest(struct tsem_inode *tsip)
+{
+	struct tsem_inode_digest *digest;
+
+	list_for_each_entry(digest, &tsip->digest_list, list) {
+		if (!strcmp(digest->name, tsem_digest()))
+			return digest;
+	}
+
+	return NULL;
+}
+
+static struct tsem_inode_digest *add_digest(struct tsem_TMA_context *ctx,
+					    struct tsem_inode *tsip)
+{
+	struct tsem_inode_digest *digest;
+
+	digest = kzalloc(sizeof(struct tsem_inode_digest), GFP_KERNEL);
+	if (!digest)
+		return NULL;
+
+	digest->name = kstrdup(ctx->digest, GFP_KERNEL);
+	if (!digest->name)
+		return NULL;
+
+	list_add(&digest->list, &tsip->digest_list);
+
+	return digest;
+}
+
 static struct file *open_event_file(struct file *file, unsigned int *status)
 {
 	int flags;
@@ -176,14 +206,14 @@ static int get_file_digest(struct crypto_shash *tfm, struct file *file,
 int add_file_digest(struct file *file, struct tsem_file *tfp)
 {
 	int retn = 0;
-	loff_t size;
-	struct inode *inode = NULL;
-	struct tsem_inode *tsip;
 	u8 measurement[HASH_MAX_DIGESTSIZE];
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	loff_t size;
+	struct inode *inode;
+	struct tsem_inode *tsip;
 	struct crypto_shash *tfm;
+	struct tsem_inode_digest *digest;
+	struct tsem_TMA_context *ctx = tsem_context(current);
 
-	memset(measurement, '\0', sizeof(measurement));
 	inode = file_inode(file);
 	tsip = tsem_inode(inode);
 
@@ -208,9 +238,11 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 		goto done;
 	}
 
-	if (inode_eq_iversion(inode, tsip->version) &&
+	digest = find_digest(tsip);
+
+	if (digest && inode_eq_iversion(inode, digest->version) &&
 	    tsip->status == TSEM_INODE_COLLECTED) {
-		memcpy(tfp->digest, tsip->digest, tsem_digestsize());
+		memcpy(tfp->digest, digest->value, tsem_digestsize());
 		goto done;
 	}
 
@@ -222,14 +254,23 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 
 	tsip->status = TSEM_INODE_COLLECTING;
 	retn = get_file_digest(tfm, file, inode, size, measurement);
-	if (retn)
+	if (retn) {
 		tsip->status = 0;
-	else {
-		memcpy(tfp->digest, measurement, tsem_digestsize());
-		memcpy(tsip->digest, measurement, tsem_digestsize());
-		tsip->status = TSEM_INODE_COLLECTED;
-		tsip->version = inode_query_iversion(inode);
+		goto done;
 	}
+
+	if (!digest) {
+		digest = add_digest(ctx, tsip);
+		if (!digest) {
+			retn = -ENOMEM;
+			goto done;
+		}
+	}
+
+	memcpy(tfp->digest, measurement, tsem_digestsize());
+	memcpy(digest->value, measurement, tsem_digestsize());
+	digest->version = inode_query_iversion(inode);
+	tsip->status = TSEM_INODE_COLLECTED;
 
  done:
 	mutex_unlock(&tsip->mutex);
@@ -311,7 +352,6 @@ static int get_socket_mapping(struct crypto_shash *tfm,
 		retn = crypto_shash_finup(shash, p, size, scp->u.mapping);
 		break;
 	}
-	memcpy(scp->tsip->digest, scp->u.mapping, tsem_digestsize());
 
  done:
 	return retn;
@@ -401,6 +441,8 @@ struct tsem_event *tsem_event_allocate(enum tsem_event_type event,
 		break;
 	case TSEM_SOCKET_ACCEPT:
 		ep->CELL.socket_accept = *params->u.socket_accept;
+		memset(ep->CELL.socket_accept.mapping, '\0',
+		       tsem_digestsize());
 		break;
 	case TSEM_TASK_KILL:
 		ep->CELL.task_kill = *params->u.task_kill;

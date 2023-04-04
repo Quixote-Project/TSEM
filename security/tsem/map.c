@@ -315,7 +315,7 @@ static int get_cell_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 			break;
 
 		default:
-			p = sap->tsip->digest;
+			p = sap->mapping;
 			size = tsem_digestsize();
 			retn = crypto_shash_finup(shash, p, size, mapping);
 			if (retn)

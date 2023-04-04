@@ -320,7 +320,7 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 		break;
 	default:
 		tsem_fs_show_key(c, "}", "addr", "%*phN", tsem_digestsize(),
-				 sap->tsip->digest);
+				 sap->mapping);
 		break;
 	}
 }
