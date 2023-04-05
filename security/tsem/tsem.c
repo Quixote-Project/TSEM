@@ -17,6 +17,24 @@
 
 #include "tsem.h"
 
+static struct tsem_model root_model = {
+	.point_mutex = __MUTEX_INITIALIZER(root_model.point_mutex),
+	.point_list = LIST_HEAD_INIT(root_model.point_list),
+	.state_list = LIST_HEAD_INIT(root_model.state_list),
+
+	.trajectory_mutex = __MUTEX_INITIALIZER(root_model.trajectory_mutex),
+	.trajectory_list = LIST_HEAD_INIT(root_model.trajectory_list),
+
+	.max_forensics_count = 100,
+	.forensics_mutex = __MUTEX_INITIALIZER(root_model.forensics_mutex),
+	.forensics_list = LIST_HEAD_INIT(root_model.forensics_list),
+
+	.pseudonym_mutex = __MUTEX_INITIALIZER(root_model.pseudonym_mutex),
+	.pseudonym_list = LIST_HEAD_INIT(root_model.pseudonym_list)
+};
+
+static struct tsem_TMA_context root_context __lsm_ro_after_init;
+
 static int tsem_ready __lsm_ro_after_init;
 
 static bool tsem_available __lsm_ro_after_init;
@@ -1791,19 +1809,18 @@ static int configure_root_digest(void)
 	if (retn)
 		goto done;
 
-	if (strcmp(digest, tsem_digest())) {
-		digestname = kstrdup(digest, GFP_KERNEL);
-		if (!digestname) {
-			retn = -ENOMEM;
-			goto done;
-		} else
-			root_TMA_context.digest = digestname;
+	digestname = kstrdup(digest, GFP_KERNEL);
+	if (!digestname) {
+		retn = -ENOMEM;
+		root_context.digest = "sha256";
+		root_context.digestsize = SHA256_DIGEST_SIZE;
+	} else {
+		root_context.digest = digestname;
+		root_context.digestsize = digestsize;
+		memcpy(root_context.zero_digest, zero_digest, digestsize);
 	}
 
-	root_TMA_context.digestsize = digestsize;
-	memcpy(root_TMA_context.zero_digest, zero_digest, digestsize);
-
-
+ done:
 	crypto_free_shash(tfm);
 
 	return retn;
@@ -1857,7 +1874,12 @@ static int __init tsem_init(void)
 
 	security_add_hooks(tsem_hooks, ARRAY_SIZE(tsem_hooks), "tsem");
 
-	tsk->context = &root_TMA_context;
+	kref_init(&root_context.kref);
+	kref_get(&root_context.kref);
+
+	root_context.model = &root_model;
+	tsk->context = &root_context;
+
 	memcpy(tsk->context->actions, tsem_root_actions,
 	       sizeof(tsem_root_actions));
 

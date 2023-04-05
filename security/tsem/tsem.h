@@ -359,10 +359,9 @@ struct tsem_inode {
 	enum tsem_inode_state status;
 };
 
+extern const char * const tsem_names[TSEM_EVENT_CNT];
 extern struct lsm_blob_sizes tsem_blob_sizes;
 extern enum tsem_action_type tsem_root_actions[TSEM_EVENT_CNT];
-extern struct tsem_TMA_context root_TMA_context;
-extern const char * const tsem_names[TSEM_EVENT_CNT];
 
 extern struct dentry *tsem_fs_create_external(const char *name);
 extern void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep);

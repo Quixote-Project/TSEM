@@ -29,28 +29,6 @@ enum tsem_action_type tsem_root_actions[TSEM_EVENT_CNT] = {
 	TSEM_ACTION_EPERM	/* Undefined. */
 };
 
-struct tsem_model root_model = {
-	.point_mutex = __MUTEX_INITIALIZER(root_model.point_mutex),
-	.point_list = LIST_HEAD_INIT(root_model.point_list),
-	.state_list = LIST_HEAD_INIT(root_model.state_list),
-
-	.trajectory_mutex = __MUTEX_INITIALIZER(root_model.trajectory_mutex),
-	.trajectory_list = LIST_HEAD_INIT(root_model.trajectory_list),
-
-	.max_forensics_count = 100,
-	.forensics_mutex = __MUTEX_INITIALIZER(root_model.forensics_mutex),
-	.forensics_list = LIST_HEAD_INIT(root_model.forensics_list),
-
-	.pseudonym_mutex = __MUTEX_INITIALIZER(root_model.pseudonym_mutex),
-	.pseudonym_list = LIST_HEAD_INIT(root_model.pseudonym_list)
-};
-
-struct tsem_TMA_context root_TMA_context = {
-	.kref = KREF_INIT(2),
-	.digest = "sha256",
-	.digestsize = SHA256_DIGEST_SIZE,
-	.model = &root_model
-};
 
 static void remove_task_key(u64 context_id)
 {
