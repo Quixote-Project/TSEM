@@ -23,6 +23,8 @@ static bool tsem_available __lsm_ro_after_init;
 
 static bool no_root_modeling __lsm_ro_after_init;
 
+static char *default_hash_function __lsm_ro_after_init;
+
 static int __init set_modeling_mode(char *mode_value)
 {
 	unsigned long mode = 0;
@@ -39,6 +41,14 @@ static int __init set_modeling_mode(char *mode_value)
 	return 1;
 }
 __setup("tsem_mode=", set_modeling_mode);
+
+static int __init set_default_hash_function(char *hash_function)
+{
+
+	default_hash_function = hash_function;
+	return 1;
+}
+__setup("tsem_digest=", set_default_hash_function);
 
 const char * const tsem_names[TSEM_EVENT_CNT] = {
 	"undefined",
@@ -1750,12 +1760,65 @@ static struct security_hook_list tsem_hooks[] __lsm_ro_after_init = {
 #endif
 };
 
+static int configure_root_digest(void)
+{
+	int retn = 0;
+	char *digest = NULL, *digestname;
+	u8 zero_digest[HASH_MAX_DIGESTSIZE];
+	unsigned int digestsize;
+	struct crypto_shash *tfm = NULL;
+	SHASH_DESC_ON_STACK(shash, tfm);
+
+	if (default_hash_function && crypto_has_shash(default_hash_function,
+						      0, 0)) {
+		digest = default_hash_function;
+		pr_warn("tsem: Using digest %s from command-line.\n", digest);
+	}
+	if (!digest && default_hash_function)
+		pr_warn("tsem: Unknown root digest %s, using sha256.\n",
+			default_hash_function);
+	if (!digest)
+		digest = "sha256";
+
+	tfm = crypto_alloc_shash(digest, 0, 0);
+	if (IS_ERR(tfm))
+		return PTR_ERR(tfm);
+
+	digestsize = crypto_shash_digestsize(tfm);
+
+	shash->tfm = tfm;
+	retn = crypto_shash_digest(shash, NULL, 0, zero_digest);
+	if (retn)
+		goto done;
+
+	if (strcmp(digest, tsem_digest())) {
+		digestname = kstrdup(digest, GFP_KERNEL);
+		if (!digestname) {
+			retn = -ENOMEM;
+			goto done;
+		} else
+			root_TMA_context.digest = digestname;
+	}
+
+	root_TMA_context.digestsize = digestsize;
+	memcpy(root_TMA_context.zero_digest, zero_digest, digestsize);
+
+
+	crypto_free_shash(tfm);
+
+	return retn;
+}
+
 static int __init set_ready(void)
 {
 	int retn;
 
 	if (!tsem_available)
 		return 0;
+
+	retn = configure_root_digest();
+	if (retn)
+		goto done;
 
 	retn = tsem_model_add_aggregate();
 	if (retn)
