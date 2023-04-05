@@ -17,6 +17,11 @@
 
 #include "tsem.h"
 
+struct lsm_blob_sizes tsem_blob_sizes __lsm_ro_after_init = {
+	.lbs_task = sizeof(struct tsem_task),
+	.lbs_inode = sizeof(struct tsem_inode)
+};
+
 static struct tsem_model root_model = {
 	.point_mutex = __MUTEX_INITIALIZER(root_model.point_mutex),
 	.point_list = LIST_HEAD_INIT(root_model.point_list),

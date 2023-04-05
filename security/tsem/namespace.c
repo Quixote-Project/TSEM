@@ -20,15 +20,9 @@ struct context_key {
 DEFINE_MUTEX(context_id_mutex);
 LIST_HEAD(context_id_list);
 
-struct lsm_blob_sizes tsem_blob_sizes __lsm_ro_after_init = {
-	.lbs_task = sizeof(struct tsem_task),
-	.lbs_inode = sizeof(struct tsem_inode)
-};
-
 enum tsem_action_type tsem_root_actions[TSEM_EVENT_CNT] = {
 	TSEM_ACTION_EPERM	/* Undefined. */
 };
-
 
 static void remove_task_key(u64 context_id)
 {
