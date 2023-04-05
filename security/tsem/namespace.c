@@ -20,10 +20,6 @@ struct context_key {
 DEFINE_MUTEX(context_id_mutex);
 LIST_HEAD(context_id_list);
 
-enum tsem_action_type tsem_root_actions[TSEM_EVENT_CNT] = {
-	TSEM_ACTION_EPERM	/* Undefined. */
-};
-
 static void remove_task_key(u64 context_id)
 {
 	struct context_key *entry, *tmp_entry;

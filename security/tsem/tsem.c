@@ -22,6 +22,10 @@ struct lsm_blob_sizes tsem_blob_sizes __lsm_ro_after_init = {
 	.lbs_inode = sizeof(struct tsem_inode)
 };
 
+enum tsem_action_type tsem_root_actions[TSEM_EVENT_CNT] = {
+	TSEM_ACTION_EPERM	/* Undefined. */
+};
+
 static struct tsem_model root_model = {
 	.point_mutex = __MUTEX_INITIALIZER(root_model.point_mutex),
 	.point_list = LIST_HEAD_INIT(root_model.point_list),
