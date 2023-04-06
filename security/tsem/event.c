@@ -362,12 +362,19 @@ static int get_socket_accept(struct tsem_event *ep)
 	return retn;
 }
 
-static int get_socket_mapping(struct crypto_shash *tfm,
-			      struct tsem_socket_connect_args *scp)
+static int get_socket_connect(struct tsem_socket_connect_args *scp)
 {
-	int retn, size;
 	u8 *p;
+	int retn, size;
+	struct crypto_shash *tfm = NULL;
 	SHASH_DESC_ON_STACK(shash, tfm);
+
+	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
+	if (IS_ERR(tfm)) {
+		retn = PTR_ERR(tfm);
+		tfm = NULL;
+		goto done;
+	}
 
 	shash->tfm = tfm;
 	retn = crypto_shash_init(shash);
@@ -377,17 +384,19 @@ static int get_socket_mapping(struct crypto_shash *tfm,
 	switch (scp->family) {
 	case AF_UNIX:
 		p = (u8 *) scp->addr->sa_data;
-		size = strlen(p);
-		retn = crypto_shash_finup(shash, p, size, scp->u.mapping);
+		size = scp->addr_len - offsetof(struct sockaddr_un, sun_path);
+		size = strnlen(p, size);
+		retn = crypto_shash_digest(shash, p, size, scp->u.mapping);
 		break;
 	default:
 		p = (u8 *) scp->addr->sa_data;
-		size = sizeof(scp->addr) - offsetof(struct sockaddr, sa_data);
-		retn = crypto_shash_finup(shash, p, size, scp->u.mapping);
+		size = scp->addr_len - offsetof(struct sockaddr, sa_data);
+		retn = crypto_shash_digest(shash, p, size, scp->u.mapping);
 		break;
 	}
 
  done:
+	crypto_free_shash(tfm);
 	return retn;
 }
 
@@ -395,7 +404,6 @@ static int get_socket_cell(struct tsem_event *ep)
 
 {
 	int retn = 0;
-	struct crypto_shash *tfm = NULL;
 	struct tsem_socket_connect_args *scp = &ep->CELL.socket_connect;
 
 	scp->family = scp->addr->sa_family;
@@ -408,18 +416,10 @@ static int get_socket_cell(struct tsem_event *ep)
 		memcpy(&scp->u.ipv6, scp->addr, sizeof(scp->u.ipv6));
 		break;
 	default:
-		tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-		if (IS_ERR(tfm)) {
-			retn = PTR_ERR(tfm);
-			tfm = NULL;
-			goto done;
-		}
-		retn = get_socket_mapping(tfm, scp);
+		retn = get_socket_connect(scp);
 		break;
 	}
 
- done:
-	crypto_free_shash(tfm);
 	return retn;
 }
 
