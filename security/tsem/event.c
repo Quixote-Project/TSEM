@@ -354,7 +354,9 @@ static int get_socket_accept(struct tsem_event *ep)
 		goto done;
 
 	p = sap->af_unix->addr->name->sun_path;
-	size = sap->af_unix->addr->len;
+	size = sap->af_unix->addr->len -
+		offsetof(struct sockaddr_un, sun_path);
+	size = strnlen(p, size);
 	retn = crypto_shash_digest(shash, p, size, sap->mapping);
 
  done:
