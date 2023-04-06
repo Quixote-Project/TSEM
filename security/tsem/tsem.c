@@ -848,14 +848,16 @@ static int tsem_socket_accept(struct socket *sock, struct socket *newsock)
 		return return_trapped_task(TSEM_SOCKET_ACCEPT, msg);
 	}
 
-	args.tsip = tsem_inode(SOCK_INODE(sock));
 	args.family = sk->sk_family;
 	args.type = sock->type;
 	args.port = sk->sk_num;
 	args.ipv4 = sk->sk_rcv_saddr;
+	if (args.family == AF_UNIX)
+		args.af_unix = unix_sk(sk);
 	ipv6 = inet6_rcv_saddr(sk);
 	if (ipv6)
 		args.ipv6 = *ipv6;
+
 	params.u.socket_accept = &args;
 
 	ep = tsem_map_event(TSEM_SOCKET_ACCEPT, &params);

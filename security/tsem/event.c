@@ -324,6 +324,44 @@ static int get_file_cell(struct file *file, struct tsem_event *ep)
 	return retn;
 }
 
+static int get_socket_accept(struct tsem_event *ep)
+{
+	int size, retn = 0;
+	u8 *p;
+	struct crypto_shash *tfm = NULL;
+	struct tsem_socket_accept_args *sap = &ep->CELL.socket_accept;
+	SHASH_DESC_ON_STACK(shash, tfm);
+
+	if (sap->family == AF_INET || sap->family == AF_INET6)
+		return retn;
+
+	if (sap->family != AF_UNIX) {
+		memcpy(sap->mapping, tsem_context(current)->zero_digest,
+		       tsem_digestsize());
+		return retn;
+	}
+
+	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
+	if (IS_ERR(tfm)) {
+		retn = PTR_ERR(tfm);
+		tfm = NULL;
+		goto done;
+	}
+
+	shash->tfm = tfm;
+	retn = crypto_shash_init(shash);
+	if (retn)
+		goto done;
+
+	p = sap->af_unix->addr->name->sun_path;
+	size = sap->af_unix->addr->len;
+	retn = crypto_shash_digest(shash, p, size, sap->mapping);
+
+ done:
+	crypto_free_shash(tfm);
+	return retn;
+}
+
 static int get_socket_mapping(struct crypto_shash *tfm,
 			      struct tsem_socket_connect_args *scp)
 {
@@ -437,8 +475,7 @@ struct tsem_event *tsem_event_allocate(enum tsem_event_type event,
 		break;
 	case TSEM_SOCKET_ACCEPT:
 		ep->CELL.socket_accept = *params->u.socket_accept;
-		memset(ep->CELL.socket_accept.mapping, '\0',
-		       tsem_digestsize());
+		retn = get_socket_accept(ep);
 		break;
 	case TSEM_TASK_KILL:
 		ep->CELL.task_kill = *params->u.task_kill;

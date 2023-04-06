@@ -15,6 +15,7 @@
 #include <linux/capability.h>
 #include <crypto/hash.h>
 #include <crypto/hash_info.h>
+#include <net/af_unix.h>
 
 #define TSEM_CONTROL_CAPABILITY CAP_TRUST
 
@@ -208,12 +209,12 @@ struct tsem_socket_connect_args {
 };
 
 struct tsem_socket_accept_args {
-	struct tsem_inode *tsip;
 	u16 family;
 	u16 type;
 	__be16 port;
 	__be32 ipv4;
 	struct in6_addr ipv6;
+	struct unix_sock *af_unix;
 	u8 mapping[HASH_MAX_DIGESTSIZE];
 };
 
