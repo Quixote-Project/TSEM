@@ -108,7 +108,7 @@ int tsem_export_event(struct tsem_event *ep)
 	if (!ctx->external)
 		return 0;
 
-	mp = kzalloc(sizeof(struct export_event), GFP_KERNEL);
+	mp = kzalloc(sizeof(*mp), GFP_KERNEL);
 	if (!mp) {
 		retn = -ENOMEM;
 		goto done;
@@ -155,7 +155,7 @@ int tsem_export_action(enum tsem_event_type event)
 	struct tsem_TMA_context *ctx = tsem_context(current);
 	struct export_event *exp;
 
-	exp = kzalloc(sizeof(struct export_event), GFP_KERNEL);
+	exp = kzalloc(sizeof(*exp), GFP_KERNEL);
 	if (!exp)
 		return -ENOMEM;
 
@@ -188,7 +188,7 @@ int tsem_export_aggregate(void)
 	struct tsem_TMA_context *ctx = tsem_context(current);
 	struct export_event *exp;
 
-	exp = kzalloc(sizeof(struct export_event), GFP_KERNEL);
+	exp = kzalloc(sizeof(*exp), GFP_KERNEL);
 	if (!exp)
 		return -ENOMEM;
 

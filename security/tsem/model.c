@@ -99,7 +99,7 @@ static int add_trajectory_point(struct tsem_event *ep)
 	struct tsem_trajectory *entry;
 	struct tsem_model *model = tsem_model(current);
 
-	entry = kzalloc(sizeof(struct tsem_trajectory), GFP_KERNEL);
+	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
 	if (!entry)
 		return -ENOMEM;
 	entry->ep = ep;
@@ -122,7 +122,7 @@ static int add_forensic_point(struct tsem_event *ep)
 	if (model->forensics_count == model->max_forensics_count)
 		return -E2BIG;
 
-	entry = kzalloc(sizeof(struct tsem_trajectory), GFP_KERNEL);
+	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
 	if (!entry)
 		return -ENOMEM;
 	entry->ep = ep;
@@ -439,7 +439,7 @@ int tsem_model_load_pseudonym(u8 *mapping)
 	struct pseudonym *psp = NULL;
 	struct tsem_model *model = tsem_model(current);
 
-	psp = kzalloc(sizeof(struct pseudonym), GFP_KERNEL);
+	psp = kzalloc(sizeof(*psp), GFP_KERNEL);
 	if (!psp)
 		return -ENOMEM;
 	memcpy(psp->mapping, mapping, tsem_digestsize());
@@ -505,7 +505,7 @@ struct tsem_model *tsem_model_allocate(void)
 {
 	struct tsem_model *model = NULL;
 
-	model = kzalloc(sizeof(struct tsem_model), GFP_KERNEL);
+	model = kzalloc(sizeof(*model), GFP_KERNEL);
 	if (!model)
 		return NULL;
 

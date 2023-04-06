@@ -105,7 +105,7 @@ static struct tsem_inode_digest *add_digest(struct tsem_TMA_context *ctx,
 {
 	struct tsem_inode_digest *digest;
 
-	digest = kzalloc(sizeof(struct tsem_inode_digest), GFP_KERNEL);
+	digest = kzalloc(sizeof(*digest), GFP_KERNEL);
 	if (!digest)
 		return NULL;
 

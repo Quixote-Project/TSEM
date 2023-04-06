@@ -70,7 +70,7 @@ static int generate_task_key(const char *keystr, u64 context_id,
 			valid_key = true;
 	}
 
-	entry = kzalloc(sizeof(struct context_key), GFP_KERNEL);
+	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
 	if (!entry) {
 		retn = -ENOMEM;
 		goto done;
@@ -95,7 +95,7 @@ static struct tsem_external *allocate_external(u64 context_id,
 	struct tsem_task *t_ttask = tsem_task(current);
 	struct tsem_task *p_ttask = tsem_task(current->real_parent);
 
-	external = kzalloc(sizeof(struct tsem_external), GFP_KERNEL);
+	external = kzalloc(sizeof(*external), GFP_KERNEL);
 	if (!external)
 		goto done;
 
@@ -289,7 +289,7 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 	if (retn)
 		return retn;
 
-	new_ctx = kzalloc(sizeof(struct tsem_TMA_context), GFP_KERNEL);
+	new_ctx = kzalloc(sizeof(*new_ctx), GFP_KERNEL);
 	if (!new_ctx)
 		return retn;
 
