@@ -188,13 +188,12 @@ static int config_namespace(enum tsem_control_type type, const char *arg)
 	return retn;
 }
 
-static void show_event(struct seq_file *c, struct tsem_event *ep, char *file)
+static void show_event(struct seq_file *c, struct tsem_event *ep)
 {
 	tsem_fs_show_field(c, "event");
 	if (ep->pid)
 		tsem_fs_show_key(c, ",", "pid", "%u", ep->pid);
 	tsem_fs_show_key(c, ",", "process", "%s", ep->comm);
-	tsem_fs_show_key(c, ",", "filename", "%s", file ? file : "none");
 	tsem_fs_show_key(c, ",", "type", "%s", tsem_names[ep->event]);
 	tsem_fs_show_key(c, "}, ", "task_id", "%*phN", tsem_digestsize(),
 			 ep->task_id);
@@ -222,9 +221,7 @@ static void show_file(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, ",", "uid", "%u", ep->file.uid);
 	tsem_fs_show_key(c, ",", "gid", "%u", ep->file.gid);
 	tsem_fs_show_key(c, ",", "mode", "0%o", ep->file.mode);
-	tsem_fs_show_key(c, ",", "name_length", "%u", ep->file.name_length);
-	tsem_fs_show_key(c, ",", "name", "%*phN", tsem_digestsize(),
-			 ep->file.name);
+	tsem_fs_show_key(c, ",", "path", "%s", ep->pathname);
 	tsem_fs_show_key(c, ",", "s_magic", "0x%0x", ep->file.s_magic);
 	tsem_fs_show_key(c, ",", "s_id", "%s", ep->file.s_id);
 	tsem_fs_show_key(c, ",", "s_uuid", "%*phN", sizeof(ep->file.s_uuid),
@@ -237,7 +234,7 @@ static void show_mmap(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_mmap_file_args *args = &ep->CELL.mmap_file;
 
-	show_event(c, ep, args->file ? ep->pathname : NULL);
+	show_event(c, ep);
 
 	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "type", "%u", args->file == NULL);
@@ -256,7 +253,7 @@ static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_socket_create_args *args = &ep->CELL.socket_create;
 
-	show_event(c, ep, NULL);
+	show_event(c, ep);
 
 	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "family", "%u", args->family);
@@ -271,7 +268,7 @@ static void show_socket(struct seq_file *c, struct tsem_event *ep)
 	struct sockaddr_in6 *ipv6;
 	struct tsem_socket_connect_args *scp = &ep->CELL.socket_connect;
 
-	show_event(c, ep, NULL);
+	show_event(c, ep);
 
 	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "family", "%u", scp->family);
@@ -302,7 +299,7 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_socket_accept_args *sap = &ep->CELL.socket_accept;
 
-	show_event(c, ep, NULL);
+	show_event(c, ep);
 
 	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "family", "%u", sap->family);
@@ -329,7 +326,7 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
 
-	show_event(c, ep, NULL);
+	show_event(c, ep);
 
 	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "cross", "%u", args->cross_model);
@@ -340,7 +337,7 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
 {
-	show_event(c, ep, NULL);
+	show_event(c, ep);
 
 	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, "}", "type", "%s",
@@ -773,7 +770,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 {
 	switch (ep->event) {
 	case TSEM_FILE_OPEN:
-		show_event(c, ep, ep->pathname);
+		show_event(c, ep);
 		show_file(c, ep);
 		break;
 	case TSEM_MMAP_FILE:
