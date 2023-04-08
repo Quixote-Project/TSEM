@@ -204,6 +204,7 @@ struct tsem_socket_connect_args {
 	union {
 		struct sockaddr_in ipv4;
 		struct sockaddr_in6 ipv6;
+		char path[UNIX_PATH_MAX + 1];
 		u8 mapping[HASH_MAX_DIGESTSIZE];
 	} u;
 };
@@ -215,6 +216,7 @@ struct tsem_socket_accept_args {
 	__be32 ipv4;
 	struct in6_addr ipv6;
 	struct unix_sock *af_unix;
+	char path[UNIX_PATH_MAX + 1];
 	u8 mapping[HASH_MAX_DIGESTSIZE];
 };
 

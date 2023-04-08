@@ -328,9 +328,7 @@ static int get_socket_accept(struct tsem_event *ep)
 {
 	int size, retn = 0;
 	u8 *p;
-	struct crypto_shash *tfm = NULL;
 	struct tsem_socket_accept_args *sap = &ep->CELL.socket_accept;
-	SHASH_DESC_ON_STACK(shash, tfm);
 
 	if (sap->family == AF_INET || sap->family == AF_INET6)
 		return retn;
@@ -341,26 +339,12 @@ static int get_socket_accept(struct tsem_event *ep)
 		return retn;
 	}
 
-	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(tfm)) {
-		retn = PTR_ERR(tfm);
-		tfm = NULL;
-		goto done;
-	}
-
-	shash->tfm = tfm;
-	retn = crypto_shash_init(shash);
-	if (retn)
-		goto done;
-
+	memset(sap->path, '\0', sizeof(sap->path));
 	p = sap->af_unix->addr->name->sun_path;
 	size = sap->af_unix->addr->len -
 		offsetof(struct sockaddr_un, sun_path);
-	size = strnlen(p, size);
-	retn = crypto_shash_digest(shash, p, size, sap->mapping);
+	strncpy(sap->path, p, size);
 
- done:
-	crypto_free_shash(tfm);
 	return retn;
 }
 
@@ -383,19 +367,9 @@ static int get_socket_connect(struct tsem_socket_connect_args *scp)
 	if (retn)
 		goto done;
 
-	switch (scp->family) {
-	case AF_UNIX:
-		p = (u8 *) scp->addr->sa_data;
-		size = scp->addr_len - offsetof(struct sockaddr_un, sun_path);
-		size = strnlen(p, size);
-		retn = crypto_shash_digest(shash, p, size, scp->u.mapping);
-		break;
-	default:
-		p = (u8 *) scp->addr->sa_data;
-		size = scp->addr_len - offsetof(struct sockaddr, sa_data);
-		retn = crypto_shash_digest(shash, p, size, scp->u.mapping);
-		break;
-	}
+	p = (u8 *) scp->addr->sa_data;
+	size = scp->addr_len - offsetof(struct sockaddr, sa_data);
+	retn = crypto_shash_digest(shash, p, size, scp->u.mapping);
 
  done:
 	crypto_free_shash(tfm);
@@ -405,7 +379,7 @@ static int get_socket_connect(struct tsem_socket_connect_args *scp)
 static int get_socket_cell(struct tsem_event *ep)
 
 {
-	int retn = 0;
+	int size, retn = 0;
 	struct tsem_socket_connect_args *scp = &ep->CELL.socket_connect;
 
 	scp->family = scp->addr->sa_family;
@@ -416,6 +390,11 @@ static int get_socket_cell(struct tsem_event *ep)
 		break;
 	case AF_INET6:
 		memcpy(&scp->u.ipv6, scp->addr, sizeof(scp->u.ipv6));
+		break;
+	case AF_UNIX:
+		memset(scp->u.path, '\0', sizeof(scp->u.path));
+		size = scp->addr_len - offsetof(struct sockaddr_un, sun_path);
+		strncpy(scp->u.path, scp->addr->sa_data, size);
 		break;
 	default:
 		retn = get_socket_connect(scp);

@@ -257,6 +257,14 @@ static int get_cell_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 				goto done;
 			break;
 
+		case AF_UNIX:
+			p = scp->u.path;
+			size = strlen(scp->u.path);
+			retn = crypto_shash_finup(shash, p, size, mapping);
+			if (retn)
+				goto done;
+			break;
+
 		default:
 			p = (u8 *) scp->u.mapping;
 			size = tsem_digestsize();
@@ -298,6 +306,14 @@ static int get_cell_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 		case AF_INET6:
 			p = (u8 *) sap->ipv6.in6_u.u6_addr8;
 			size = sizeof(sap->ipv6.in6_u.u6_addr8);
+			retn = crypto_shash_finup(shash, p, size, mapping);
+			if (retn)
+				goto done;
+			break;
+
+		case AF_UNIX:
+			p = sap->path;
+			size = strlen(sap->path);
 			retn = crypto_shash_finup(shash, p, size, mapping);
 			if (retn)
 				goto done;

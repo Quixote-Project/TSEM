@@ -288,6 +288,9 @@ static void show_socket(struct seq_file *c, struct tsem_event *ep)
 			 (int) sizeof(ipv6->sin6_addr.in6_u.u6_addr8),
 			 ipv6->sin6_addr.in6_u.u6_addr8);
 		break;
+	case AF_UNIX:
+		tsem_fs_show_key(c, "}", "addr", "%s", scp->u.path);
+		break;
 	default:
 		tsem_fs_show_key(c, "}", "addr", "%*phN", tsem_digestsize(),
 				 scp->u.mapping);
@@ -314,6 +317,9 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 		tsem_fs_show_key(c, "}", "addr", "%*phN",
 			 (int) sizeof(sap->ipv6.in6_u.u6_addr8),
 			 sap->ipv6.in6_u.u6_addr8);
+		break;
+	case AF_UNIX:
+		tsem_fs_show_key(c, "}", "addr", "%s", sap->path);
 		break;
 	default:
 		tsem_fs_show_key(c, "}", "addr", "%*phN", tsem_digestsize(),
