@@ -114,15 +114,21 @@ u8 *tsem_trust_aggregate(void)
 int tsem_trust_add_event(u8 *coefficient)
 {
 	int amt, bank;
+	unsigned int digestsize;
 
 	if (!tpm)
 		return 0;
 
+	digestsize = tsem_digestsize();
+
 	for (bank = 0; bank < tpm->nr_allocated_banks; bank++) {
-		if (tpm->allocated_banks[bank].digest_size < WP256_DIGEST_SIZE)
-			amt = tpm->allocated_banks[bank].digest_size;
+		if (tpm->allocated_banks[bank].digest_size > digestsize) {
+			amt = digestsize;
+			memset(digests[bank].digest, '\0',
+			       tpm->allocated_banks[bank].digest_size);
+		}
 		else
-			amt = WP256_DIGEST_SIZE;
+			amt = tpm->allocated_banks[bank].digest_size;
 		memcpy(digests[bank].digest, coefficient, amt);
 	}
 
