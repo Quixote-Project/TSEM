@@ -1345,6 +1345,9 @@ static int tsem_key_alloc(struct key *key, const struct cred *cred,
 		return return_trapped_task(TSEM_KEY_ALLOC, msg);
 	}
 
+	if (unlikely(!tsem_ready))
+		return 0;
+
 	return model_generic_event(TSEM_KEY_ALLOC);
 }
 
@@ -1502,6 +1505,9 @@ static int tsem_inode_mknod(struct inode *dir, struct dentry *dentry,
 		return return_trapped_task(TSEM_INODE_MKNOD, msg);
 	}
 
+	if (unlikely(!tsem_ready))
+		return 0;
+
 	return model_generic_event(TSEM_INODE_MKNOD);
 }
 
@@ -1519,6 +1525,9 @@ static int tsem_inode_setattr(struct dentry *dentry, struct iattr *attr)
 		return return_trapped_task(TSEM_INODE_SETATTR, msg);
 	}
 
+	if (unlikely(!tsem_ready))
+		return 0;
+
 	return model_generic_event(TSEM_INODE_SETATTR);
 }
 
@@ -1531,6 +1540,9 @@ static int tsem_inode_getattr(const struct path *path)
 			  path->dentry->d_name.name);
 		return return_trapped_task(TSEM_INODE_GETATTR, msg);
 	}
+
+	if (unlikely(!tsem_ready))
+		return 0;
 
 	return model_generic_event(TSEM_INODE_GETATTR);
 }
@@ -1862,7 +1874,7 @@ static int __init set_ready(void)
 	return retn;
 }
 
-fs_initcall(set_ready);
+late_initcall(set_ready);
 
 /**
  * tesm_init() - Register Trusted Security Event Modeling LSM.

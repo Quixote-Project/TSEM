@@ -11,23 +11,91 @@
 
 #include "tsem.h"
 
-static u8 hardware_aggregate[HASH_MAX_DIGESTSIZE];
+static u8 zero_aggregate[HASH_MAX_DIGESTSIZE];
 
 static struct tpm_chip *tpm;
 
 static struct tpm_digest *digests;
 
+struct hardware_aggregate {
+	struct list_head list;
+	char *name;
+	u8 value[HASH_MAX_DIGESTSIZE];
+};
 
-void __init generate_aggregate(struct crypto_shash *tfm)
+DEFINE_MUTEX(hardware_aggregate_mutex);
+LIST_HEAD(hardware_aggregate_list);
+
+static struct hardware_aggregate *find_aggregate(void)
 {
-	int retn = 0, lp;
+	struct hardware_aggregate *aggregate;
+
+	list_for_each_entry(aggregate, &hardware_aggregate_list, list) {
+		if (!strcmp(aggregate->name, tsem_digest()))
+			goto done;
+	}
+	aggregate = NULL;
+
+ done:
+	return aggregate;
+}
+
+static struct hardware_aggregate *add_aggregate(u8 *new_aggregate)
+{
+	struct hardware_aggregate *aggregate;
+
+	aggregate = kzalloc(sizeof(*aggregate), GFP_KERNEL);
+	if (!aggregate)
+		return NULL;
+
+	aggregate->name = kstrdup(tsem_digest(), GFP_KERNEL);
+	if (!aggregate->name) {
+		kfree(aggregate);
+		return NULL;
+	}
+	memcpy(aggregate->value, new_aggregate, tsem_digestsize());
+
+	list_add(&aggregate->list, &hardware_aggregate_list);
+
+	return aggregate;
+}
+
+/**
+ * tsem_trust_aggregate() - Return a pointer to the hardware aggregate.
+ *
+ * This function returns a pointer to the hardware aggregate encoded
+ * with the hash function for the current modeling domain.
+ *
+ * Return: A pointer is returned to the hardware aggregate value that
+ *	   has been cached.
+ */
+u8 *tsem_trust_aggregate(void)
+{
+	u8 aggregate[HASH_MAX_DIGESTSIZE], *retn = zero_aggregate;
+	u16 size;
+	unsigned int lp;
 	struct tpm_digest pcr;
-	u8 digest[HASH_MAX_DIGESTSIZE];
+	struct crypto_shash *tfm = NULL;
+	struct hardware_aggregate *hw_aggregate;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
+	if (!tpm)
+		return retn;
+
+	mutex_lock(&hardware_aggregate_mutex);
+
+	hw_aggregate = find_aggregate();
+	if (hw_aggregate) {
+		retn = hw_aggregate->value;
+		goto done;
+	}
+
+	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
+	if (!tfm)
+		goto done;
+
 	shash->tfm = tfm;
-	retn = crypto_shash_init(shash);
-	if (retn)
+	if (crypto_shash_init(shash))
 		goto done;
 
 	if (tpm_is_tpm2(tpm))
@@ -36,67 +104,32 @@ void __init generate_aggregate(struct crypto_shash *tfm)
 		pcr.alg_id = TPM_ALG_SHA1;
 	memset(pcr.digest, '\0', TPM_MAX_DIGEST_SIZE);
 
+	for (lp = 0; lp < tpm->nr_allocated_banks; lp++) {
+		if (pcr.alg_id == tpm->allocated_banks[lp].alg_id) {
+			size = tpm->allocated_banks[lp].digest_size;
+			break;
+		}
+	}
+
 	for (lp = 0; lp < 8; ++lp) {
-		retn = tpm_pcr_read(tpm, lp, &pcr);
-		if (retn)
+		if (tpm_pcr_read(tpm, lp, &pcr))
 			goto done;
-		memcpy(digest, pcr.digest, sizeof(digest));
-		retn = crypto_shash_update(shash, digest,
-					   crypto_shash_digestsize(tfm));
-		if (retn)
+		if (crypto_shash_update(shash, pcr.digest, size))
 			goto done;
 	}
-	if (!retn)
-		retn = crypto_shash_final(shash, hardware_aggregate);
+	if (!crypto_shash_final(shash, aggregate)) {
+		hw_aggregate = add_aggregate(aggregate);
+		if (hw_aggregate)
+			retn = hw_aggregate->value;
+	}
 
  done:
-	if (retn)
-		pr_info("Unable to generate platform aggregate\n");
-}
+	mutex_unlock(&hardware_aggregate_mutex);
 
-static int __init trust_init(void)
-{
-	int retn = -EINVAL, lp;
-	struct crypto_shash *tfm = NULL;
-
-	tpm = tpm_default_chip();
-	if (!tpm) {
-		pr_info("No TPM found for event modeling.\n");
-		return retn;
-	}
-
-	digests = kcalloc(tpm->nr_allocated_banks, sizeof(*digests), GFP_NOFS);
-	if (!digests) {
-		tpm = NULL;
-		return retn;
-	}
-	for (lp = 0; lp < tpm->nr_allocated_banks; lp++)
-		digests[lp].alg_id = tpm->allocated_banks[lp].alg_id;
-
-	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(tfm))
-		retn = PTR_ERR(tfm);
-	else {
-		generate_aggregate(tfm);
-		retn = 0;
-	}
-	crypto_free_shash(tfm);
+	if (retn == zero_aggregate)
+		pr_warn("tsem: Error generating platform aggregate\n");
 
 	return retn;
-}
-
-/**
- * tsem_trust_aggregate() - Return a pointer to the hardware aggregate.
- *
- * This function returns a pointer to the hardware aggregate that
- * is computed at system boot time.
- *
- * Return: A byte pointer is returned to the statically scoped array
- *	   that contains the hardware aggregate value.
- */
-u8 *tsem_trust_aggregate(void)
-{
-	return hardware_aggregate;
 }
 
 /**
@@ -126,8 +159,7 @@ int tsem_trust_add_event(u8 *coefficient)
 			amt = digestsize;
 			memset(digests[bank].digest, '\0',
 			       tpm->allocated_banks[bank].digest_size);
-		}
-		else
+		} else
 			amt = tpm->allocated_banks[bank].digest_size;
 		memcpy(digests[bank].digest, coefficient, amt);
 	}
@@ -136,4 +168,23 @@ int tsem_trust_add_event(u8 *coefficient)
 			      digests);
 }
 
-late_initcall(trust_init);
+static int __init trust_init(void)
+{
+	int retn = -EINVAL, lp;
+
+	tpm = tpm_default_chip();
+	if (!tpm)
+		return retn;
+
+	digests = kcalloc(tpm->nr_allocated_banks, sizeof(*digests), GFP_NOFS);
+	if (!digests) {
+		tpm = NULL;
+		return retn;
+	}
+	for (lp = 0; lp < tpm->nr_allocated_banks; lp++)
+		digests[lp].alg_id = tpm->allocated_banks[lp].alg_id;
+
+	return retn;
+}
+
+device_initcall_sync(trust_init);
