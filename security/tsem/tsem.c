@@ -446,8 +446,8 @@ static int tsem_task_alloc(struct task_struct *new, unsigned long flags)
 
 	new_task->trust_status = old_task->trust_status;
 	new_task->context = old_task->context;
-	memcpy(new_task->task_key, old_task->task_key, tsem_digestsize());
-	memcpy(new_task->task_id, old_task->task_id, tsem_digestsize());
+	memcpy(new_task->task_key, old_task->task_key, HASH_MAX_DIGESTSIZE);
+	memcpy(new_task->task_id, old_task->task_id, HASH_MAX_DIGESTSIZE);
 
 	if (new_task->context->id)
 		kref_get(&new_task->context->kref);
@@ -1804,10 +1804,10 @@ static struct security_hook_list tsem_hooks[] __lsm_ro_after_init = {
 static int configure_root_digest(void)
 {
 	int retn = 0;
-	char *digest = NULL, *digestname;
+	char *digest = NULL;
 	u8 zero_digest[HASH_MAX_DIGESTSIZE];
 	unsigned int digestsize;
-	struct crypto_shash *tfm = NULL;
+	struct crypto_shash *tfm;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
 	if (default_hash_function && crypto_has_shash(default_hash_function,
@@ -1821,30 +1821,27 @@ static int configure_root_digest(void)
 	if (!digest)
 		digest = "sha256";
 
+	tsem_context(current)->digestname = kstrdup(digest, GFP_KERNEL);
+	if (!tsem_context(current)->digestname)
+		return -ENOMEM;
+
 	tfm = crypto_alloc_shash(digest, 0, 0);
 	if (IS_ERR(tfm))
 		return PTR_ERR(tfm);
-
-	digestsize = crypto_shash_digestsize(tfm);
 
 	shash->tfm = tfm;
 	retn = crypto_shash_digest(shash, NULL, 0, zero_digest);
 	if (retn)
 		goto done;
 
-	digestname = kstrdup(digest, GFP_KERNEL);
-	if (!digestname) {
-		retn = -ENOMEM;
-		root_context.digest = "sha256";
-		root_context.digestsize = SHA256_DIGEST_SIZE;
-	} else {
-		root_context.digest = digestname;
-		root_context.digestsize = digestsize;
-		memcpy(root_context.zero_digest, zero_digest, digestsize);
-	}
+	tsem_context(current)->tfm = tfm;
+	memcpy(root_context.zero_digest, zero_digest, digestsize);
 
  done:
-	crypto_free_shash(tfm);
+	if (retn) {
+		kfree(tsem_context(current)->digestname);
+		crypto_free_shash(tfm);
+	}
 
 	return retn;
 }
@@ -1886,7 +1883,7 @@ late_initcall(set_ready);
  * the tsem_event description structures is also initialized.
  *
  * Return: If the TSEM LSM is successfully initialized a value of zero
- *	   is returned.  A non-zero error code is returned if
+v *	   is returned.  A non-zero error code is returned if
  *	   initialization fails.  Currently the only failure mode can
  *	   come from the initialization of the tsem_event cache.
  */

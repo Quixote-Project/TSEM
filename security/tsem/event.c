@@ -70,12 +70,12 @@ static char *get_path(struct file *file)
 	return path;
 }
 
-static int add_file_name(struct crypto_shash *tfm, struct tsem_event *ep)
+static int add_file_name(struct tsem_event *ep)
 {
 	int retn;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
-	shash->tfm = tfm;
+	shash->tfm = tsem_digest();
 	retn = crypto_shash_init(shash);
 	if (retn)
 		goto done;
@@ -93,7 +93,7 @@ static struct tsem_inode_digest *find_digest(struct tsem_inode *tsip)
 	struct tsem_inode_digest *digest;
 
 	list_for_each_entry(digest, &tsip->digest_list, list) {
-		if (!strcmp(digest->name, tsem_digest()))
+		if (!strcmp(digest->name, tsem_context(current)->digestname))
 			return digest;
 	}
 
@@ -109,7 +109,7 @@ static struct tsem_inode_digest *add_digest(struct tsem_TMA_context *ctx,
 	if (!digest)
 		return NULL;
 
-	digest->name = kstrdup(ctx->digest, GFP_KERNEL);
+	digest->name = kstrdup(tsem_context(current)->digestname, GFP_KERNEL);
 	if (!digest->name)
 		return NULL;
 
@@ -145,8 +145,8 @@ static struct file *open_event_file(struct file *file, unsigned int *status)
 	return file;
 }
 
-static int get_file_digest(struct crypto_shash *tfm, struct file *file,
-			   struct inode *inode, loff_t size, u8 *digest)
+static int get_file_digest(struct file *file, struct inode *inode,
+			   loff_t size, u8 *digest)
 {
 	u8 *bufr;
 	int retn = 0, rsize;
@@ -155,7 +155,7 @@ static int get_file_digest(struct crypto_shash *tfm, struct file *file,
 	struct file *read_file;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
-	shash->tfm = tfm;
+	shash->tfm = tsem_digest();
 	retn = crypto_shash_init(shash);
 	if (retn)
 		goto done;
@@ -208,7 +208,6 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 	loff_t size;
 	struct inode *inode;
 	struct tsem_inode *tsip;
-	struct crypto_shash *tfm;
 	struct tsem_inode_digest *digest;
 	struct tsem_TMA_context *ctx = tsem_context(current);
 
@@ -242,14 +241,8 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 		goto done;
 	}
 
-	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(tfm)) {
-		retn = PTR_ERR(tfm);
-		goto done;
-	}
-
 	tsip->status = TSEM_INODE_COLLECTING;
-	retn = get_file_digest(tfm, file, inode, size, measurement);
+	retn = get_file_digest(file, inode, size, measurement);
 	if (retn) {
 		tsip->status = 0;
 		goto done;
@@ -276,7 +269,6 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 static int get_file_cell(struct file *file, struct tsem_event *ep)
 {
 	int retn = 1;
-	struct crypto_shash *tfm;
 	struct inode *inode;
 	struct user_namespace *ns;
 
@@ -289,13 +281,7 @@ static int get_file_cell(struct file *file, struct tsem_event *ep)
 		goto done;
 	}
 
-	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(tfm)) {
-		retn = PTR_ERR(tfm);
-		goto done;
-	}
-
-	retn = add_file_name(tfm, ep);
+	retn = add_file_name(ep);
 	if (retn)
 		goto done;
 
@@ -320,7 +306,6 @@ static int get_file_cell(struct file *file, struct tsem_event *ep)
 
  done:
 	inode_unlock(inode);
-	crypto_free_shash(tfm);
 	return retn;
 }
 
@@ -352,17 +337,9 @@ static int get_socket_connect(struct tsem_socket_connect_args *scp)
 {
 	u8 *p;
 	int retn, size;
-	struct crypto_shash *tfm = NULL;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
-	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(tfm)) {
-		retn = PTR_ERR(tfm);
-		tfm = NULL;
-		goto done;
-	}
-
-	shash->tfm = tfm;
+	shash->tfm = tsem_digest();
 	retn = crypto_shash_init(shash);
 	if (retn)
 		goto done;
@@ -372,7 +349,6 @@ static int get_socket_connect(struct tsem_socket_connect_args *scp)
 	retn = crypto_shash_digest(shash, p, size, scp->u.mapping);
 
  done:
-	crypto_free_shash(tfm);
 	return retn;
 }
 

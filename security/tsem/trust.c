@@ -31,7 +31,8 @@ static struct hardware_aggregate *find_aggregate(void)
 	struct hardware_aggregate *aggregate;
 
 	list_for_each_entry(aggregate, &hardware_aggregate_list, list) {
-		if (!strcmp(aggregate->name, tsem_digest()))
+		if (!strcmp(aggregate->name,
+			    tsem_context(current)->digestname))
 			goto done;
 	}
 	aggregate = NULL;
@@ -48,7 +49,8 @@ static struct hardware_aggregate *add_aggregate(u8 *new_aggregate)
 	if (!aggregate)
 		return NULL;
 
-	aggregate->name = kstrdup(tsem_digest(), GFP_KERNEL);
+	aggregate->name = kstrdup(tsem_context(current)->digestname,
+				  GFP_KERNEL);
 	if (!aggregate->name) {
 		kfree(aggregate);
 		return NULL;
@@ -75,7 +77,6 @@ u8 *tsem_trust_aggregate(void)
 	u16 size;
 	unsigned int lp;
 	struct tpm_digest pcr;
-	struct crypto_shash *tfm = NULL;
 	struct hardware_aggregate *hw_aggregate;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
@@ -90,11 +91,7 @@ u8 *tsem_trust_aggregate(void)
 		goto done;
 	}
 
-	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (!tfm)
-		goto done;
-
-	shash->tfm = tfm;
+	shash->tfm = tsem_digest();
 	if (crypto_shash_init(shash))
 		goto done;
 

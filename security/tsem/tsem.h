@@ -301,15 +301,15 @@ struct tsem_TMA_work {
 };
 
 struct tsem_TMA_context {
-	struct kref kref;
-	struct tsem_TMA_work work;
 	u64 id;
 	bool sealed;
 	bool use_current_ns;
-	const char *digest;
-	unsigned int digestsize;
-	u8 zero_digest[HASH_MAX_DIGESTSIZE];
 	enum tsem_action_type actions[TSEM_EVENT_CNT];
+	char *digestname;
+	u8 zero_digest[HASH_MAX_DIGESTSIZE];
+	struct kref kref;
+	struct tsem_TMA_work work;
+	struct crypto_shash *tfm;
 	struct tsem_model *model;
 	struct tsem_external *external;
 };
@@ -385,8 +385,7 @@ extern int tsem_model_add_aggregate(void);
 extern void tsem_model_compute_state(void);
 
 extern void tsem_ns_put(struct tsem_TMA_context *ctx);
-extern int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key,
-			     const char *keystr, u8 *key);
+extern int tsem_ns_event_key(u8 *task_key, const char *keystr, u8 *key);
 extern int tsem_ns_create(const enum tsem_control_type type,
 			  const char *digest, const enum tsem_ns_config ns,
 			  const char *key);
@@ -439,12 +438,12 @@ static inline struct tsem_inode *tsem_inode(struct inode *inode)
 	return inode->i_security + tsem_blob_sizes.lbs_inode;
 }
 
-static inline const char *tsem_digest(void)
+static inline struct crypto_shash *tsem_digest(void)
 {
-	return tsem_context(current)->digest;
+	return tsem_context(current)->tfm;
 }
 
 static inline unsigned int tsem_digestsize(void)
 {
-	return tsem_context(current)->digestsize;
+	return crypto_shash_digestsize(tsem_digest());
 }

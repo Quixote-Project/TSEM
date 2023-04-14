@@ -9,14 +9,13 @@
 
 #include "tsem.h"
 
-static int get_COE_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
-			   u8 *mapping)
+static int get_COE_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
 	u8 *p;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
-	shash->tfm = tfm;
+	shash->tfm = tsem_digest();
 	retn = crypto_shash_init(shash);
 	if (retn)
 		goto done;
@@ -77,8 +76,7 @@ static int get_COE_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 	return retn;
 }
 
-static int get_cell_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
-			    u8 *mapping)
+static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
 	u8 *p;
@@ -89,7 +87,7 @@ static int get_cell_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 	struct tsem_socket_accept_args *sap = &ep->CELL.socket_accept;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
-	shash->tfm = tfm;
+	shash->tfm = tsem_digest();
 	retn = crypto_shash_init(shash);
 	if (retn)
 		goto done;
@@ -371,15 +369,14 @@ static int get_cell_mapping(struct crypto_shash *tfm, struct tsem_event *ep,
 	return retn;
 }
 
-static int get_event_mapping(struct crypto_shash *tfm, int event, u8 *task_id,
-			     u8 *COE_id, u8 *cell_id, u8 *mapping)
+static int get_event_mapping(int event, u8 *task_id, u8 *COE_id, u8 *cell_id,
+			     u8 *mapping)
 {
 	int retn = 0;
 	u32 event_id = (u32) event;
 	SHASH_DESC_ON_STACK(shash, tfm);
-	unsigned int digest_size = crypto_shash_digestsize(tfm);
 
-	shash->tfm = tfm;
+	shash->tfm = tsem_digest();
 	retn = crypto_shash_init(shash);
 	if (retn)
 		goto done;
@@ -389,14 +386,14 @@ static int get_event_mapping(struct crypto_shash *tfm, int event, u8 *task_id,
 	if (retn)
 		goto done;
 	if (task_id) {
-		retn = crypto_shash_update(shash, task_id, digest_size);
+		retn = crypto_shash_update(shash, task_id, tsem_digestsize());
 		if (retn)
 			goto done;
 	}
-	retn = crypto_shash_update(shash, COE_id, digest_size);
+	retn = crypto_shash_update(shash, COE_id, tsem_digestsize());
 	if (retn)
 		goto done;
-	retn = crypto_shash_finup(shash, cell_id, digest_size, mapping);
+	retn = crypto_shash_finup(shash, cell_id, tsem_digestsize(), mapping);
 
  done:
 	return retn;
@@ -408,27 +405,18 @@ static int map_event(enum tsem_event_type event, struct tsem_event *ep,
 	int retn;
 	u8 COE_mapping[HASH_MAX_DIGESTSIZE];
 	u8 cell_mapping[HASH_MAX_DIGESTSIZE];
-	struct crypto_shash *tfm = NULL;
 
-	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(tfm)) {
-		retn = PTR_ERR(tfm);
-		tfm = NULL;
-		goto done;
-	}
-
-	retn = get_COE_mapping(tfm, ep, COE_mapping);
+	retn = get_COE_mapping(ep, COE_mapping);
 	if (retn)
 		goto done;
 
-	retn = get_cell_mapping(tfm, ep, cell_mapping);
+	retn = get_cell_mapping(ep, cell_mapping);
 	if (retn)
 		goto done;
 
-	retn = get_event_mapping(tfm, event, task_id, COE_mapping,
-				 cell_mapping, event_mapping);
+	retn = get_event_mapping(event, task_id, COE_mapping, cell_mapping,
+				 event_mapping);
  done:
-	crypto_free_shash(tfm);
 	return retn;
 }
 

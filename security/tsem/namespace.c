@@ -41,19 +41,10 @@ static int generate_task_key(const char *keystr, u64 context_id,
 	bool found_key, valid_key = false;
 	unsigned int size;
 	struct context_key *entry;
-	struct crypto_shash *tfm = NULL;
-
-	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(tfm)) {
-		retn = PTR_ERR(tfm);
-		tfm = NULL;
-		goto done;
-	}
-	size = crypto_shash_digestsize(tfm);
 
 	while (!valid_key) {
-		get_random_bytes(t_ttask->task_key, size);
-		retn = tsem_ns_event_key(tfm, t_ttask->task_key, keystr,
+		get_random_bytes(t_ttask->task_key, tsem_digestsize());
+		retn = tsem_ns_event_key(t_ttask->task_key, keystr,
 					 p_ttask->task_key);
 		if (retn)
 			goto done;
@@ -82,7 +73,6 @@ static int generate_task_key(const char *keystr, u64 context_id,
 	retn = 0;
 
  done:
-	crypto_free_shash(tfm);
 	return retn;
 }
 
@@ -146,7 +136,8 @@ static void wq_put(struct work_struct *work)
 	} else
 		tsem_model_free(ctx);
 
-	kfree(ctx->digest);
+	crypto_free_shash(ctx->tfm);
+	kfree(ctx->digestname);
 	kfree(ctx);
 }
 
@@ -179,8 +170,6 @@ void tsem_ns_put(struct tsem_TMA_context *ctx)
 
 /**
  * tsem_ns_event_key() - Generate TMA authentication key.
- * @tfm: A pointer to the structure defining the hash function to
- *	 be used for generating the authentication key.
  * @task_key: A pointer to the buffer containing the task identification
  *	      key that was randomly generated for the modeling domain.
  * @keystr: A pointer to the buffer containing the TMA authentication key
@@ -192,59 +181,52 @@ void tsem_ns_put(struct tsem_TMA_context *ctx)
  * Return: This function returns 0 if the key was properly generated
  *	   or a negative value if a hashing error occurred.
  */
-int tsem_ns_event_key(struct crypto_shash *tfm, u8 *task_key,
-		      const char *keystr, u8 *key)
+int tsem_ns_event_key(u8 *task_key, const char *keystr, u8 *key)
 {
 	bool retn;
 	u8 tma_key[HASH_MAX_DIGESTSIZE];
-	unsigned int size = crypto_shash_digestsize(tfm);
 	SHASH_DESC_ON_STACK(shash, tfm);
 
-	retn = hex2bin(tma_key, keystr, size);
+	retn = hex2bin(tma_key, keystr, tsem_digestsize());
 	if (retn)
 		return -EINVAL;
 
-	shash->tfm = tfm;
+	shash->tfm = tsem_digest();
 	retn = crypto_shash_init(shash);
 	if (retn)
 		return retn;
 
-	retn = crypto_shash_update(shash, task_key, size);
+	retn = crypto_shash_update(shash, task_key, tsem_digestsize());
 	if (retn)
 		return retn;
 
-	return crypto_shash_finup(shash, tma_key, size, key);
+	return crypto_shash_finup(shash, tma_key, tsem_digestsize(), key);
 }
 
-static int configure_digest(const char *digest, char **name,
-			    unsigned int *digestsize, u8 *zero_digest)
+static struct crypto_shash *configure_digest(const char *digest,
+					     char **digestname,
+					     u8 *zero_digest)
 {
-	int retn = 0;
-	char *digestname;
-	struct crypto_shash *tfm = NULL;
+	int retn;
+	struct crypto_shash *tfm;
 	SHASH_DESC_ON_STACK(shash, tfm);
+
+	*digestname = kstrdup(digest, GFP_KERNEL);
+	if (!*digestname)
+		return ERR_PTR(-ENOMEM);
 
 	tfm = crypto_alloc_shash(digest, 0, 0);
 	if (IS_ERR(tfm))
-		return PTR_ERR(tfm);
-
-	*digestsize = crypto_shash_digestsize(tfm);
+		return tfm;
 
 	shash->tfm = tfm;
 	retn = crypto_shash_digest(shash, NULL, 0, zero_digest);
-	if (retn)
-		goto done;
+	if (retn) {
+		crypto_free_shash(tfm);
+		tfm = NULL;
+	}
 
-	digestname = kstrdup(digest, GFP_KERNEL);
-	if (!digestname)
-		retn = -ENOMEM;
-	else
-		*name = digestname;
-
- done:
-	crypto_free_shash(tfm);
-
-	return retn;
+	return tfm;
 }
 
 /**
@@ -276,18 +258,18 @@ static int configure_digest(const char *digest, char **name,
 int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 		   const enum tsem_ns_config ns, const char *key)
 {
-	int retn = -ENOMEM;
-	char *use_digest;
 	u8 zero_digest[HASH_MAX_DIGESTSIZE];
-	unsigned int digestsize;
+	char *use_digest;
+	int retn = -ENOMEM;
 	u64 new_id;
 	struct tsem_task *tsk = tsem_task(current);
 	struct tsem_TMA_context *new_ctx;
 	struct tsem_model *model = NULL;
+	struct crypto_shash *tfm;
 
-	retn = configure_digest(digest, &use_digest, &digestsize, zero_digest);
-	if (retn)
-		return retn;
+	tfm = configure_digest(digest, &use_digest, zero_digest);
+	if (IS_ERR(tfm))
+		return PTR_ERR(tfm);
 
 	new_ctx = kzalloc(sizeof(*new_ctx), GFP_KERNEL);
 	if (!new_ctx)
@@ -314,9 +296,10 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 	kref_init(&new_ctx->kref);
 
 	new_ctx->id = new_id;
-	new_ctx->digest = use_digest;
-	new_ctx->digestsize = digestsize;
-	memcpy(new_ctx->zero_digest, zero_digest, digestsize);
+	new_ctx->tfm = tfm;
+	new_ctx->digestname = use_digest;
+	memcpy(new_ctx->zero_digest, zero_digest,
+	       crypto_shash_digestsize(tfm));
 
 	if (ns == TSEM_NS_CURRENT)
 		new_ctx->use_current_ns = true;
@@ -327,6 +310,8 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
  done:
 	if (retn) {
 		remove_task_key(new_id);
+		crypto_free_shash(tfm);
+		kfree(use_digest);
 		kfree(new_ctx->external);
 		kfree(new_ctx);
 		kfree(model);

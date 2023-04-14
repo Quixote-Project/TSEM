@@ -61,18 +61,12 @@ static int control_COE(unsigned long cmd, pid_t pid, char *keystr)
 	struct task_struct *COE;
 	struct tsem_task *task;
 	struct tsem_task *tma = tsem_task(current);
-	struct crypto_shash *tfm = NULL;
-
-	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(tfm))
-		return PTR_ERR(tfm);
 
 	rcu_read_lock();
 	COE = find_task_by_vpid(pid);
 	if (COE != NULL) {
 		task = tsem_task(COE);
-		retn = tsem_ns_event_key(tfm, task->task_key, keystr,
-					 event_key);
+		retn = tsem_ns_event_key(task->task_key, keystr, event_key);
 		if (retn)
 			goto done;
 
@@ -100,7 +94,6 @@ static int control_COE(unsigned long cmd, pid_t pid, char *keystr)
 	if (wakeup)
 		wake_up_process(COE);
 
-	crypto_free_shash(tfm);
 	return retn;
 }
 

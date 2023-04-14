@@ -21,23 +21,23 @@ struct pseudonym {
 	u8 mapping[HASH_MAX_DIGESTSIZE];
 };
 
-static int generate_pseudonym(struct crypto_shash *tfm, struct tsem_file *ep,
-			      u8 *pseudonym)
+static int generate_pseudonym(struct tsem_file *ep, u8 *pseudonym)
 {
 	int retn = 0;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
-	shash->tfm = tfm;
-
+	shash->tfm = tsem_digest();
 	retn = crypto_shash_init(shash);
 	if (retn)
 		goto done;
+
 	retn = crypto_shash_update(shash, (u8 *) &ep->name_length,
 				   sizeof(ep->name_length));
 	if (retn)
 		goto done;
-	retn = crypto_shash_finup(shash, ep->name,
-				  crypto_shash_digestsize(tfm), pseudonym);
+
+	retn = crypto_shash_finup(shash, ep->name, tsem_digestsize(),
+				  pseudonym);
  done:
 	return retn;
 }
@@ -137,28 +137,28 @@ static int add_forensic_point(struct tsem_event *ep)
 	return 0;
 }
 
-static int get_host_measurement(struct crypto_shash *tfm, u8 *id,
-				size_t idlength, u8 *digest)
+static int get_host_measurement(u8 *id, u8 *digest)
 {
 	int retn;
-	SHASH_DESC_ON_STACK(shash, tfm);
 	struct tsem_model *model = tsem_model(current);
+	SHASH_DESC_ON_STACK(shash, tfm);
 
-	shash->tfm = tfm;
+	shash->tfm = tsem_digest();
 	retn = crypto_shash_init(shash);
 	if (retn)
 		goto done;
-	retn = crypto_shash_update(shash, model->base,
-				   crypto_shash_digestsize(tfm));
+
+	retn = crypto_shash_update(shash, model->base, tsem_digestsize());
 	if (retn)
 		goto done;
-	retn = crypto_shash_finup(shash, id, idlength, digest);
+
+	retn = crypto_shash_finup(shash, id, tsem_digestsize(), digest);
 
  done:
 	return retn;
 }
 
-static int update_events_measurement(struct crypto_shash *tfm, u8 *id)
+static int update_events_measurement(u8 *id)
 {
 	int retn;
 	u8 digest[HASH_MAX_DIGESTSIZE];
@@ -166,11 +166,11 @@ static int update_events_measurement(struct crypto_shash *tfm, u8 *id)
 	struct tsem_model *model = ctx->model;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
-	retn = get_host_measurement(tfm, id, tsem_digestsize(), digest);
+	retn = get_host_measurement(id, digest);
 	if (retn)
 		goto done;
 
-	shash->tfm = tfm;
+	shash->tfm = tsem_digest();
 	retn = crypto_shash_init(shash);
 	if (retn)
 		goto done;
@@ -220,28 +220,27 @@ static int state_sort(void *priv, const struct list_head *a,
 void tsem_model_compute_state(void)
 {
 	u8 state[HASH_MAX_DIGESTSIZE];
+	int retn;
 	struct state_point *entry;
 	struct tsem_model *model = tsem_model(current);
-	struct crypto_shash *sha256 = NULL;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
-	sha256 = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(sha256))
-		return;
-
-	shash->tfm = sha256;
-	if (crypto_shash_init(shash))
+	shash->tfm = tsem_digest();
+	retn = crypto_shash_init(shash);
+	if (retn)
 		goto done;
 
 	memset(state, '\0', sizeof(state));
-	if (crypto_shash_update(shash, state, tsem_digestsize()))
+	retn = crypto_shash_update(shash, state, tsem_digestsize());
+	if (retn)
 		goto done;
 
-	if (get_host_measurement(sha256, tsem_trust_aggregate(),
-				 tsem_digestsize(), state))
+	retn = get_host_measurement(tsem_trust_aggregate(), state);
+	if (retn)
 		goto done;
 
-	if (crypto_shash_finup(shash, state, tsem_digestsize(), state))
+	retn = crypto_shash_finup(shash, state, tsem_digestsize(), state);
+	if (retn)
 		goto done;
 
 	mutex_lock(&model->point_mutex);
@@ -249,25 +248,24 @@ void tsem_model_compute_state(void)
 
 	memcpy(model->state, state, tsem_digestsize());
 	list_for_each_entry(entry, &model->state_list, list) {
-		if (get_host_measurement(sha256, entry->point->point,
-					 tsem_digestsize(), state))
-			goto unlock_done;
+		if (get_host_measurement(entry->point->point, state))
+			goto done_unlock;
 
 		if (crypto_shash_init(shash))
-			goto unlock_done;
+			goto done_unlock;
 		if (crypto_shash_update(shash, model->state,
 					tsem_digestsize()))
-			goto unlock_done;
+			goto done_unlock;
 		if (crypto_shash_finup(shash, state, tsem_digestsize(),
 				       model->state))
-			goto unlock_done;
+			goto done_unlock;
 	}
 
- unlock_done:
+ done_unlock:
 	mutex_unlock(&model->point_mutex);
  done:
-	if (sha256)
-		crypto_free_shash(sha256);
+	if (retn)
+		memset(model->state, '\0', tsem_digestsize());
 }
 
 /**
@@ -290,15 +288,9 @@ int tsem_model_has_pseudonym(struct tsem_inode *tsip, struct tsem_file *ep)
 	int retn = 0;
 	u8 pseudo_mapping[HASH_MAX_DIGESTSIZE];
 	struct tsem_model *model = tsem_model(current);
-	struct crypto_shash *tfm;
 	struct pseudonym *entry;
 
-	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(tfm)) {
-		retn = PTR_ERR(tfm);
-		goto done;
-	}
-	retn = generate_pseudonym(tfm, ep, pseudo_mapping);
+	retn = generate_pseudonym(ep, pseudo_mapping);
 	if (retn)
 		goto done;
 
@@ -314,7 +306,6 @@ int tsem_model_has_pseudonym(struct tsem_inode *tsip, struct tsem_file *ep)
 
  done:
 	mutex_unlock(&model->pseudonym_mutex);
-	crypto_free_shash(tfm);
 	return retn;
 }
 
@@ -336,13 +327,8 @@ int tsem_model_has_pseudonym(struct tsem_inode *tsip, struct tsem_file *ep)
 int tsem_model_event(struct tsem_event *ep)
 {
 	int retn;
-	struct crypto_shash *sha256 = NULL;
 	struct tsem_task *task = tsem_task(current);
 	struct tsem_TMA_context *ctx = task->context;
-
-	sha256 = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(sha256))
-		return PTR_ERR(sha256);
 
 	retn = have_point(ep->mapping);
 	if (retn) {
@@ -351,7 +337,7 @@ int tsem_model_event(struct tsem_event *ep)
 		return 0;
 	}
 
-	retn = update_events_measurement(sha256, ep->mapping);
+	retn = update_events_measurement(ep->mapping);
 	if (retn)
 		goto done;
 
@@ -369,7 +355,6 @@ int tsem_model_event(struct tsem_event *ep)
 		retn = -EPERM;
 
  done:
-	crypto_free_shash(sha256);
 	return retn;
 }
 
@@ -388,7 +373,6 @@ int tsem_model_event(struct tsem_event *ep)
 int tsem_model_load_point(u8 *point)
 {
 	ssize_t retn = 0;
-	struct crypto_shash *tfmsha256 = NULL;
 	struct tsem_TMA_context *ctx = tsem_context(current);
 
 	if (have_point(point))
@@ -398,25 +382,16 @@ int tsem_model_load_point(u8 *point)
 		goto done;
 	}
 
-	tfmsha256 = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(tfmsha256)) {
-		retn = PTR_ERR(tfmsha256);
-		goto done;
-	}
-
 	if (!ctx->model->have_aggregate) {
 		ctx->model->have_aggregate = true;
-		retn = update_events_measurement(tfmsha256,
-						 tsem_trust_aggregate());
+		retn = update_events_measurement(tsem_trust_aggregate());
 		if (retn)
 			goto done;
 	}
 
-	retn = update_events_measurement(tfmsha256, point);
+	retn = update_events_measurement(point);
 
 done:
-	if (tfmsha256)
-		crypto_free_shash(tfmsha256);
 	return retn;
 
 }
@@ -478,16 +453,7 @@ void tsem_model_load_base(u8 *mapping)
  */
 int tsem_model_add_aggregate(void)
 {
-	int retn;
-	struct crypto_shash *tfm = NULL;
-
-	tfm = crypto_alloc_shash(tsem_digest(), 0, 0);
-	if (IS_ERR(tfm))
-		return PTR_ERR(tfm);
-
-	retn = update_events_measurement(tfm, tsem_trust_aggregate());
-	crypto_free_shash(tfm);
-	return retn;
+	return update_events_measurement(tsem_trust_aggregate());
 }
 
 /**
