@@ -1883,7 +1883,7 @@ late_initcall(set_ready);
  * the tsem_event description structures is also initialized.
  *
  * Return: If the TSEM LSM is successfully initialized a value of zero
-v *	   is returned.  A non-zero error code is returned if
+ *	   is returned.  A non-zero error code is returned if
  *	   initialization fails.  Currently the only failure mode can
  *	   come from the initialization of the tsem_event cache.
  */
