@@ -11,11 +11,6 @@
 
 #include "tsem.h"
 
-struct state_point {
-	struct list_head list;
-	struct tsem_event_point *point;
-};
-
 struct pseudonym {
 	struct list_head list;
 	u8 mapping[HASH_MAX_DIGESTSIZE];
@@ -68,8 +63,7 @@ static int have_point(u8 *point)
 static int add_event_point(u8 *point, bool valid)
 {
 	int retn = 1;
-	struct tsem_event_point *entry;
-	struct state_point *state;
+	struct tsem_event_point *entry, *state;
 	struct tsem_model *model = tsem_model(current);
 
 	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
@@ -79,15 +73,16 @@ static int add_event_point(u8 *point, bool valid)
 	state = kzalloc(sizeof(*state), GFP_KERNEL);
 	if (!state)
 		goto done;
-	state->point = entry;
+
+	entry->valid = valid;
+	memcpy(entry->point, point, tsem_digestsize());
+	memcpy(state->point, point, tsem_digestsize());
 
 	mutex_lock(&model->point_mutex);
-	memcpy(entry->point, point, tsem_digestsize());
-	entry->valid = valid;
 	list_add_tail(&entry->list, &model->point_list);
 	list_add_tail(&state->list, &model->state_list);
-	++model->point_count;
 	mutex_unlock(&model->point_mutex);
+
 	retn = 0;
 
  done:
@@ -186,16 +181,18 @@ static int state_sort(void *priv, const struct list_head *a,
 		      const struct list_head *b)
 {
 	unsigned int lp, retn;
-	struct state_point *ap = container_of(a, struct state_point, list);
-	struct state_point *bp = container_of(b, struct state_point, list);
+	struct tsem_event_point *ap, *bp;
+
+	ap = container_of(a, struct tsem_event_point, list);
+	bp = container_of(b, struct tsem_event_point, list);
 
 	for (lp = 0; lp < tsem_digestsize() - 1; ++lp) {
-		if (ap->point->point[lp] == bp->point->point[lp])
+		if (ap->point[lp] == bp->point[lp])
 			continue;
-		retn = ap->point->point[lp] > bp->point->point[lp];
+		retn = ap->point[lp] > bp->point[lp];
 		goto done;
 	}
-	retn = ap->point->point[lp] > bp->point->point[lp];
+	retn = ap->point[lp] > bp->point[lp];
 
  done:
 	return retn;
@@ -204,14 +201,13 @@ static int state_sort(void *priv, const struct list_head *a,
 /**
  * tesm_model_compute_state() - Calculate a security model state value.
  *
- * This value is used to trigger the computation of the security
- * state description value for a modeling domain.
+ * The function generates the state value of the current modeling domain.
  */
 void tsem_model_compute_state(void)
 {
 	u8 state[HASH_MAX_DIGESTSIZE];
 	int retn;
-	struct state_point *entry;
+	struct tsem_event_point *entry;
 	struct tsem_model *model = tsem_model(current);
 	SHASH_DESC_ON_STACK(shash, tfm);
 
@@ -238,7 +234,7 @@ void tsem_model_compute_state(void)
 
 	memcpy(model->state, state, tsem_digestsize());
 	list_for_each_entry(entry, &model->state_list, list) {
-		if (get_host_measurement(entry->point->point, state))
+		if (get_host_measurement(entry->point, state))
 			goto done_unlock;
 
 		if (crypto_shash_init(shash))
@@ -492,22 +488,19 @@ struct tsem_model *tsem_model_allocate(void)
  */
 void tsem_model_free(struct tsem_TMA_context *ctx)
 {
-	struct tsem_event_point *centry, *tmp_centry;
-	struct state_point *state, *tmp_state;
+	struct tsem_event_point *ep, *tmp_ep;
 	struct tsem_event *tentry, *tmp_tentry;
 	struct pseudonym *sentry, *tmp_sentry;
 	struct tsem_model *model = ctx->model;
 
-	list_for_each_entry_safe(centry, tmp_centry, &model->point_list,
-				 list) {
-		list_del(&centry->list);
-		kfree(centry);
+	list_for_each_entry_safe(ep, tmp_ep, &model->point_list, list) {
+		list_del(&ep->list);
+		kfree(ep);
 	}
 
-	list_for_each_entry_safe(state, tmp_state, &model->state_list,
-				 list) {
-		list_del(&state->list);
-		kfree(state);
+	list_for_each_entry_safe(ep, tmp_ep, &model->state_list, list) {
+		list_del(&ep->list);
+		kfree(ep);
 	}
 
 	list_for_each_entry_safe(sentry, tmp_sentry, &model->pseudonym_list,

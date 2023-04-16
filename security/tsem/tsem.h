@@ -265,7 +265,6 @@ struct tsem_model {
 	u8 measurement[HASH_MAX_DIGESTSIZE];
 	u8 state[HASH_MAX_DIGESTSIZE];
 
-	unsigned int point_count;
 	struct mutex point_mutex;
 	struct list_head point_list;
 	struct list_head state_list;
