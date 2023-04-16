@@ -96,18 +96,13 @@ static int add_event_point(u8 *point, bool valid)
 
 static int add_trajectory_point(struct tsem_event *ep)
 {
-	struct tsem_trajectory *entry;
 	struct tsem_model *model = tsem_model(current);
 
-	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
-	if (!entry)
-		return -ENOMEM;
-	entry->ep = ep;
-	tsem_event_get(ep);
 	ep->pid = 0;
+	tsem_event_get(ep);
 
 	mutex_lock(&model->trajectory_mutex);
-	list_add_tail(&entry->list, &model->trajectory_list);
+	list_add_tail(&ep->list, &model->trajectory_list);
 	++model->trajectory_count;
 	mutex_unlock(&model->trajectory_mutex);
 
@@ -116,21 +111,16 @@ static int add_trajectory_point(struct tsem_event *ep)
 
 static int add_forensic_point(struct tsem_event *ep)
 {
-	struct tsem_trajectory *entry;
 	struct tsem_model *model = tsem_model(current);
 
 	if (model->forensics_count == model->max_forensics_count)
 		return -E2BIG;
 
-	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
-	if (!entry)
-		return -ENOMEM;
-	entry->ep = ep;
-	tsem_event_get(ep);
 	ep->pid = 0;
+	tsem_event_get(ep);
 
 	mutex_lock(&model->forensics_mutex);
-	list_add_tail(&entry->list, &model->forensics_list);
+	list_add_tail(&ep->list, &model->forensics_list);
 	++model->forensics_count;
 	mutex_unlock(&model->forensics_mutex);
 
@@ -505,7 +495,7 @@ void tsem_model_free(struct tsem_TMA_context *ctx)
 	unsigned int cnt;
 	struct tsem_event_point *centry, *tmp_centry;
 	struct state_point *state, *tmp_state;
-	struct tsem_trajectory *tentry, *tmp_tentry;
+	struct tsem_event *tentry, *tmp_tentry;
 	struct pseudonym *sentry, *tmp_sentry;
 	struct tsem_model *model = ctx->model;
 
@@ -529,7 +519,7 @@ void tsem_model_free(struct tsem_TMA_context *ctx)
 	list_for_each_entry_safe(tentry, tmp_tentry, &model->trajectory_list,
 				 list) {
 		list_del(&tentry->list);
-		tsem_event_put(tentry->ep);
+		tsem_event_put(tentry);
 		++cnt;
 	}
 
@@ -546,7 +536,7 @@ void tsem_model_free(struct tsem_TMA_context *ctx)
 		list_for_each_entry_safe(tentry, tmp_tentry,
 					 &model->forensics_list, list) {
 			list_del(&tentry->list);
-			tsem_event_put(tentry->ep);
+			tsem_event_put(tentry);
 			++cnt;
 		}
 	}

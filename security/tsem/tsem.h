@@ -227,6 +227,7 @@ struct tsem_task_kill_args {
 };
 
 struct tsem_event {
+	struct list_head list;
 	struct kref kref;
 	enum tsem_event_type event;
 	pid_t pid;
@@ -256,11 +257,6 @@ struct tsem_event_parameters {
 		struct tsem_socket_accept_args *socket_accept;
 		struct tsem_task_kill_args *task_kill;
 	} u;
-};
-
-struct tsem_trajectory {
-	struct list_head list;
-	struct tsem_event *ep;
 };
 
 struct tsem_model {

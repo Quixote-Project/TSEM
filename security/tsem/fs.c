@@ -367,11 +367,9 @@ static void trajectory_stop(struct seq_file *c, void *pos)
 
 static int trajectory_show(struct seq_file *c, void *trajectory)
 {
-	struct tsem_trajectory *pt;
 	struct tsem_event *ep;
 
-	pt = list_entry(trajectory, struct tsem_trajectory, list);
-	ep = pt->ep;
+	ep = list_entry(trajectory, struct tsem_event, list);
 
 	seq_putc(c, '{');
 	tsem_fs_show_trajectory(c, ep);
@@ -579,11 +577,9 @@ static void forensics_stop(struct seq_file *c, void *pos)
 
 static int forensics_show(struct seq_file *c, void *event)
 {
-	struct tsem_trajectory *pt;
 	struct tsem_event *ep;
 
-	pt = list_entry(event, struct tsem_trajectory, list);
-	ep = pt->ep;
+	ep = list_entry(event, struct tsem_event, list);
 
 	seq_putc(c, '{');
 	tsem_fs_show_trajectory(c, ep);
