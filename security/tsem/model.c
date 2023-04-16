@@ -492,52 +492,41 @@ struct tsem_model *tsem_model_allocate(void)
  */
 void tsem_model_free(struct tsem_TMA_context *ctx)
 {
-	unsigned int cnt;
 	struct tsem_event_point *centry, *tmp_centry;
 	struct state_point *state, *tmp_state;
 	struct tsem_event *tentry, *tmp_tentry;
 	struct pseudonym *sentry, *tmp_sentry;
 	struct tsem_model *model = ctx->model;
 
-	cnt = 0;
 	list_for_each_entry_safe(centry, tmp_centry, &model->point_list,
 				 list) {
 		list_del(&centry->list);
 		kfree(centry);
-		++cnt;
 	}
 
-	cnt = 0;
 	list_for_each_entry_safe(state, tmp_state, &model->state_list,
 				 list) {
 		list_del(&state->list);
 		kfree(state);
-		++cnt;
 	}
 
-	cnt = 0;
-	list_for_each_entry_safe(tentry, tmp_tentry, &model->trajectory_list,
-				 list) {
-		list_del(&tentry->list);
-		tsem_event_put(tentry);
-		++cnt;
-	}
-
-	cnt = 0;
 	list_for_each_entry_safe(sentry, tmp_sentry, &model->pseudonym_list,
 				 list) {
 		list_del(&sentry->list);
 		kfree(sentry);
-		++cnt;
+	}
+
+	list_for_each_entry_safe(tentry, tmp_tentry, &model->trajectory_list,
+				 list) {
+		list_del(&tentry->list);
+		tsem_event_put(tentry);
 	}
 
 	if (ctx->sealed) {
-		cnt = 0;
 		list_for_each_entry_safe(tentry, tmp_tentry,
 					 &model->forensics_list, list) {
 			list_del(&tentry->list);
 			tsem_event_put(tentry);
-			++cnt;
 		}
 	}
 
