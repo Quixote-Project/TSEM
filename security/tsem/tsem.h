@@ -266,17 +266,17 @@ struct tsem_model {
 	u8 measurement[HASH_MAX_DIGESTSIZE];
 	u8 state[HASH_MAX_DIGESTSIZE];
 
-	spinlock_t point_mutex;
+	spinlock_t point_lock;
 	struct list_head point_list;
 	struct list_head state_list;
 
+	spinlock_t trajectory_lock;
 	unsigned int trajectory_count;
-	spinlock_t trajectory_mutex;
 	struct list_head trajectory_list;
 
+	spinlock_t forensics_lock;
 	unsigned int forensics_count;
 	unsigned int max_forensics_count;
-	struct mutex forensics_mutex;
 	struct list_head forensics_list;
 
 	struct mutex pseudonym_mutex;

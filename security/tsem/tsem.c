@@ -27,15 +27,15 @@ enum tsem_action_type tsem_root_actions[TSEM_EVENT_CNT] = {
 };
 
 static struct tsem_model root_model = {
-	.point_mutex = __SPIN_LOCK_INITIALIZER(root_model.point_mutex),
+	.point_lock = __SPIN_LOCK_INITIALIZER(root_model.point_lock),
 	.point_list = LIST_HEAD_INIT(root_model.point_list),
 	.state_list = LIST_HEAD_INIT(root_model.state_list),
 
-	.trajectory_mutex = __SPIN_LOCK_INITIALIZER(root_model.trajectory_mutex),
+	.trajectory_lock = __SPIN_LOCK_INITIALIZER(root_model.trajectory_lock),
 	.trajectory_list = LIST_HEAD_INIT(root_model.trajectory_list),
 
 	.max_forensics_count = 100,
-	.forensics_mutex = __MUTEX_INITIALIZER(root_model.forensics_mutex),
+	.forensics_lock = __SPIN_LOCK_INITIALIZER(root_model.forensics_lock),
 	.forensics_list = LIST_HEAD_INIT(root_model.forensics_list),
 
 	.pseudonym_mutex = __MUTEX_INITIALIZER(root_model.pseudonym_mutex),

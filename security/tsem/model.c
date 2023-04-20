@@ -105,7 +105,7 @@ static int have_point(u8 *point)
 	struct tsem_TMA_context *ctx = tsem_context(current);
 	struct tsem_model *model = ctx->model;
 
-	spin_lock(&model->point_mutex);
+	spin_lock(&model->point_lock);
 	list_for_each_entry(entry, &model->point_list, list) {
 		if (memcmp(entry->point, point, tsem_digestsize()) == 0) {
 			if (entry->valid)
@@ -117,7 +117,7 @@ static int have_point(u8 *point)
 	}
 
  done:
-	spin_unlock(&model->point_mutex);
+	spin_unlock(&model->point_lock);
 	return retn;
 }
 
@@ -139,10 +139,10 @@ static int add_event_point(u8 *point, bool valid, bool locked)
 	memcpy(entry->point, point, tsem_digestsize());
 	memcpy(state->point, point, tsem_digestsize());
 
-	spin_lock(&model->point_mutex);
+	spin_lock(&model->point_lock);
 	list_add_tail(&entry->list, &model->point_list);
 	list_add_tail(&state->list, &model->state_list);
-	spin_unlock(&model->point_mutex);
+	spin_unlock(&model->point_lock);
 
 	retn = 0;
 
@@ -157,10 +157,10 @@ static int add_trajectory_point(struct tsem_event *ep)
 	ep->pid = 0;
 	tsem_event_get(ep);
 
-	spin_lock(&model->trajectory_mutex);
+	spin_lock(&model->trajectory_lock);
 	list_add_tail(&ep->list, &model->trajectory_list);
 	++model->trajectory_count;
-	spin_unlock(&model->trajectory_mutex);
+	spin_unlock(&model->trajectory_lock);
 
 	return 0;
 }
@@ -175,10 +175,10 @@ static int add_forensic_point(struct tsem_event *ep)
 	ep->pid = 0;
 	tsem_event_get(ep);
 
-	mutex_lock(&model->forensics_mutex);
+	spin_lock(&model->forensics_lock);
 	list_add_tail(&ep->list, &model->forensics_list);
 	++model->forensics_count;
-	mutex_unlock(&model->forensics_mutex);
+	spin_unlock(&model->forensics_lock);
 
 	return 0;
 }
@@ -290,7 +290,7 @@ void tsem_model_compute_state(void)
 	if (retn)
 		goto done;
 
-	spin_lock(&model->point_mutex);
+	spin_lock(&model->point_lock);
 	list_sort(NULL, &model->state_list, state_sort);
 
 	memcpy(model->state, state, tsem_digestsize());
@@ -309,7 +309,7 @@ void tsem_model_compute_state(void)
 	}
 
  done_unlock:
-	spin_unlock(&model->point_mutex);
+	spin_unlock(&model->point_lock);
  done:
 	if (retn)
 		memset(model->state, '\0', tsem_digestsize());
@@ -522,15 +522,15 @@ struct tsem_model *tsem_model_allocate(void)
 	if (!model)
 		return NULL;
 
-	spin_lock_init(&model->point_mutex);
+	spin_lock_init(&model->point_lock);
 	INIT_LIST_HEAD(&model->point_list);
 	INIT_LIST_HEAD(&model->state_list);
 
-	spin_lock_init(&model->trajectory_mutex);
+	spin_lock_init(&model->trajectory_lock);
 	INIT_LIST_HEAD(&model->trajectory_list);
 
 	model->max_forensics_count = 100;
-	mutex_init(&model->forensics_mutex);
+	spin_lock_init(&model->forensics_lock);
 	INIT_LIST_HEAD(&model->forensics_list);
 
 	mutex_init(&model->pseudonym_mutex);
