@@ -304,6 +304,9 @@ static int model_generic_event_handle_locked(enum tsem_event_type event)
 	struct tsem_event *ep;
 	struct tsem_event_parameters params;
 
+	if (tsem_context(current)->external)
+		return 0;
+
 	if (!tsem_context(current)->id && no_root_modeling)
 		return 0;
 
@@ -516,9 +519,6 @@ static int tsem_task_kill(struct task_struct *target,
 		return -EPERM;
 	if (sig == SIGURG)
 		return 0;
-
-	if (src_ctx->external)
-		return model_generic_event_locked(TSEM_TASK_KILL);
 
 	return model_generic_event_handle_locked(TSEM_TASK_KILL);
 }
