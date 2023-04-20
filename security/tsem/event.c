@@ -42,7 +42,13 @@ static void refill_event_magazine(struct work_struct *work)
 	spin_lock(&magazine_lock);
 	event_magazine[rp->index] = ep;
 	clear_bit(rp->index, magazine_index);
+
+	/*
+	 * The following memory barrier is used to cause the magazine
+	 * index to be visible after the refill of the cache slot.
+	 */
 	smp_mb__after_atomic();
+
 	spin_unlock(&magazine_lock);
 }
 
@@ -60,6 +66,12 @@ static struct tsem_event *alloc_event(bool locked)
 		ep = event_magazine[index];
 		refill_work[index].index = index;
 		set_bit(index, magazine_index);
+
+		/*
+		 * Similar to the issue noted in the refill_event_magazine()
+		 * function, this barrier is used to cause the consumption
+		 * of the cache entry to become visible.
+		 */
 		smp_mb__after_atomic();
 	}
 	spin_unlock(&magazine_lock);
