@@ -7,6 +7,8 @@
  * Implements the an kernel modeling agent.
  */
 
+#define MAGAZINE_SIZE 10
+
 #include <linux/list_sort.h>
 
 #include "tsem.h"
@@ -15,6 +17,65 @@ struct pseudonym {
 	struct list_head list;
 	u8 mapping[HASH_MAX_DIGESTSIZE];
 };
+
+static struct kmem_cache *point_cachep;
+
+static DEFINE_SPINLOCK(magazine_lock);
+static DECLARE_BITMAP(magazine_index, MAGAZINE_SIZE);
+
+static struct tsem_event_point *point_magazine[MAGAZINE_SIZE];
+
+static struct refill {
+	struct work_struct work;
+	unsigned int index;
+} refill_work[MAGAZINE_SIZE];
+
+static void refill_point_magazine(struct work_struct *work)
+{
+	struct refill *rp;
+	struct tsem_event_point *tep;
+
+	rp = container_of(work, struct refill, work);
+
+	tep = kmem_cache_zalloc(point_cachep, GFP_KERNEL);
+	if (!tep) {
+		pr_warn("tsem: Cannot refill event point magazine.\n");
+		return;
+	}
+
+	spin_lock(&magazine_lock);
+	point_magazine[rp->index] = tep;
+	clear_bit(rp->index, magazine_index);
+	smp_mb__after_atomic();
+	spin_unlock(&magazine_lock);
+}
+
+static struct tsem_event_point *alloc_event_point(bool locked)
+{
+	unsigned int index;
+	struct tsem_event_point *tep = NULL;
+
+	if (!locked)
+		return kmem_cache_zalloc(point_cachep, GFP_KERNEL);
+
+	spin_lock(&magazine_lock);
+	index = find_first_zero_bit(magazine_index, MAGAZINE_SIZE);
+	if (index < MAGAZINE_SIZE) {
+		tep = point_magazine[index];
+		refill_work[index].index = index;
+		set_bit(index, magazine_index);
+		smp_mb__after_atomic();
+	}
+	spin_unlock(&magazine_lock);
+
+	if (!tep)
+		return NULL;
+
+	INIT_WORK(&refill_work[index].work, refill_point_magazine);
+	queue_work(system_wq, &refill_work[index].work);
+
+	return tep;
+}
 
 static int generate_pseudonym(struct tsem_file *ep, u8 *pseudonym)
 {
@@ -44,7 +105,7 @@ static int have_point(u8 *point)
 	struct tsem_TMA_context *ctx = tsem_context(current);
 	struct tsem_model *model = ctx->model;
 
-	mutex_lock(&model->point_mutex);
+	spin_lock(&model->point_mutex);
 	list_for_each_entry(entry, &model->point_list, list) {
 		if (memcmp(entry->point, point, tsem_digestsize()) == 0) {
 			if (entry->valid)
@@ -56,21 +117,21 @@ static int have_point(u8 *point)
 	}
 
  done:
-	mutex_unlock(&model->point_mutex);
+	spin_unlock(&model->point_mutex);
 	return retn;
 }
 
-static int add_event_point(u8 *point, bool valid)
+static int add_event_point(u8 *point, bool valid, bool locked)
 {
 	int retn = 1;
 	struct tsem_event_point *entry, *state;
 	struct tsem_model *model = tsem_model(current);
 
-	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
+	entry = alloc_event_point(locked);
 	if (!entry)
 		goto done;
 
-	state = kzalloc(sizeof(*state), GFP_KERNEL);
+	state = alloc_event_point(locked);
 	if (!state)
 		goto done;
 
@@ -78,10 +139,10 @@ static int add_event_point(u8 *point, bool valid)
 	memcpy(entry->point, point, tsem_digestsize());
 	memcpy(state->point, point, tsem_digestsize());
 
-	mutex_lock(&model->point_mutex);
+	spin_lock(&model->point_mutex);
 	list_add_tail(&entry->list, &model->point_list);
 	list_add_tail(&state->list, &model->state_list);
-	mutex_unlock(&model->point_mutex);
+	spin_unlock(&model->point_mutex);
 
 	retn = 0;
 
@@ -96,10 +157,10 @@ static int add_trajectory_point(struct tsem_event *ep)
 	ep->pid = 0;
 	tsem_event_get(ep);
 
-	mutex_lock(&model->trajectory_mutex);
+	spin_lock(&model->trajectory_mutex);
 	list_add_tail(&ep->list, &model->trajectory_list);
 	++model->trajectory_count;
-	mutex_unlock(&model->trajectory_mutex);
+	spin_unlock(&model->trajectory_mutex);
 
 	return 0;
 }
@@ -229,7 +290,7 @@ void tsem_model_compute_state(void)
 	if (retn)
 		goto done;
 
-	mutex_lock(&model->point_mutex);
+	spin_lock(&model->point_mutex);
 	list_sort(NULL, &model->state_list, state_sort);
 
 	memcpy(model->state, state, tsem_digestsize());
@@ -248,7 +309,7 @@ void tsem_model_compute_state(void)
 	}
 
  done_unlock:
-	mutex_unlock(&model->point_mutex);
+	spin_unlock(&model->point_mutex);
  done:
 	if (retn)
 		memset(model->state, '\0', tsem_digestsize());
@@ -328,12 +389,12 @@ int tsem_model_event(struct tsem_event *ep)
 		goto done;
 
 	if (ctx->sealed) {
-		retn = add_event_point(ep->mapping, false);
+		retn = add_event_point(ep->mapping, false, ep->locked);
 		if (!retn)
 			retn = add_forensic_point(ep);
 		task->trust_status = TSEM_TASK_UNTRUSTED;
 	} else {
-		retn = add_event_point(ep->mapping, true);
+		retn = add_event_point(ep->mapping, true, ep->locked);
 		if (!retn)
 			retn = add_trajectory_point(ep);
 	}
@@ -363,7 +424,7 @@ int tsem_model_load_point(u8 *point)
 
 	if (have_point(point))
 		goto done;
-	if (add_event_point(point, true)) {
+	if (add_event_point(point, true, false)) {
 		retn = -ENOMEM;
 		goto done;
 	}
@@ -461,11 +522,11 @@ struct tsem_model *tsem_model_allocate(void)
 	if (!model)
 		return NULL;
 
-	mutex_init(&model->point_mutex);
+	spin_lock_init(&model->point_mutex);
 	INIT_LIST_HEAD(&model->point_list);
 	INIT_LIST_HEAD(&model->state_list);
 
-	mutex_init(&model->trajectory_mutex);
+	spin_lock_init(&model->trajectory_mutex);
 	INIT_LIST_HEAD(&model->trajectory_list);
 
 	model->max_forensics_count = 100;
@@ -495,12 +556,12 @@ void tsem_model_free(struct tsem_TMA_context *ctx)
 
 	list_for_each_entry_safe(ep, tmp_ep, &model->point_list, list) {
 		list_del(&ep->list);
-		kfree(ep);
+		kmem_cache_free(point_cachep, ep);
 	}
 
 	list_for_each_entry_safe(ep, tmp_ep, &model->state_list, list) {
 		list_del(&ep->list);
-		kfree(ep);
+		kmem_cache_free(point_cachep, ep);
 	}
 
 	list_for_each_entry_safe(sentry, tmp_sentry, &model->pseudonym_list,
@@ -524,4 +585,34 @@ void tsem_model_free(struct tsem_TMA_context *ctx)
 	}
 
 	kfree(model);
+}
+
+/**
+ * tsem model_init() - Initialize the TSEM event point cache.
+ *
+ * This function is called by the primary TSEM initialization function
+ * and sets up the cache that will be used to dispense tsem_event_point
+ * structures for security events that are called in atomic context.
+ *
+ * Return: This function returns a value of zero on success and a negative
+ *	   error code on failure.
+ */
+int __init tsem_model_cache_init(void)
+{
+	int cnt;
+
+	point_cachep = kmem_cache_create("tsem_event_point_cache",
+					 sizeof(struct tsem_event_point), 0,
+					 SLAB_PANIC, 0);
+	if (!point_cachep)
+		return -ENOMEM;
+
+	for (cnt = 0; cnt < MAGAZINE_SIZE; ++cnt) {
+		point_magazine[cnt] = kmem_cache_zalloc(point_cachep,
+							GFP_KERNEL);
+		if (!point_magazine[cnt])
+			return -ENOMEM;
+	}
+
+	return 0;
 }

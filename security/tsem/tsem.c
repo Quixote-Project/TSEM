@@ -27,11 +27,11 @@ enum tsem_action_type tsem_root_actions[TSEM_EVENT_CNT] = {
 };
 
 static struct tsem_model root_model = {
-	.point_mutex = __MUTEX_INITIALIZER(root_model.point_mutex),
+	.point_mutex = __SPIN_LOCK_INITIALIZER(root_model.point_mutex),
 	.point_list = LIST_HEAD_INIT(root_model.point_list),
 	.state_list = LIST_HEAD_INIT(root_model.state_list),
 
-	.trajectory_mutex = __MUTEX_INITIALIZER(root_model.trajectory_mutex),
+	.trajectory_mutex = __SPIN_LOCK_INITIALIZER(root_model.trajectory_mutex),
 	.trajectory_list = LIST_HEAD_INIT(root_model.trajectory_list),
 
 	.max_forensics_count = 100,
@@ -298,6 +298,32 @@ static int model_generic_event_locked(enum tsem_event_type event)
 	return 0;
 }
 
+static int model_generic_event_handle_locked(enum tsem_event_type event)
+{
+	int retn;
+	struct tsem_event *ep;
+	struct tsem_event_parameters params;
+
+	if (!tsem_context(current)->id && no_root_modeling)
+		return 0;
+
+	params.u.event_type = event;
+	ep = tsem_map_event_locked(TSEM_GENERIC_EVENT, &params);
+	if (IS_ERR(ep)) {
+		retn = PTR_ERR(ep);
+		goto done;
+	}
+
+	retn = tsem_model_event(ep);
+	if (retn) {
+		return retn;
+		goto done;
+	}
+
+ done:
+	return event_action(tsem_context(current), ep->event);
+}
+
 static int tsem_file_open(struct file *file)
 {
 	int retn = 0;
@@ -491,7 +517,10 @@ static int tsem_task_kill(struct task_struct *target,
 	if (sig == SIGURG)
 		return 0;
 
-	return model_generic_event_locked(TSEM_TASK_KILL);
+	if (src_ctx->external)
+		return model_generic_event_locked(TSEM_TASK_KILL);
+
+	return model_generic_event_handle_locked(TSEM_TASK_KILL);
 }
 
 static int tsem_ptrace_traceme(struct task_struct *parent)
@@ -1904,6 +1933,10 @@ static int __init tsem_init(void)
 	       sizeof(tsem_root_actions));
 
 	retn = tsem_event_cache_init();
+	if (retn)
+		return retn;
+
+	retn = tsem_model_cache_init();
 	if (retn)
 		return retn;
 

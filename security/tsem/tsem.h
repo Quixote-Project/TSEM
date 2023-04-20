@@ -230,6 +230,7 @@ struct tsem_event {
 	struct list_head list;
 	struct kref kref;
 	enum tsem_event_type event;
+	bool locked;
 	pid_t pid;
 	char *pathname;
 	char comm[TASK_COMM_LEN];
@@ -265,12 +266,12 @@ struct tsem_model {
 	u8 measurement[HASH_MAX_DIGESTSIZE];
 	u8 state[HASH_MAX_DIGESTSIZE];
 
-	struct mutex point_mutex;
+	spinlock_t point_mutex;
 	struct list_head point_list;
 	struct list_head state_list;
 
 	unsigned int trajectory_count;
-	struct mutex trajectory_mutex;
+	spinlock_t trajectory_mutex;
 	struct list_head trajectory_list;
 
 	unsigned int forensics_count;
@@ -368,6 +369,7 @@ extern void tsem_fs_show_key(struct seq_file *c, char *term, char *key,
 			     char *fmt, ...);
 extern int tsem_fs_init(void);
 
+extern int tsem_model_cache_init(void);
 extern struct tsem_model *tsem_model_allocate(void);
 extern void tsem_model_free(struct tsem_TMA_context *ctx);
 extern int tsem_model_event(struct tsem_event *ep);
@@ -393,9 +395,12 @@ extern int tsem_export_aggregate(void);
 extern int tsem_map_task(struct file *file, u8 *mapping);
 struct tsem_event *tsem_map_event(enum tsem_event_type event,
 				  struct tsem_event_parameters *param);
+struct tsem_event *tsem_map_event_locked(enum tsem_event_type event,
+					 struct tsem_event_parameters *param);
 
 extern struct tsem_event *tsem_event_allocate(enum tsem_event_type event,
-					struct tsem_event_parameters *params);
+					struct tsem_event_parameters *params,
+					bool locked);
 extern void tsem_event_put(struct tsem_event *ep);
 extern void tsem_event_get(struct tsem_event *ep);
 extern int tsem_event_cache_init(void);

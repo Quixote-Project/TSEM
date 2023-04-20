@@ -440,7 +440,7 @@ int tsem_map_task(struct file *file, u8 *task_id)
 	struct tsem_event_parameters params;
 
 	params.u.file = file;
-	ep = tsem_event_allocate(TSEM_BPRM_SET_CREDS, &params);
+	ep = tsem_event_allocate(TSEM_BPRM_SET_CREDS, &params, false);
 	if (IS_ERR(ep)) {
 		retn = PTR_ERR(ep);
 		ep = NULL;
@@ -458,11 +458,11 @@ int tsem_map_task(struct file *file, u8 *task_id)
 /**
  * tsem_map_event() - Create a security event mapping.
  * @event: The number of the event to be mapped.
- * @file: A pointer to the structure containing the event description
- *	  parameters.
+ * @params: A pointer to the structure containing the event description
+ *	    parameters.
  *
- * This function creates the tsem_event structure that describes
- * a security event.
+ * This function creates a structure to describe a security event
+ * and maps the event into a security state coefficient.
  *
  * Return: On success the function returns a pointer to the tsem_event
  *	   structure that describes the event.  If an error is encountered
@@ -475,7 +475,45 @@ struct tsem_event *tsem_map_event(enum tsem_event_type event,
 	struct tsem_event *ep;
 	struct tsem_task *task = tsem_task(current);
 
-	ep = tsem_event_allocate(event, params);
+	ep = tsem_event_allocate(event, params, false);
+	if (IS_ERR(ep))
+		goto done;
+
+	if (task->context->external)
+		goto done;
+
+	retn = map_event(event, ep, task->task_id, ep->mapping);
+	if (retn) {
+		tsem_event_put(ep);
+		ep = ERR_PTR(retn);
+	}
+
+ done:
+	return ep;
+}
+
+
+/**
+ * tsem_map_event_locked() - Create a security event mapping while atomic.
+ * @event: The number of the event to be mapped.
+ * @params: A pointer to the structure containing the event description
+ *	    parameters.
+ *
+ * This function creates a structure to describe a security event
+ * and maps the event into a security state coefficient.
+ *
+ * Return: On success the function returns a pointer to the tsem_event
+ *	   structure that describes the event.  If an error is encountered
+ *	   an error return value is encoded in the pointer.
+ */
+struct tsem_event *tsem_map_event_locked(enum tsem_event_type event,
+					 struct tsem_event_parameters *params)
+{
+	int retn = 0;
+	struct tsem_event *ep;
+	struct tsem_task *task = tsem_task(current);
+
+	ep = tsem_event_allocate(event, params, true);
 	if (IS_ERR(ep))
 		goto done;
 

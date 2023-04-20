@@ -6,6 +6,7 @@
  *
  * This file manages the data structures used to define a security event.
  */
+#define MAGAZINE_SIZE 10
 
 #include <linux/iversion.h>
 #include <linux/user_namespace.h>
@@ -14,6 +15,63 @@
 #include "../integrity/integrity.h"
 
 static struct kmem_cache *event_cachep;
+
+static DEFINE_SPINLOCK(magazine_lock);
+static DECLARE_BITMAP(magazine_index, MAGAZINE_SIZE);
+
+static struct tsem_event *event_magazine[MAGAZINE_SIZE];
+
+static struct refill {
+	struct work_struct work;
+	unsigned int index;
+} refill_work[MAGAZINE_SIZE];
+
+static void refill_event_magazine(struct work_struct *work)
+{
+	struct refill *rp;
+	struct tsem_event *ep;
+
+	rp = container_of(work, struct refill, work);
+
+	ep = kmem_cache_zalloc(event_cachep, GFP_KERNEL);
+	if (!ep) {
+		pr_warn("tsem: Cannot refill event magazine.\n");
+		return;
+	}
+
+	spin_lock(&magazine_lock);
+	event_magazine[rp->index] = ep;
+	clear_bit(rp->index, magazine_index);
+	smp_mb__after_atomic();
+	spin_unlock(&magazine_lock);
+}
+
+static struct tsem_event *alloc_event(bool locked)
+{
+	unsigned int index;
+	struct tsem_event *ep = NULL;
+
+	if (!locked)
+		return kmem_cache_zalloc(event_cachep, GFP_KERNEL);
+
+	spin_lock(&magazine_lock);
+	index = find_first_zero_bit(magazine_index, MAGAZINE_SIZE);
+	if (index < MAGAZINE_SIZE) {
+		ep = event_magazine[index];
+		refill_work[index].index = index;
+		set_bit(index, magazine_index);
+		smp_mb__after_atomic();
+	}
+	spin_unlock(&magazine_lock);
+
+	if (!ep)
+		return NULL;
+
+	INIT_WORK(&refill_work[index].work, refill_event_magazine);
+	queue_work(system_wq, &refill_work[index].work);
+
+	return ep;
+}
 
 static void get_COE(struct tsem_COE *COE)
 
@@ -394,19 +452,19 @@ static int get_socket_cell(struct tsem_event *ep)
  *	   on failure will have an error return code embedded in it.
  */
 struct tsem_event *tsem_event_allocate(enum tsem_event_type event,
-				       struct tsem_event_parameters *params)
+				       struct tsem_event_parameters *params,
+				       bool locked)
 {
 	int retn = 0;
-	struct tsem_event *ep;
+	struct tsem_event *ep = NULL;
 	struct tsem_task *task = tsem_task(current);
 
-	ep = kmem_cache_zalloc(event_cachep, GFP_KERNEL);
-	if (!ep) {
-		retn = -ENOMEM;
-		goto done;
-	}
+	ep = alloc_event(locked);
+	if (!ep)
+		return ERR_PTR(-ENOMEM);
 
 	ep->event = event;
+	ep->locked = locked;
 	ep->pid = task_pid_nr(current);
 	memcpy(ep->comm, current->comm, sizeof(ep->comm));
 	memcpy(ep->task_id, task->task_id, tsem_digestsize());
@@ -445,9 +503,8 @@ struct tsem_event *tsem_event_allocate(enum tsem_event_type event,
 		break;
 	}
 
- done:
 	if (retn) {
-		kfree(ep);
+		kmem_cache_free(event_cachep, ep);
 		ep = ERR_PTR(retn);
 	} else
 		kref_init(&ep->kref);
@@ -506,10 +563,20 @@ void tsem_event_get(struct tsem_event *ep)
  */
 int __init tsem_event_cache_init(void)
 {
+	int cnt;
+
 	event_cachep = kmem_cache_create("tsem_event_cache",
 					 sizeof(struct tsem_event), 0,
 					 SLAB_PANIC, 0);
 	if (!event_cachep)
 		return -ENOMEM;
+
+	for (cnt = 0; cnt < MAGAZINE_SIZE; ++cnt) {
+		event_magazine[cnt] = kmem_cache_zalloc(event_cachep,
+							GFP_KERNEL);
+		if (!event_magazine[cnt])
+			return -ENOMEM;
+	}
+
 	return 0;
 }
