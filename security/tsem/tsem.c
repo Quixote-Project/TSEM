@@ -295,11 +295,6 @@ static int model_generic_event(enum tsem_event_type event)
 
 static int model_generic_event_locked(enum tsem_event_type event)
 {
-	return 0;
-}
-
-static int model_generic_event_handle_locked(enum tsem_event_type event)
-{
 	int retn;
 	struct tsem_event *ep;
 	struct tsem_event_parameters params;
@@ -520,7 +515,7 @@ static int tsem_task_kill(struct task_struct *target,
 	if (sig == SIGURG)
 		return 0;
 
-	return model_generic_event_handle_locked(TSEM_TASK_KILL);
+	return model_generic_event_locked(TSEM_TASK_KILL);
 }
 
 static int tsem_ptrace_traceme(struct task_struct *parent)
@@ -754,7 +749,8 @@ static int tsem_unix_may_send(struct socket *sock, struct socket *other)
 		return return_trapped_task(TSEM_UNIX_MAY_SEND, msg);
 	}
 
-	return model_generic_event_locked(TSEM_UNIX_MAY_SEND);
+	/* Blocks boot. */
+	return 0;
 }
 
 static int tsem_socket_create(int family, int type, int protocol, int kern)
@@ -1384,6 +1380,9 @@ static int tsem_key_permission(key_ref_t key_ref, const struct cred *cred,
 			       unsigned int perm)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+
+	if (unlikely(!tsem_ready))
+		return 0;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
