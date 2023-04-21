@@ -440,7 +440,7 @@ int tsem_map_task(struct file *file, u8 *task_id)
 	struct tsem_event_parameters params;
 
 	params.u.file = file;
-	ep = tsem_event_allocate(TSEM_BPRM_SET_CREDS, &params, false);
+	ep = tsem_event_init(TSEM_BPRM_SET_CREDS, &params, false);
 	if (IS_ERR(ep)) {
 		retn = PTR_ERR(ep);
 		ep = NULL;
@@ -475,7 +475,7 @@ struct tsem_event *tsem_map_event(enum tsem_event_type event,
 	struct tsem_event *ep;
 	struct tsem_task *task = tsem_task(current);
 
-	ep = tsem_event_allocate(event, params, false);
+	ep = tsem_event_init(event, params, false);
 	if (IS_ERR(ep))
 		goto done;
 
@@ -513,7 +513,7 @@ struct tsem_event *tsem_map_event_locked(enum tsem_event_type event,
 	struct tsem_event *ep;
 	struct tsem_task *task = tsem_task(current);
 
-	ep = tsem_event_allocate(event, params, true);
+	ep = tsem_event_init(event, params, true);
 	if (IS_ERR(ep))
 		goto done;
 

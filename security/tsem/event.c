@@ -52,39 +52,6 @@ static void refill_event_magazine(struct work_struct *work)
 	spin_unlock(&magazine_lock);
 }
 
-static struct tsem_event *alloc_event(bool locked)
-{
-	unsigned int index;
-	struct tsem_event *ep = NULL;
-
-	if (!locked)
-		return kmem_cache_zalloc(event_cachep, GFP_KERNEL);
-
-	spin_lock(&magazine_lock);
-	index = find_first_zero_bit(magazine_index, MAGAZINE_SIZE);
-	if (index < MAGAZINE_SIZE) {
-		ep = event_magazine[index];
-		refill_work[index].index = index;
-		set_bit(index, magazine_index);
-
-		/*
-		 * Similar to the issue noted in the refill_event_magazine()
-		 * function, this barrier is used to cause the consumption
-		 * of the cache entry to become visible.
-		 */
-		smp_mb__after_atomic();
-	}
-	spin_unlock(&magazine_lock);
-
-	if (!ep)
-		return NULL;
-
-	INIT_WORK(&refill_work[index].work, refill_event_magazine);
-	queue_work(system_wq, &refill_work[index].work);
-
-	return ep;
-}
-
 static void get_COE(struct tsem_COE *COE)
 
 {
@@ -451,29 +418,31 @@ static int get_socket_cell(struct tsem_event *ep)
 }
 
 /**
- * tsem_event_allocate() - Allocate a security event description structure.
+ * tsem_event_init() - Initialize a security event description structure.
  * @event: The security event number for which the structure is being
- *	   allocated.
+ *	   initialized.
  * @params: A pointer to the aggregation structure used to hold the
  *	    parameters that describe the function.
+ * @locked: A boolean flag used to indicate if the event to be
+ *	    initialized is running in atomic context.
  *
- * This function is responsible for allocating the primary tsem_event
- * structure and populating it based on the event type.
+ * This function is responsible for allocating and initializing the
+ * primary tsem_event structure and populating it based on the event type.
  *
  * Return: This function returns a pointer to the allocated structure which
  *	   on failure will have an error return code embedded in it.
  */
-struct tsem_event *tsem_event_allocate(enum tsem_event_type event,
-				       struct tsem_event_parameters *params,
-				       bool locked)
+struct tsem_event *tsem_event_init(enum tsem_event_type event,
+				   struct tsem_event_parameters *params,
+				   bool locked)
 {
 	int retn = 0;
 	struct tsem_event *ep = NULL;
 	struct tsem_task *task = tsem_task(current);
 
-	ep = alloc_event(locked);
-	if (!ep)
-		return ERR_PTR(-ENOMEM);
+	ep = tsem_event_allocate(locked);
+	if (IS_ERR(ep))
+		return ep;
 
 	ep->event = event;
 	ep->locked = locked;
@@ -529,7 +498,7 @@ struct tsem_event *tsem_event_allocate(enum tsem_event_type event,
  * @ep: A pointer to the security event description that is to be freed.
  *
  * This function is responsible for freeing the resources that were
- * allocated by the tsem_event_allocate_COE_cell() function.
+ * allocated by the tsem_event_allocate() function.
  */
 static void tsem_event_free(struct kref *kref)
 {
@@ -562,6 +531,49 @@ void tsem_event_put(struct tsem_event *ep)
 void tsem_event_get(struct tsem_event *ep)
 {
 	kref_get(&ep->kref);
+}
+
+/**
+ * tsem_event_allocate() - Allocate a TSEM event description structure.
+ * @locked: A boolean flag used to indicate if the allocation is being
+ *	    done in atomic context and must be serviced from the
+ *	    pre-allocated event description structures.
+ *
+ * Return: This function returns a pointer to the allocated structure which
+ *	   on failure will have an error return code embedded in it.
+ */
+struct tsem_event *tsem_event_allocate(bool locked)
+{
+	unsigned int index;
+	struct tsem_event *ep = NULL;
+
+	if (!locked)
+		return kmem_cache_zalloc(event_cachep, GFP_KERNEL);
+
+	spin_lock(&magazine_lock);
+	index = find_first_zero_bit(magazine_index, MAGAZINE_SIZE);
+	if (index < MAGAZINE_SIZE) {
+		ep = event_magazine[index];
+		refill_work[index].index = index;
+		set_bit(index, magazine_index);
+
+		/*
+		 * Similar to the issue noted in the refill_event_magazine()
+		 * function, this barrier is used to cause the consumption
+		 * of the cache entry to become visible.
+
+		 */
+		smp_mb__after_atomic();
+	}
+	spin_unlock(&magazine_lock);
+
+	if (!ep)
+		return ERR_PTR(-ENOMEM);
+
+	INIT_WORK(&refill_work[index].work, refill_event_magazine);
+	queue_work(system_wq, &refill_work[index].work);
+
+	return ep;
 }
 
 /**

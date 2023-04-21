@@ -398,9 +398,10 @@ struct tsem_event *tsem_map_event(enum tsem_event_type event,
 struct tsem_event *tsem_map_event_locked(enum tsem_event_type event,
 					 struct tsem_event_parameters *param);
 
-extern struct tsem_event *tsem_event_allocate(enum tsem_event_type event,
-					struct tsem_event_parameters *params,
-					bool locked);
+extern struct tsem_event *tsem_event_allocate(bool locked);
+extern struct tsem_event *tsem_event_init(enum tsem_event_type event,
+					  struct tsem_event_parameters *params,
+					  bool locked);
 extern void tsem_event_put(struct tsem_event *ep);
 extern void tsem_event_get(struct tsem_event *ep);
 extern int tsem_event_cache_init(void);
