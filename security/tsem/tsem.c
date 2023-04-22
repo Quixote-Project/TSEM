@@ -735,8 +735,7 @@ static int tsem_unix_stream_connect(struct sock *sock, struct sock *other,
 		return return_trapped_task(TSEM_UNIX_STREAM_CONNECT, msg);
 	}
 
-	/* Associated with hangs. */
-	return 0;
+	return model_generic_event_locked(TSEM_UNIX_STREAM_CONNECT);
 }
 
 static int tsem_unix_may_send(struct socket *sock, struct socket *other)
@@ -750,8 +749,7 @@ static int tsem_unix_may_send(struct socket *sock, struct socket *other)
 		return return_trapped_task(TSEM_UNIX_MAY_SEND, msg);
 	}
 
-	/* Blocks boot. */
-	return 0;
+	return model_generic_event_locked(TSEM_UNIX_MAY_SEND);
 }
 
 static int tsem_socket_create(int family, int type, int protocol, int kern)
