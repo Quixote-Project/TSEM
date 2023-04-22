@@ -227,13 +227,15 @@ struct tsem_task_kill_args {
 };
 
 struct tsem_event {
-	struct list_head list;
 	struct kref kref;
+	struct list_head list;
+	struct work_struct work;
 	enum tsem_event_type event;
 	bool locked;
 	pid_t pid;
 	char *pathname;
 	char comm[TASK_COMM_LEN];
+	unsigned int digestsize;
 	u8 task_id[HASH_MAX_DIGESTSIZE];
 	u8 mapping[HASH_MAX_DIGESTSIZE];
 	struct tsem_COE COE;
@@ -407,7 +409,7 @@ extern void tsem_event_get(struct tsem_event *ep);
 extern int tsem_event_cache_init(void);
 
 extern u8 *tsem_trust_aggregate(void);
-extern int tsem_trust_add_event(u8 *coefficient);
+extern int tsem_trust_add_event(struct tsem_event *ep);
 
 static inline struct tsem_task *tsem_task(struct task_struct *task)
 {

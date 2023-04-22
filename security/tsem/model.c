@@ -216,7 +216,7 @@ static int get_host_measurement(u8 *id, u8 *digest)
 	return retn;
 }
 
-static int update_events_measurement(u8 *id)
+static int update_events_measurement(struct tsem_event *ep)
 {
 	int retn;
 	u8 digest[HASH_MAX_DIGESTSIZE];
@@ -224,7 +224,7 @@ static int update_events_measurement(u8 *id)
 	struct tsem_model *model = ctx->model;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
-	retn = get_host_measurement(id, digest);
+	retn = get_host_measurement(ep->mapping, digest);
 	if (retn)
 		goto done;
 
@@ -244,7 +244,7 @@ static int update_events_measurement(u8 *id)
 		goto done;
 
 	if (!tsem_context(current)->id)
-		retn = tsem_trust_add_event(digest);
+		retn = tsem_trust_add_event(ep);
 
  done:
 	return retn;
@@ -396,7 +396,7 @@ int tsem_model_event(struct tsem_event *ep)
 		return 0;
 	}
 
-	retn = update_events_measurement(ep->mapping);
+	retn = update_events_measurement(ep);
 	if (retn)
 		goto done;
 
@@ -431,28 +431,35 @@ int tsem_model_event(struct tsem_event *ep)
  */
 int tsem_model_load_point(u8 *point)
 {
-	ssize_t retn = 0;
+	int retn;
+	struct tsem_event *ep;
 	struct tsem_TMA_context *ctx = tsem_context(current);
 
 	if (have_point(point))
-		goto done;
-	if (add_event_point(point, true, false)) {
-		retn = -ENOMEM;
-		goto done;
-	}
+		return 0;
+
+	retn = add_event_point(point, true, false);
+	if (retn)
+		return retn;
 
 	if (!ctx->model->have_aggregate) {
-		ctx->model->have_aggregate = true;
-		retn = update_events_measurement(tsem_trust_aggregate());
+		retn = tsem_model_add_aggregate();
 		if (retn)
-			goto done;
+			return retn;
+
+		ctx->model->have_aggregate = true;
 	}
 
-	retn = update_events_measurement(point);
+	ep = tsem_event_allocate(false);
+	if (IS_ERR(ep))
+		return PTR_ERR(ep);
 
-done:
+	kref_init(&ep->kref);
+	memcpy(ep->mapping, point, tsem_digestsize());
+	retn = update_events_measurement(ep);
+
+	tsem_event_put(ep);
 	return retn;
-
 }
 
 /**
@@ -512,7 +519,21 @@ void tsem_model_load_base(u8 *mapping)
  */
 int tsem_model_add_aggregate(void)
 {
-	return update_events_measurement(tsem_trust_aggregate());
+	int retn;
+	struct tsem_event *ep;
+
+	ep = tsem_event_allocate(false);
+	if (IS_ERR(ep))
+		return PTR_ERR(ep);
+
+	kref_init(&ep->kref);
+	ep->digestsize = tsem_digestsize();
+	memcpy(ep->mapping, tsem_trust_aggregate(), ep->digestsize);
+
+	retn = update_events_measurement(ep);
+	tsem_event_put(ep);
+
+	return retn;
 }
 
 /**

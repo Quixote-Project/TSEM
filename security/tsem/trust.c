@@ -11,6 +11,8 @@
 
 #include "tsem.h"
 
+static struct workqueue_struct *tpm_update_wq;
+
 static u8 zero_aggregate[HASH_MAX_DIGESTSIZE];
 
 static struct tpm_chip *tpm;
@@ -129,9 +131,35 @@ u8 *tsem_trust_aggregate(void)
 	return retn;
 }
 
+static void tpm_update_worker(struct work_struct *work)
+{
+	int amt, bank, digestsize;
+	struct tsem_event *ep;
+
+	ep = container_of(work, struct tsem_event, work);
+	digestsize = ep->digestsize;
+
+	for (bank = 0; bank < tpm->nr_allocated_banks; bank++) {
+		if (tpm->allocated_banks[bank].digest_size > digestsize) {
+			amt = digestsize;
+			memset(digests[bank].digest, '\0',
+			       tpm->allocated_banks[bank].digest_size);
+		} else
+			amt = tpm->allocated_banks[bank].digest_size;
+		memcpy(digests[bank].digest, ep->mapping, amt);
+	}
+
+	if (tpm_pcr_extend(tpm, CONFIG_SECURITY_TSEM_ROOT_MODEL_PCR,
+			   digests))
+		pr_warn("tsem: Failed TPM update.\n");
+
+	tsem_event_put(ep);
+}
+
 /**
  * tsem_trust_add_point() - Add a measurement to the trust root.
- * @coefficient: A pointer to the event coefficient to be added.
+ * @ep: A pointer to the security event description whose measurement
+ *	is to be extended into the TPM.
  *
  * This function extends the platform configuration register being
  * used to document the hardware root of trust for internally modeled
@@ -141,28 +169,20 @@ u8 *tsem_trust_aggregate(void)
  *	   TPM command is returned, otherwise a value of zero is
  *	   returned.
  */
-int tsem_trust_add_event(u8 *coefficient)
+int tsem_trust_add_event(struct tsem_event *ep)
 {
-	int amt, bank;
-	unsigned int digestsize;
+	bool retn;
 
 	if (!tpm)
 		return 0;
 
-	digestsize = tsem_digestsize();
+	tsem_event_get(ep);
+	ep->digestsize = tsem_digestsize();
 
-	for (bank = 0; bank < tpm->nr_allocated_banks; bank++) {
-		if (tpm->allocated_banks[bank].digest_size > digestsize) {
-			amt = digestsize;
-			memset(digests[bank].digest, '\0',
-			       tpm->allocated_banks[bank].digest_size);
-		} else
-			amt = tpm->allocated_banks[bank].digest_size;
-		memcpy(digests[bank].digest, coefficient, amt);
-	}
+	INIT_WORK(&ep->work, tpm_update_worker);
+	retn = queue_work(tpm_update_wq, &ep->work);
 
-	return tpm_pcr_extend(tpm, CONFIG_SECURITY_TSEM_ROOT_MODEL_PCR,
-			      digests);
+	return 0;
 }
 
 static int __init trust_init(void)
@@ -173,6 +193,12 @@ static int __init trust_init(void)
 	if (!tpm)
 		return retn;
 
+	tpm_update_wq = alloc_ordered_workqueue("tsem_tpm", 0);
+	if (IS_ERR(tpm_update_wq)) {
+		retn = PTR_ERR(tpm_update_wq);
+		goto done;
+	}
+
 	digests = kcalloc(tpm->nr_allocated_banks, sizeof(*digests), GFP_NOFS);
 	if (!digests) {
 		tpm = NULL;
@@ -180,6 +206,13 @@ static int __init trust_init(void)
 	}
 	for (lp = 0; lp < tpm->nr_allocated_banks; lp++)
 		digests[lp].alg_id = tpm->allocated_banks[lp].alg_id;
+	retn = 0;
+
+ done:
+	if (retn) {
+		destroy_workqueue(tpm_update_wq);
+		kfree(digests);
+	}
 
 	return retn;
 }
