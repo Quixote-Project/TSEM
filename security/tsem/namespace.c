@@ -120,11 +120,9 @@ static struct tsem_external *allocate_external(u64 context_id,
 
 static void wq_put(struct work_struct *work)
 {
-	struct tsem_TMA_work *tsem_work;
 	struct tsem_TMA_context *ctx;
 
-	tsem_work = container_of(work, struct tsem_TMA_work, work);
-	ctx = tsem_work->ctx;
+	ctx = container_of(work, struct tsem_TMA_context, work);
 
 	if (ctx->external) {
 		mutex_lock(&context_id_mutex);
@@ -146,10 +144,9 @@ static void ns_free(struct kref *kref)
 	struct tsem_TMA_context *ctx;
 
 	ctx = container_of(kref, struct tsem_TMA_context, kref);
-	ctx->work.ctx = ctx;
 
-	INIT_WORK(&ctx->work.work, wq_put);
-	if (!queue_work(system_wq, &ctx->work.work))
+	INIT_WORK(&ctx->work, wq_put);
+	if (!queue_work(system_wq, &ctx->work))
 		WARN_ON_ONCE(1);
 }
 

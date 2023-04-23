@@ -293,20 +293,15 @@ struct tsem_external {
 	wait_queue_head_t wq;
 };
 
-struct tsem_TMA_work {
-	struct work_struct work;
-	struct tsem_TMA_context *ctx;
-};
-
 struct tsem_TMA_context {
+	struct kref kref;
+	struct work_struct work;
 	u64 id;
 	bool sealed;
 	bool use_current_ns;
 	enum tsem_action_type actions[TSEM_EVENT_CNT];
 	char *digestname;
 	u8 zero_digest[HASH_MAX_DIGESTSIZE];
-	struct kref kref;
-	struct tsem_TMA_work work;
 	struct crypto_shash *tfm;
 	struct tsem_model *model;
 	struct tsem_external *external;
