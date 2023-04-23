@@ -307,18 +307,14 @@ static int model_generic_event_locked(enum tsem_event_type event)
 
 	params.u.event_type = event;
 	ep = tsem_map_event_locked(TSEM_GENERIC_EVENT, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	if (IS_ERR(ep))
+		return PTR_ERR(ep);
 
 	retn = tsem_model_event(ep);
-	if (retn) {
-		return retn;
-		goto done;
-	}
+	tsem_event_put(ep);
 
- done:
+	if (retn)
+		return retn;
 	return event_action(tsem_context(current), ep->event);
 }
 
