@@ -286,7 +286,7 @@ struct tsem_model {
 };
 
 struct tsem_external {
-	struct mutex export_mutex;
+	spinlock_t export_lock;
 	struct list_head export_list;
 	struct dentry *dentry;
 	bool have_event;
@@ -388,6 +388,7 @@ extern int tsem_export_show(struct seq_file *m, void *v);
 extern int tsem_export_event(struct tsem_event *ep);
 extern int tsem_export_action(enum tsem_event_type event);
 extern int tsem_export_aggregate(void);
+extern int tsem_export_cache_init(void);
 
 extern int tsem_map_task(struct file *file, u8 *mapping);
 struct tsem_event *tsem_map_event(enum tsem_event_type event,

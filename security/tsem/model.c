@@ -80,8 +80,10 @@ static struct tsem_event_point *alloc_event_point(bool locked)
 	}
 	spin_unlock(&magazine_lock);
 
-	if (!tep)
+	if (!tep) {
+		pr_warn("tsem: Failed event point allocation.\n");
 		return NULL;
+	}
 
 	INIT_WORK(&refill_work[index].work, refill_point_magazine);
 	queue_work(system_wq, &refill_work[index].work);

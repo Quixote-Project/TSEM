@@ -7,6 +7,8 @@
  * Implements updates to an external modeling engine.
  */
 
+#define MAGAZINE_SIZE 64
+
 #include <linux/seq_file.h>
 
 #include "tsem.h"
@@ -14,6 +16,7 @@
 enum export_type {
 	AGGREGATE_EVENT = 1,
 	EXPORT_EVENT,
+	EXPORT_ASYNC_EVENT,
 	LOG_EVENT
 };
 
@@ -38,6 +41,70 @@ static const char * const tsem_actions[TSEM_ACTION_CNT] = {
 	"DENY"
 };
 
+static struct kmem_cache *export_cachep;
+
+static DEFINE_SPINLOCK(magazine_lock);
+static DECLARE_BITMAP(magazine_index, MAGAZINE_SIZE);
+
+static struct export_event *export_magazine[MAGAZINE_SIZE];
+
+static void free_export(struct export_event *exp, bool locked)
+{
+	unsigned int index;
+
+	if (!locked) {
+		kmem_cache_free(export_cachep, exp);
+		return;
+	}
+
+	memset(exp, 0, sizeof(*exp));
+
+	spin_lock(&magazine_lock);
+	index = find_first_bit(magazine_index, MAGAZINE_SIZE);
+	if (index < MAGAZINE_SIZE) {
+		export_magazine[index] = exp;
+		clear_bit(index, magazine_index);
+	}
+
+	/*
+	 * The following memory barrier is used to cause the magazine
+	 * index to be visible after the refill of the cache slot.
+	 */
+	smp_mb__after_atomic();
+
+	spin_unlock(&magazine_lock);
+
+	if (index >= MAGAZINE_SIZE)
+		WARN_ONCE(true, "Refilling export magazine with no slots.\n");
+}
+
+struct export_event *allocate_export(bool locked)
+{
+	unsigned int index;
+	struct export_event *exp = NULL;
+
+	if (!locked)
+		return kmem_cache_zalloc(export_cachep, GFP_KERNEL);
+
+	spin_lock(&magazine_lock);
+	index = find_first_zero_bit(magazine_index, MAGAZINE_SIZE);
+	if (index < MAGAZINE_SIZE) {
+		exp = export_magazine[index];
+		set_bit(index, magazine_index);
+
+		/*
+		 * Similar to the issue noted in the refill_event_magazine()
+		 * function, this barrier is used to cause the consumption
+		 * of the cache entry to become visible.
+
+		 */
+		smp_mb__after_atomic();
+	}
+	spin_unlock(&magazine_lock);
+
+	return exp;
+}
+
 static void trigger_event(struct tsem_TMA_context *ctx)
 {
 	ctx->external->have_event = true;
@@ -46,80 +113,101 @@ static void trigger_event(struct tsem_TMA_context *ctx)
 
 int tsem_export_show(struct seq_file *sf, void *v)
 {
-	ssize_t retn = -ENODATA;
-	struct export_event *mp;
+	bool locked = false;
+	struct export_event *exp = NULL;
 	struct tsem_TMA_context *ctx = tsem_context(current);
 
 	if (!ctx->id)
-		return -EPERM;
+		return -ENODATA;
 
-	mutex_lock(&ctx->external->export_mutex);
-	if (list_empty(&ctx->external->export_list))
-		goto done;
-	mp = list_first_entry(&ctx->external->export_list, struct export_event,
-			      list);
+	spin_lock(&ctx->external->export_lock);
+	if (!list_empty(&ctx->external->export_list)) {
+		exp = list_first_entry(&ctx->external->export_list,
+				       struct export_event, list);
+		list_del(&exp->list);
+	}
+	spin_unlock(&ctx->external->export_lock);
+
+	if (!exp)
+		return -ENODATA;
 
 	seq_putc(sf, '{');
 	tsem_fs_show_field(sf, "export");
 
-	switch (mp->type) {
+	switch (exp->type) {
 	case AGGREGATE_EVENT:
 		tsem_fs_show_key(sf, "}, ", "type", "%s", "aggregate");
 		tsem_fs_show_field(sf, "aggregate");
 		tsem_fs_show_key(sf, "}", "value", "%*phN", tsem_digestsize(),
-				 mp->u.aggregate);
+				 exp->u.aggregate);
 		break;
 
 	case EXPORT_EVENT:
 		tsem_fs_show_key(sf, "}, ", "type", "%s", "event");
-		tsem_fs_show_trajectory(sf, mp->u.ep);
-		tsem_event_put(mp->u.ep);
+		tsem_fs_show_trajectory(sf, exp->u.ep);
+		locked = exp->u.ep->locked;
+		tsem_event_put(exp->u.ep);
+		break;
+
+	case EXPORT_ASYNC_EVENT:
+		tsem_fs_show_key(sf, "}, ", "type", "%s", "async_event");
+		tsem_fs_show_trajectory(sf, exp->u.ep);
+		locked = exp->u.ep->locked;
+		tsem_event_put(exp->u.ep);
 		break;
 
 	case LOG_EVENT:
 		tsem_fs_show_key(sf, "}, ", "type", "%s", "log");
 		tsem_fs_show_field(sf, "log");
-		tsem_fs_show_key(sf, ",", "process", "%s", mp->u.action.comm);
+		tsem_fs_show_key(sf, ",", "process", "%s", exp->u.action.comm);
 		tsem_fs_show_key(sf, ",", "event", "%s",
-				 tsem_names[mp->u.action.type]);
+				 tsem_names[exp->u.action.type]);
 		tsem_fs_show_key(sf, "}", "action", "%s",
-				 tsem_actions[mp->u.action.action]);
+				 tsem_actions[exp->u.action.action]);
 		break;
 	}
-
 	seq_puts(sf, "}\n");
 
-	list_del(&mp->list);
-	kfree(mp);
-	retn = 0;
-
- done:
-	mutex_unlock(&ctx->external->export_mutex);
-	return retn;
+	free_export(exp, locked);
+	return 0;
 }
 
+/**
+ * tsem_export_event() - Export a security event description.
+ * @event: The TSEM event type number for which the log event is being
+ *	   generated.
+ *
+ * This function queues for export to an external modeling agent a
+ * security event description.
+ *
+ * Return: This function returns 0 if the export was successful or
+ *	   an error value if it was not.
+ */
 int tsem_export_event(struct tsem_event *ep)
 {
 	int retn = 0;
 	struct tsem_task *task = tsem_task(current);
 	struct tsem_TMA_context *ctx = task->context;
-	struct export_event *mp;
+	struct export_event *exp;
 
-	if (!ctx->external)
-		return 0;
-
-	mp = kzalloc(sizeof(*mp), GFP_KERNEL);
-	if (!mp) {
-		retn = -ENOMEM;
-		goto done;
+	exp = allocate_export(ep->locked);
+	if (!exp) {
+		pr_warn("%s: Failed export allocation.\n", __func__);
+		return -ENOMEM;
 	}
-	mp->type = EXPORT_EVENT;
-	mp->u.ep = ep;
+
+	exp->type = ep->locked ? EXPORT_ASYNC_EVENT : EXPORT_EVENT;
+	exp->u.ep = ep;
 	tsem_event_get(ep);
 
-	mutex_lock(&ctx->external->export_mutex);
-	list_add_tail(&mp->list, &ctx->external->export_list);
-	mutex_unlock(&ctx->external->export_mutex);
+	spin_lock(&ctx->external->export_lock);
+	list_add_tail(&exp->list, &ctx->external->export_list);
+	spin_unlock(&ctx->external->export_lock);
+
+	if (ep->locked) {
+		trigger_event(ctx);
+		return 0;
+	}
 
 	task->trust_status |= TSEM_TASK_TRUST_PENDING;
 	trigger_event(ctx);
@@ -135,7 +223,6 @@ int tsem_export_event(struct tsem_event *ep)
 		}
 	}
 
- done:
 	return retn;
 }
 
@@ -155,7 +242,7 @@ int tsem_export_action(enum tsem_event_type event)
 	struct tsem_TMA_context *ctx = tsem_context(current);
 	struct export_event *exp;
 
-	exp = kzalloc(sizeof(*exp), GFP_KERNEL);
+	exp = kmem_cache_zalloc(export_cachep, GFP_KERNEL);
 	if (!exp)
 		return -ENOMEM;
 
@@ -164,9 +251,9 @@ int tsem_export_action(enum tsem_event_type event)
 	exp->u.action.action = ctx->actions[event];
 	strcpy(exp->u.action.comm, current->comm);
 
-	mutex_lock(&ctx->external->export_mutex);
+	spin_lock(&ctx->external->export_lock);
 	list_add_tail(&exp->list, &ctx->external->export_list);
-	mutex_unlock(&ctx->external->export_mutex);
+	spin_unlock(&ctx->external->export_lock);
 
 	trigger_event(ctx);
 
@@ -188,18 +275,48 @@ int tsem_export_aggregate(void)
 	struct tsem_TMA_context *ctx = tsem_context(current);
 	struct export_event *exp;
 
-	exp = kzalloc(sizeof(*exp), GFP_KERNEL);
+	exp = kmem_cache_zalloc(export_cachep, GFP_KERNEL);
 	if (!exp)
 		return -ENOMEM;
 
 	exp->type = AGGREGATE_EVENT;
 	memcpy(exp->u.aggregate, tsem_trust_aggregate(), tsem_digestsize());
 
-	mutex_lock(&ctx->external->export_mutex);
+	spin_lock(&ctx->external->export_lock);
 	list_add_tail(&exp->list, &ctx->external->export_list);
-	mutex_unlock(&ctx->external->export_mutex);
+	spin_unlock(&ctx->external->export_lock);
 
 	trigger_event(ctx);
+
+	return 0;
+}
+
+/**
+ * tsem export_cache_init() - Initialize the TSEM export cache.
+ *
+ * This function is called by the TSEM initialization function and sets
+ * up a cache for export structures that are called by security event
+ * descriptions that are generated in atomix context
+ *
+ * Return: This function returns a value of zero on success and a negative
+ *	   error code on failure.
+ */
+int __init tsem_export_cache_init(void)
+{
+	int cnt;
+
+	export_cachep = kmem_cache_create("tsem_export_cache",
+					 sizeof(struct export_event), 0,
+					 SLAB_PANIC, 0);
+	if (!export_cachep)
+		return -ENOMEM;
+
+	for (cnt = 0; cnt < MAGAZINE_SIZE; ++cnt) {
+		export_magazine[cnt] = kmem_cache_zalloc(export_cachep,
+							 GFP_KERNEL);
+		if (!export_magazine[cnt])
+			return -ENOMEM;
+	}
 
 	return 0;
 }

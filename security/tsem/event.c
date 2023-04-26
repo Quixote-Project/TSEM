@@ -6,7 +6,7 @@
  *
  * This file manages the data structures used to define a security event.
  */
-#define MAGAZINE_SIZE 10
+#define MAGAZINE_SIZE 64
 
 #include <linux/iversion.h>
 #include <linux/user_namespace.h>
@@ -441,8 +441,11 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	struct tsem_task *task = tsem_task(current);
 
 	ep = tsem_event_allocate(locked);
-	if (IS_ERR(ep))
+	if (IS_ERR(ep)) {
+		pr_warn("tsem: failed event allocation for %s.\n",
+			tsem_names[event]);
 		return ep;
+	}
 
 	ep->event = event;
 	ep->locked = locked;

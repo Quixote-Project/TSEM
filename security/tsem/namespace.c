@@ -93,7 +93,7 @@ static struct tsem_external *allocate_external(u64 context_id,
 	if (retn)
 		goto done;
 
-	mutex_init(&external->export_mutex);
+	spin_lock_init(&external->export_lock);
 	INIT_LIST_HEAD(&external->export_list);
 
 	init_waitqueue_head(&external->wq);
