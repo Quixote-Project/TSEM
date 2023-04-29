@@ -7,7 +7,7 @@
  * Implements updates to an external modeling engine.
  */
 
-#define MAGAZINE_SIZE 64
+#define MAGAZINE_SIZE 96
 
 #include <linux/seq_file.h>
 
@@ -192,7 +192,8 @@ int tsem_export_event(struct tsem_event *ep)
 
 	exp = allocate_export(ep->locked);
 	if (!exp) {
-		pr_warn("%s: Failed export allocation.\n", __func__);
+		pr_warn("tsem: domain %llu failed export allocation.\n",
+			ctx->id);
 		return -ENOMEM;
 	}
 

@@ -6,7 +6,7 @@
  *
  * This file manages the data structures used to define a security event.
  */
-#define MAGAZINE_SIZE 64
+#define MAGAZINE_SIZE 96
 
 #include <linux/iversion.h>
 #include <linux/user_namespace.h>
@@ -48,7 +48,6 @@ static void refill_event_magazine(struct work_struct *work)
 	 * index to be visible after the refill of the cache slot.
 	 */
 	smp_mb__after_atomic();
-
 	spin_unlock(&magazine_lock);
 }
 
@@ -442,8 +441,8 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 
 	ep = tsem_event_allocate(locked);
 	if (IS_ERR(ep)) {
-		pr_warn("tsem: failed event allocation for %s.\n",
-			tsem_names[event]);
+		pr_warn("tsem: domain %llu failed event allocation for %s.\n",
+			tsem_context(current)->id, tsem_names[event]);
 		return ep;
 	}
 
