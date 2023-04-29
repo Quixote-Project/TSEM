@@ -116,7 +116,7 @@ static int have_point(u8 *point)
 {
 	int retn = 0;
 	struct tsem_event_point *entry;
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	struct tsem_context *ctx = tsem_context(current);
 	struct tsem_model *model = ctx->model;
 
 	spin_lock(&model->point_lock);
@@ -222,7 +222,7 @@ static int update_events_measurement(struct tsem_event *ep)
 {
 	int retn;
 	u8 digest[HASH_MAX_DIGESTSIZE];
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	struct tsem_context *ctx = tsem_context(current);
 	struct tsem_model *model = ctx->model;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
@@ -389,7 +389,7 @@ int tsem_model_event(struct tsem_event *ep)
 {
 	int retn;
 	struct tsem_task *task = tsem_task(current);
-	struct tsem_TMA_context *ctx = task->context;
+	struct tsem_context *ctx = task->context;
 
 	retn = have_point(ep->mapping);
 	if (retn) {
@@ -435,7 +435,7 @@ int tsem_model_load_point(u8 *point)
 {
 	int retn;
 	struct tsem_event *ep;
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	struct tsem_context *ctx = tsem_context(current);
 
 	if (have_point(point))
 		return 0;
@@ -582,7 +582,7 @@ struct tsem_model *tsem_model_allocate(void)
  * This function is called when the last reference to a kernel
  * based TMA model description structure is released.
  */
-void tsem_model_free(struct tsem_TMA_context *ctx)
+void tsem_model_free(struct tsem_context *ctx)
 {
 	struct tsem_event_point *ep, *tmp_ep;
 	struct tsem_event *tentry, *tmp_tentry;

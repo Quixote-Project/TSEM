@@ -293,7 +293,7 @@ struct tsem_external {
 	wait_queue_head_t wq;
 };
 
-struct tsem_TMA_context {
+struct tsem_context {
 	struct kref kref;
 	struct work_struct work;
 	u64 id;
@@ -311,7 +311,7 @@ struct tsem_task {
 	int trust_status;
 	u8 task_id[HASH_MAX_DIGESTSIZE];
 	u8 task_key[HASH_MAX_DIGESTSIZE];
-	struct tsem_TMA_context *context;
+	struct tsem_context *context;
 };
 
 /**
@@ -368,7 +368,7 @@ extern int tsem_fs_init(void);
 
 extern int tsem_model_cache_init(void);
 extern struct tsem_model *tsem_model_allocate(void);
-extern void tsem_model_free(struct tsem_TMA_context *ctx);
+extern void tsem_model_free(struct tsem_context *ctx);
 extern int tsem_model_event(struct tsem_event *ep);
 extern int tsem_model_load_point(u8 *point);
 extern int tsem_model_load_pseudonym(u8 *mapping);
@@ -378,7 +378,7 @@ extern void tsem_model_load_base(u8 *mapping);
 extern int tsem_model_add_aggregate(void);
 extern void tsem_model_compute_state(void);
 
-extern void tsem_ns_put(struct tsem_TMA_context *ctx);
+extern void tsem_ns_put(struct tsem_context *ctx);
 extern int tsem_ns_event_key(u8 *task_key, const char *keystr, u8 *key);
 extern int tsem_ns_create(const enum tsem_control_type type,
 			  const char *digest, const enum tsem_ns_config ns,
@@ -422,7 +422,7 @@ static inline bool tsem_task_untrusted(struct task_struct *task)
 	return tsem_task(task)->trust_status & ~TSEM_TASK_TRUSTED;
 }
 
-static inline struct tsem_TMA_context *tsem_context(struct task_struct *task)
+static inline struct tsem_context *tsem_context(struct task_struct *task)
 {
 	return tsem_task(task)->context;
 }

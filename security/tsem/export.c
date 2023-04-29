@@ -105,7 +105,7 @@ struct export_event *allocate_export(bool locked)
 	return exp;
 }
 
-static void trigger_event(struct tsem_TMA_context *ctx)
+static void trigger_event(struct tsem_context *ctx)
 {
 	ctx->external->have_event = true;
 	wake_up_interruptible(&ctx->external->wq);
@@ -115,7 +115,7 @@ int tsem_export_show(struct seq_file *sf, void *v)
 {
 	bool locked = false;
 	struct export_event *exp = NULL;
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	struct tsem_context *ctx = tsem_context(current);
 
 	if (!ctx->id)
 		return -ENODATA;
@@ -187,7 +187,7 @@ int tsem_export_event(struct tsem_event *ep)
 {
 	int retn = 0;
 	struct tsem_task *task = tsem_task(current);
-	struct tsem_TMA_context *ctx = task->context;
+	struct tsem_context *ctx = task->context;
 	struct export_event *exp;
 
 	exp = allocate_export(ep->locked);
@@ -240,7 +240,7 @@ int tsem_export_event(struct tsem_event *ep)
  */
 int tsem_export_action(enum tsem_event_type event)
 {
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	struct tsem_context *ctx = tsem_context(current);
 	struct export_event *exp;
 
 	exp = kmem_cache_zalloc(export_cachep, GFP_KERNEL);
@@ -273,7 +273,7 @@ int tsem_export_action(enum tsem_event_type event)
  */
 int tsem_export_aggregate(void)
 {
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	struct tsem_context *ctx = tsem_context(current);
 	struct export_event *exp;
 
 	exp = kmem_cache_zalloc(export_cachep, GFP_KERNEL);

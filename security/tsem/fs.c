@@ -42,7 +42,7 @@ static struct control_commands commands[] = {
 
 static bool can_access_fs(void)
 {
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	struct tsem_context *ctx = tsem_context(current);
 
 	if (ctx->external)
 		return false;
@@ -101,7 +101,7 @@ static int config_context(unsigned long cmd, char *bufr)
 {
 	int retn = -EINVAL;
 	unsigned int lp;
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	struct tsem_context *ctx = tsem_context(current);
 
 	if (ctx->sealed)
 		return -EPERM;
@@ -639,7 +639,7 @@ static int id_show(struct seq_file *c, void *event)
 
 static int id_open(struct inode *inode, struct file *file)
 {
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	struct tsem_context *ctx = tsem_context(current);
 
 	if (ctx->sealed)
 		return -EACCES;
@@ -698,7 +698,7 @@ static const struct file_operations aggregate_ops = {
 
 static __poll_t export_poll(struct file *file, struct poll_table_struct *wait)
 {
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	struct tsem_context *ctx = tsem_context(current);
 
 	if (!ctx->external)
 		return -ENOENT;

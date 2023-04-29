@@ -136,7 +136,7 @@ static struct tsem_inode_digest *find_digest(struct tsem_inode *tsip)
 	return NULL;
 }
 
-static struct tsem_inode_digest *add_digest(struct tsem_TMA_context *ctx,
+static struct tsem_inode_digest *add_digest(struct tsem_context *ctx,
 					    struct tsem_inode *tsip)
 {
 	struct tsem_inode_digest *digest;
@@ -245,7 +245,7 @@ int add_file_digest(struct file *file, struct tsem_file *tfp)
 	struct inode *inode;
 	struct tsem_inode *tsip;
 	struct tsem_inode_digest *digest;
-	struct tsem_TMA_context *ctx = tsem_context(current);
+	struct tsem_context *ctx = tsem_context(current);
 
 	inode = file_inode(file);
 	tsip = tsem_inode(inode);

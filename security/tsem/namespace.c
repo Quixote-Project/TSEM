@@ -120,9 +120,9 @@ static struct tsem_external *allocate_external(u64 context_id,
 
 static void wq_put(struct work_struct *work)
 {
-	struct tsem_TMA_context *ctx;
+	struct tsem_context *ctx;
 
-	ctx = container_of(work, struct tsem_TMA_context, work);
+	ctx = container_of(work, struct tsem_context, work);
 
 	if (ctx->external) {
 		mutex_lock(&context_id_mutex);
@@ -141,9 +141,9 @@ static void wq_put(struct work_struct *work)
 
 static void ns_free(struct kref *kref)
 {
-	struct tsem_TMA_context *ctx;
+	struct tsem_context *ctx;
 
-	ctx = container_of(kref, struct tsem_TMA_context, kref);
+	ctx = container_of(kref, struct tsem_context, kref);
 
 	INIT_WORK(&ctx->work, wq_put);
 	if (!queue_work(system_wq, &ctx->work))
@@ -160,7 +160,7 @@ static void ns_free(struct kref *kref)
  * function that schedules the actual work to release the resources
  * associated with the namespace to a workqueue.
  */
-void tsem_ns_put(struct tsem_TMA_context *ctx)
+void tsem_ns_put(struct tsem_context *ctx)
 {
 	kref_put(&ctx->kref, ns_free);
 }
@@ -260,7 +260,7 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 	int retn = -ENOMEM;
 	u64 new_id;
 	struct tsem_task *tsk = tsem_task(current);
-	struct tsem_TMA_context *new_ctx;
+	struct tsem_context *new_ctx;
 	struct tsem_model *model = NULL;
 	struct crypto_shash *tfm;
 
