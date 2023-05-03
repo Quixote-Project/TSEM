@@ -18,6 +18,7 @@
 #include <net/af_unix.h>
 
 #define TSEM_CONTROL_CAPABILITY CAP_TRUST
+#define TSEM_MAGAZINE_SIZE 96
 
 enum tsem_event_type {
 	TSEM_BPRM_SET_CREDS = 1,
@@ -285,6 +286,12 @@ struct tsem_model {
 	struct list_head pseudonym_list;
 };
 
+struct tsem_work {
+	unsigned int index;
+	struct tsem_context *ctx;
+	struct work_struct work;
+};
+
 struct tsem_external {
 	spinlock_t export_lock;
 	struct list_head export_list;
@@ -303,6 +310,13 @@ struct tsem_context {
 	char *digestname;
 	u8 zero_digest[HASH_MAX_DIGESTSIZE];
 	struct crypto_shash *tfm;
+
+	unsigned int magazine_size;
+	spinlock_t magazine_lock;
+	unsigned long *magazine_index;
+	struct tsem_work *ws;
+	struct tsem_event **magazine;
+
 	struct tsem_model *model;
 	struct tsem_external *external;
 };
@@ -402,6 +416,8 @@ extern struct tsem_event *tsem_event_init(enum tsem_event_type event,
 					  bool locked);
 extern void tsem_event_put(struct tsem_event *ep);
 extern void tsem_event_get(struct tsem_event *ep);
+extern int tsem_event_magazine_allocate(struct tsem_context *ctx, size_t size);
+extern void tsem_event_magazine_free(struct tsem_context *ctx);
 extern int tsem_event_cache_init(void);
 
 extern u8 *tsem_trust_aggregate(void);

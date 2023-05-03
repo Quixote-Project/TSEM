@@ -6,7 +6,6 @@
  *
  * This file manages the data structures used to define a security event.
  */
-#define MAGAZINE_SIZE 96
 
 #include <linux/iversion.h>
 #include <linux/user_namespace.h>
@@ -16,22 +15,13 @@
 
 static struct kmem_cache *event_cachep;
 
-static DEFINE_SPINLOCK(magazine_lock);
-static DECLARE_BITMAP(magazine_index, MAGAZINE_SIZE);
-
-static struct tsem_event *event_magazine[MAGAZINE_SIZE];
-
-static struct refill {
-	struct work_struct work;
-	unsigned int index;
-} refill_work[MAGAZINE_SIZE];
-
 static void refill_event_magazine(struct work_struct *work)
 {
-	struct refill *rp;
+	unsigned int index;
 	struct tsem_event *ep;
+	struct tsem_work *ws;
 
-	rp = container_of(work, struct refill, work);
+	ws = container_of(work, struct tsem_work, work);
 
 	ep = kmem_cache_zalloc(event_cachep, GFP_KERNEL);
 	if (!ep) {
@@ -39,16 +29,21 @@ static void refill_event_magazine(struct work_struct *work)
 		return;
 	}
 
-	spin_lock(&magazine_lock);
-	event_magazine[rp->index] = ep;
-	clear_bit(rp->index, magazine_index);
+	spin_lock(&ws->ctx->magazine_lock);
+	ws->ctx->magazine[ws->index] = ep;
+	clear_bit(ws->index, ws->ctx->magazine_index);
 
 	/*
 	 * The following memory barrier is used to cause the magazine
 	 * index to be visible after the refill of the cache slot.
 	 */
 	smp_mb__after_atomic();
-	spin_unlock(&magazine_lock);
+	spin_unlock(&ws->ctx->magazine_lock);
+
+	if (index >= ws->ctx->magazine_size) {
+		kmem_cache_free(event_cachep, ep);
+		WARN_ONCE(true, "Refilling event magazine with no slots.\n");
+	}
 }
 
 static void get_COE(struct tsem_COE *COE)
@@ -548,16 +543,18 @@ struct tsem_event *tsem_event_allocate(bool locked)
 {
 	unsigned int index;
 	struct tsem_event *ep = NULL;
+	struct tsem_context *ctx = tsem_context(current);
 
 	if (!locked)
 		return kmem_cache_zalloc(event_cachep, GFP_KERNEL);
 
-	spin_lock(&magazine_lock);
-	index = find_first_zero_bit(magazine_index, MAGAZINE_SIZE);
-	if (index < MAGAZINE_SIZE) {
-		ep = event_magazine[index];
-		refill_work[index].index = index;
-		set_bit(index, magazine_index);
+	spin_lock(&ctx->magazine_lock);
+	index = find_first_zero_bit(ctx->magazine_index, ctx->magazine_size);
+	if (index < ctx->magazine_size) {
+		ep = ctx->magazine[index];
+		ctx->ws[index].index = index;
+		ctx->ws[index].ctx = ctx;
+		set_bit(index, ctx->magazine_index);
 
 		/*
 		 * Similar to the issue noted in the refill_event_magazine()
@@ -567,42 +564,106 @@ struct tsem_event *tsem_event_allocate(bool locked)
 		 */
 		smp_mb__after_atomic();
 	}
-	spin_unlock(&magazine_lock);
+
+	spin_unlock(&ctx->magazine_lock);
 
 	if (!ep)
 		return ERR_PTR(-ENOMEM);
 
-	INIT_WORK(&refill_work[index].work, refill_event_magazine);
-	queue_work(system_wq, &refill_work[index].work);
+	INIT_WORK(&ctx->ws[index].work, refill_event_magazine);
+	queue_work(system_wq, &ctx->ws[index].work);
 
 	return ep;
+}
+
+/**
+ * tsem event_magazine_allocate() - Allocate a TSEM event magazine.
+ * @ctx: A pointer to the modeling context that the magazine is
+ *	 to be allocated for.
+ * @size: The number of entries to be created in the magazine.
+
+ * The security modeling event magazine is an array of tsem_event
+ * structures that are used to service security hooks that are called
+ * in atomic context.  Each modeling domain/namespace has a magazine
+ * allocated to it and this function allocates and initializes the
+ * memory structures needed to manage that magazine.
+
+ * Return: This function returns a value of zero on success and a negative
+ *	   error code on failure.
+ */
+int tsem_event_magazine_allocate(struct tsem_context *ctx, size_t size)
+{
+	unsigned int lp;
+	int retn = -ENOMEM;
+
+	ctx->magazine_size = size;
+
+	spin_lock_init(&ctx->magazine_lock);
+
+	ctx->magazine_index = bitmap_zalloc(ctx->magazine_size, GFP_KERNEL);
+	if (!ctx->magazine_index)
+		return retn;
+
+	ctx->magazine = kcalloc(ctx->magazine_size, sizeof(*ctx->magazine),
+				GFP_KERNEL);
+	if (!ctx->magazine)
+		goto done;
+
+	for (lp = 0; lp < ctx->magazine_size; ++lp) {
+		ctx->magazine[lp] = kmem_cache_zalloc(event_cachep,
+						      GFP_KERNEL);
+		if (!ctx->magazine[lp])
+			goto done;
+	}
+
+	ctx->ws = kcalloc(ctx->magazine_size, sizeof(*ctx->ws), GFP_KERNEL);
+	if (ctx->ws)
+		retn = 0;
+
+ done:
+	if (retn)
+		tsem_event_magazine_free(ctx);
+
+	return retn;
+}
+
+/**
+ * tsem event_magazine_free() - Releases a TSEM event magazine.
+ * @ctx: A pointer to the modeling context whose magazine is to be
+ *	 released.
+ *
+ * The function is used to free the memory that was allocated by
+ * the tsem_event_magazine_allocate() function for a security
+ * modeling context.
+ */
+void tsem_event_magazine_free(struct tsem_context *ctx)
+{
+	unsigned int lp;
+
+	for (lp = 0; lp < ctx->magazine_size; ++lp)
+		kmem_cache_free(event_cachep, ctx->magazine[lp]);
+
+	bitmap_free(ctx->magazine_index);
+	kfree(ctx->ws);
+	kfree(ctx->magazine);
 }
 
 /**
  * tsem event_cache_init() - Initialize the TSEM event cache.
  *
  * This function is called by the TSEM initialization function and sets
- * up the cache that will hold tsem_event structures.
+ * up the cache that will be used to allocate tsem_event structures.
  *
  * Return: This function returns a value of zero on success and a negative
  *	   error code on failure.
  */
 int __init tsem_event_cache_init(void)
 {
-	int cnt;
-
 	event_cachep = kmem_cache_create("tsem_event_cache",
 					 sizeof(struct tsem_event), 0,
 					 SLAB_PANIC, 0);
 	if (!event_cachep)
 		return -ENOMEM;
-
-	for (cnt = 0; cnt < MAGAZINE_SIZE; ++cnt) {
-		event_magazine[cnt] = kmem_cache_zalloc(event_cachep,
-							GFP_KERNEL);
-		if (!event_magazine[cnt])
-			return -ENOMEM;
-	}
 
 	return 0;
 }

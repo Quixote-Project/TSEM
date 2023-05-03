@@ -42,7 +42,7 @@ static struct tsem_model root_model = {
 	.pseudonym_list = LIST_HEAD_INIT(root_model.pseudonym_list)
 };
 
-static struct tsem_context root_context __lsm_ro_after_init;
+static struct tsem_context root_context;
 
 static int tsem_ready __lsm_ro_after_init;
 
@@ -1881,35 +1881,43 @@ static int __init tsem_init(void)
 {
 	int retn;
 	struct tsem_task *tsk = tsem_task(current);
+	struct tsem_context *ctx = &root_context;
 
 	security_add_hooks(tsem_hooks, ARRAY_SIZE(tsem_hooks), "tsem");
 
-	kref_init(&root_context.kref);
-	kref_get(&root_context.kref);
+	tsk->context = ctx;
+	kref_init(&ctx->kref);
+	kref_get(&ctx->kref);
 
 	root_context.model = &root_model;
-	tsk->context = &root_context;
-
-	memcpy(tsk->context->actions, tsem_root_actions,
-	       sizeof(tsem_root_actions));
 
 	retn = tsem_event_cache_init();
 	if (retn)
 		return retn;
+	retn = tsem_event_magazine_allocate(ctx, TSEM_MAGAZINE_SIZE);
+	if (retn)
+		goto done;
+
+	memcpy(ctx->actions, tsem_root_actions, sizeof(tsem_root_actions));
 
 	retn = tsem_model_cache_init();
 	if (retn)
-		return retn;
+		goto done;
 
 	retn = tsem_export_cache_init();
 	if (retn)
-		return retn;
+		goto done;
 
 	pr_info("tsem: Initialized %s modeling.\n",
 		no_root_modeling ? "domain only" : "full");
 	tsem_available = true;
 	tsk->trust_status = TSEM_TASK_TRUSTED;
-	return 0;
+	retn = 0;
+
+ done:
+	if (retn)
+		tsem_event_magazine_free(ctx);
+	return retn;
 }
 
 DEFINE_LSM(tsem) = {

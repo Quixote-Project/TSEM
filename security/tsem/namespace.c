@@ -135,6 +135,7 @@ static void wq_put(struct work_struct *work)
 		tsem_model_free(ctx);
 
 	crypto_free_shash(ctx->tfm);
+	tsem_event_magazine_free(ctx);
 	kfree(ctx->digestname);
 	kfree(ctx);
 }
@@ -275,6 +276,10 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 	mutex_lock(&context_id_mutex);
 	new_id = context_id + 1;
 
+	retn = tsem_event_magazine_allocate(new_ctx, TSEM_MAGAZINE_SIZE);
+	if (retn)
+		goto done;
+
 	if (type == TSEM_CONTROL_INTERNAL) {
 		model = tsem_model_allocate();
 		if (!model)
@@ -308,6 +313,7 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 	if (retn) {
 		remove_task_key(new_id);
 		crypto_free_shash(tfm);
+		tsem_event_magazine_free(new_ctx);
 		kfree(use_digest);
 		kfree(new_ctx->external);
 		kfree(new_ctx);
