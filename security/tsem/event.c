@@ -29,18 +29,18 @@ static void refill_event_magazine(struct work_struct *work)
 		return;
 	}
 
-	spin_lock(&ws->ctx->magazine_lock);
-	ws->ctx->magazine[ws->index] = ep;
-	clear_bit(ws->index, ws->ctx->magazine_index);
+	spin_lock(&ws->u.ctx->magazine_lock);
+	ws->u.ctx->magazine[ws->index] = ep;
+	clear_bit(ws->index, ws->u.ctx->magazine_index);
 
 	/*
 	 * The following memory barrier is used to cause the magazine
 	 * index to be visible after the refill of the cache slot.
 	 */
 	smp_mb__after_atomic();
-	spin_unlock(&ws->ctx->magazine_lock);
+	spin_unlock(&ws->u.ctx->magazine_lock);
 
-	if (index >= ws->ctx->magazine_size) {
+	if (index >= ws->u.ctx->magazine_size) {
 		kmem_cache_free(event_cachep, ep);
 		WARN_ONCE(true, "Refilling event magazine with no slots.\n");
 	}
@@ -553,7 +553,7 @@ struct tsem_event *tsem_event_allocate(bool locked)
 	if (index < ctx->magazine_size) {
 		ep = ctx->magazine[index];
 		ctx->ws[index].index = index;
-		ctx->ws[index].ctx = ctx;
+		ctx->ws[index].u.ctx = ctx;
 		set_bit(index, ctx->magazine_index);
 
 		/*

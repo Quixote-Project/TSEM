@@ -20,32 +20,22 @@ struct pseudonym {
 
 static struct kmem_cache *point_cachep;
 
-static DEFINE_SPINLOCK(magazine_lock);
-static DECLARE_BITMAP(magazine_index, MAGAZINE_SIZE);
-
-static struct tsem_event_point *point_magazine[MAGAZINE_SIZE];
-
-static struct refill {
-	struct work_struct work;
-	unsigned int index;
-} refill_work[MAGAZINE_SIZE];
-
 static void refill_point_magazine(struct work_struct *work)
 {
-	struct refill *rp;
 	struct tsem_event_point *tep;
+	struct tsem_work *ws;
 
-	rp = container_of(work, struct refill, work);
+	ws = container_of(work, struct tsem_work, work);
 
 	tep = kmem_cache_zalloc(point_cachep, GFP_KERNEL);
 	if (!tep) {
-		pr_warn("tsem: Cannot refill event point magazine.\n");
+		pr_warn("tsem: Cannot refill model point magazine.\n");
 		return;
 	}
 
-	spin_lock(&magazine_lock);
-	point_magazine[rp->index] = tep;
-	clear_bit(rp->index, magazine_index);
+	spin_lock(&ws->u.model->magazine_lock);
+	ws->u.model->magazine[ws->index] = tep;
+	clear_bit(ws->index, ws->u.model->magazine_index);
 
 	/*
 	 * The following memory barrier is used to cause the magazine
@@ -53,10 +43,11 @@ static void refill_point_magazine(struct work_struct *work)
 	 */
 	smp_mb__after_atomic();
 
-	spin_unlock(&magazine_lock);
+	spin_unlock(&ws->u.model->magazine_lock);
 }
 
-static struct tsem_event_point *alloc_event_point(bool locked)
+static struct tsem_event_point *alloc_event_point(struct tsem_model *model,
+						  bool locked)
 {
 	unsigned int index;
 	struct tsem_event_point *tep = NULL;
@@ -64,12 +55,14 @@ static struct tsem_event_point *alloc_event_point(bool locked)
 	if (!locked)
 		return kmem_cache_zalloc(point_cachep, GFP_KERNEL);
 
-	spin_lock(&magazine_lock);
-	index = find_first_zero_bit(magazine_index, MAGAZINE_SIZE);
-	if (index < MAGAZINE_SIZE) {
-		tep = point_magazine[index];
-		refill_work[index].index = index;
-		set_bit(index, magazine_index);
+	spin_lock(&model->magazine_lock);
+	index = find_first_zero_bit(model->magazine_index,
+				    model->magazine_size);
+	if (index < model->magazine_size) {
+		tep = model->magazine[index];
+		model->ws[index].index = index;
+		model->ws[index].u.model = model;
+		set_bit(index, model->magazine_index);
 
 		/*
 		 * Similar to the issue noted in the refill_point_magazine(),
@@ -78,17 +71,55 @@ static struct tsem_event_point *alloc_event_point(bool locked)
 		 */
 		smp_mb__after_atomic();
 	}
-	spin_unlock(&magazine_lock);
+	spin_unlock(&model->magazine_lock);
 
 	if (!tep) {
 		pr_warn("tsem: Failed event point allocation.\n");
 		return NULL;
 	}
 
-	INIT_WORK(&refill_work[index].work, refill_point_magazine);
-	queue_work(system_wq, &refill_work[index].work);
+	INIT_WORK(&model->ws[index].work, refill_point_magazine);
+	queue_work(system_wq, &model->ws[index].work);
 
 	return tep;
+}
+
+static int magazine_allocate(struct tsem_model *model, size_t size)
+{
+	unsigned int lp;
+	int retn = -ENOMEM;
+
+	model->magazine_size = size;
+
+	spin_lock_init(&model->magazine_lock);
+
+	model->magazine_index = bitmap_zalloc(model->magazine_size,
+					      GFP_KERNEL);
+	if (!model->magazine_index)
+		return retn;
+
+	model->magazine = kcalloc(model->magazine_size,
+				  sizeof(*model->magazine), GFP_KERNEL);
+	if (!model->magazine)
+		goto done;
+
+	for (lp = 0; lp < model->magazine_size; ++lp) {
+		model->magazine[lp] = kmem_cache_zalloc(point_cachep,
+							GFP_KERNEL);
+		if (!model->magazine[lp])
+			goto done;
+	}
+
+	model->ws = kcalloc(model->magazine_size, sizeof(*model->ws),
+			    GFP_KERNEL);
+	if (model->ws)
+		retn = 0;
+
+ done:
+	if (retn)
+		tsem_model_magazine_free(model);
+
+	return retn;
 }
 
 static int generate_pseudonym(struct tsem_file *ep, u8 *pseudonym)
@@ -141,11 +172,11 @@ static int add_event_point(u8 *point, bool valid, bool locked)
 	struct tsem_event_point *entry, *state;
 	struct tsem_model *model = tsem_model(current);
 
-	entry = alloc_event_point(locked);
+	entry = alloc_event_point(model, locked);
 	if (!entry)
 		goto done;
 
-	state = alloc_event_point(locked);
+	state = alloc_event_point(model, locked);
 	if (!state)
 		goto done;
 
@@ -571,6 +602,11 @@ struct tsem_model *tsem_model_allocate(void)
 	mutex_init(&model->pseudonym_mutex);
 	INIT_LIST_HEAD(&model->pseudonym_list);
 
+	if (magazine_allocate(model, TSEM_MODEL_MAGAZINE_SIZE)) {
+		kfree(model);
+		model = NULL;
+	}
+
 	return model;
 }
 
@@ -619,11 +655,32 @@ void tsem_model_free(struct tsem_context *ctx)
 		}
 	}
 
+	tsem_model_magazine_free(model);
 	kfree(model);
 }
 
 /**
+ * tsem_model_magazine_free: Free the event point magazine for a model domain.
+ * @model: A pointer to the model whose magazine is to be freed.
+ *
+ * This function releases all of the components of an event point
+ * magazine that has been allocated for a modeling domain.
+ */
+void tsem_model_magazine_free(struct tsem_model *model)
+{
+	unsigned int lp;
+
+	for (lp = 0; lp < model->magazine_size; ++lp)
+		kmem_cache_free(point_cachep, model->magazine[lp]);
+
+	bitmap_free(model->magazine_index);
+	kfree(model->ws);
+	kfree(model->magazine);
+}
+
+/**
  * tsem model_init() - Initialize the TSEM event point cache.
+ * @model: A pointer to the model that is being initialized.
  *
  * This function is called by the primary TSEM initialization function
  * and sets up the cache that will be used to dispense tsem_event_point
@@ -632,21 +689,17 @@ void tsem_model_free(struct tsem_context *ctx)
  * Return: This function returns a value of zero on success and a negative
  *	   error code on failure.
  */
-int __init tsem_model_cache_init(void)
+int __init tsem_model_cache_init(struct tsem_model *model)
 {
-	int cnt;
-
 	point_cachep = kmem_cache_create("tsem_event_point_cache",
 					 sizeof(struct tsem_event_point), 0,
 					 SLAB_PANIC, 0);
 	if (!point_cachep)
 		return -ENOMEM;
 
-	for (cnt = 0; cnt < MAGAZINE_SIZE; ++cnt) {
-		point_magazine[cnt] = kmem_cache_zalloc(point_cachep,
-							GFP_KERNEL);
-		if (!point_magazine[cnt])
-			return -ENOMEM;
+	if (magazine_allocate(model, TSEM_MODEL_MAGAZINE_SIZE)) {
+		kmem_cache_destroy(point_cachep);
+		return -ENOMEM;
 	}
 
 	return 0;

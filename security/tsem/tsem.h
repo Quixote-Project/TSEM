@@ -19,6 +19,7 @@
 
 #define TSEM_CONTROL_CAPABILITY CAP_TRUST
 #define TSEM_MAGAZINE_SIZE 96
+#define TSEM_MODEL_MAGAZINE_SIZE 10
 
 enum tsem_event_type {
 	TSEM_BPRM_SET_CREDS = 1,
@@ -263,6 +264,15 @@ struct tsem_event_parameters {
 	} u;
 };
 
+struct tsem_work {
+	unsigned int index;
+	union {
+		struct tsem_context *ctx;
+		struct tsem_model *model;
+	} u;
+	struct work_struct work;
+};
+
 struct tsem_model {
 	bool have_aggregate;
 	u8 base[HASH_MAX_DIGESTSIZE];
@@ -284,12 +294,12 @@ struct tsem_model {
 
 	struct mutex pseudonym_mutex;
 	struct list_head pseudonym_list;
-};
 
-struct tsem_work {
-	unsigned int index;
-	struct tsem_context *ctx;
-	struct work_struct work;
+	unsigned int magazine_size;
+	spinlock_t magazine_lock;
+	unsigned long *magazine_index;
+	struct tsem_work *ws;
+	struct tsem_event_point **magazine;
 };
 
 struct tsem_external {
@@ -380,7 +390,6 @@ extern void tsem_fs_show_key(struct seq_file *c, char *term, char *key,
 			     char *fmt, ...);
 extern int tsem_fs_init(void);
 
-extern int tsem_model_cache_init(void);
 extern struct tsem_model *tsem_model_allocate(void);
 extern void tsem_model_free(struct tsem_context *ctx);
 extern int tsem_model_event(struct tsem_event *ep);
@@ -391,6 +400,8 @@ extern int tsem_model_has_pseudonym(struct tsem_inode *tsip,
 extern void tsem_model_load_base(u8 *mapping);
 extern int tsem_model_add_aggregate(void);
 extern void tsem_model_compute_state(void);
+extern void tsem_model_magazine_free(struct tsem_model *);
+extern int tsem_model_cache_init(struct tsem_model *);
 
 extern void tsem_ns_put(struct tsem_context *ctx);
 extern int tsem_ns_event_key(u8 *task_key, const char *keystr, u8 *key);
