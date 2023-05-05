@@ -130,6 +130,7 @@ static void wq_put(struct work_struct *work)
 		mutex_unlock(&context_id_mutex);
 
 		securityfs_remove(ctx->external->dentry);
+		tsem_export_magazine_free(ctx->external);
 		kfree(ctx->external);
 	} else
 		tsem_model_free(ctx);
@@ -293,6 +294,11 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 			new_ctx->external = NULL;
 			goto done;
 		}
+
+		retn = tsem_export_magazine_allocate(new_ctx->external,
+						     TSEM_MAGAZINE_SIZE);
+		if (retn)
+			goto done;
 	}
 
 	kref_init(&new_ctx->kref);
@@ -315,6 +321,8 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 		crypto_free_shash(tfm);
 		tsem_event_magazine_free(new_ctx);
 		kfree(use_digest);
+		if (new_ctx->external)
+			tsem_export_magazine_free(new_ctx->external);
 		kfree(new_ctx->external);
 		kfree(new_ctx);
 		kfree(model);

@@ -143,6 +143,8 @@ enum tsem_inode_state {
 	TSEM_INODE_COLLECTED
 };
 
+struct export_event;
+
 struct tsem_COE {
 	uid_t uid;
 	uid_t euid;
@@ -269,6 +271,7 @@ struct tsem_work {
 	union {
 		struct tsem_context *ctx;
 		struct tsem_model *model;
+		struct tsem_external *ext;
 	} u;
 	struct work_struct work;
 };
@@ -308,6 +311,12 @@ struct tsem_external {
 	struct dentry *dentry;
 	bool have_event;
 	wait_queue_head_t wq;
+
+	unsigned int magazine_size;
+	spinlock_t magazine_lock;
+	unsigned long *magazine_index;
+	struct tsem_work *ws;
+	struct export_event **magazine;
 };
 
 struct tsem_context {
@@ -413,6 +422,9 @@ extern int tsem_export_show(struct seq_file *m, void *v);
 extern int tsem_export_event(struct tsem_event *ep);
 extern int tsem_export_action(enum tsem_event_type event);
 extern int tsem_export_aggregate(void);
+extern int tsem_export_magazine_allocate(struct tsem_external *ext,
+					 size_t size);
+extern void tsem_export_magazine_free(struct tsem_external *ext);
 extern int tsem_export_cache_init(void);
 
 extern int tsem_map_task(struct file *file, u8 *mapping);

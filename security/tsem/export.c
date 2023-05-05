@@ -43,54 +43,49 @@ static const char * const tsem_actions[TSEM_ACTION_CNT] = {
 
 static struct kmem_cache *export_cachep;
 
-static DEFINE_SPINLOCK(magazine_lock);
-static DECLARE_BITMAP(magazine_index, MAGAZINE_SIZE);
-
-static struct export_event *export_magazine[MAGAZINE_SIZE];
-
-static void free_export(struct export_event *exp, bool locked)
+static void refill_export_magazine(struct work_struct *work)
 {
-	unsigned int index;
+	struct export_event *exp;
+	struct tsem_external *ext;
+	struct tsem_work *ws;
 
-	if (!locked) {
-		kmem_cache_free(export_cachep, exp);
+	ws = container_of(work, struct tsem_work, work);
+	ext = ws->u.ext;
+
+	exp = kmem_cache_zalloc(export_cachep, GFP_KERNEL);
+	if (!exp) {
+		pr_warn("tsem: Cannot refill event magazine.\n");
 		return;
 	}
 
-	memset(exp, 0, sizeof(*exp));
-
-	spin_lock(&magazine_lock);
-	index = find_first_bit(magazine_index, MAGAZINE_SIZE);
-	if (index < MAGAZINE_SIZE) {
-		export_magazine[index] = exp;
-		clear_bit(index, magazine_index);
-	}
+	spin_lock(&ws->u.ext->magazine_lock);
+	ws->u.ext->magazine[ws->index] = exp;
+	clear_bit(ws->index, ws->u.ext->magazine_index);
 
 	/*
 	 * The following memory barrier is used to cause the magazine
 	 * index to be visible after the refill of the cache slot.
 	 */
 	smp_mb__after_atomic();
-
-	spin_unlock(&magazine_lock);
-
-	if (index >= MAGAZINE_SIZE)
-		WARN_ONCE(true, "Refilling export magazine with no slots.\n");
+	spin_unlock(&ws->u.ext->magazine_lock);
 }
 
 struct export_event *allocate_export(bool locked)
 {
 	unsigned int index;
 	struct export_event *exp = NULL;
+	struct tsem_external *ext = tsem_context(current)->external;
 
 	if (!locked)
 		return kmem_cache_zalloc(export_cachep, GFP_KERNEL);
 
-	spin_lock(&magazine_lock);
-	index = find_first_zero_bit(magazine_index, MAGAZINE_SIZE);
-	if (index < MAGAZINE_SIZE) {
-		exp = export_magazine[index];
-		set_bit(index, magazine_index);
+	spin_lock(&ext->magazine_lock);
+	index = find_first_zero_bit(ext->magazine_index, ext->magazine_size);
+	if (index < ext->magazine_size) {
+		exp = ext->magazine[index];
+		ext->ws[index].index = index;
+		ext->ws[index].u.ext = ext;
+		set_bit(index, ext->magazine_index);
 
 		/*
 		 * Similar to the issue noted in the refill_event_magazine()
@@ -100,7 +95,14 @@ struct export_event *allocate_export(bool locked)
 		 */
 		smp_mb__after_atomic();
 	}
-	spin_unlock(&magazine_lock);
+
+	spin_unlock(&ext->magazine_lock);
+
+	if (!exp)
+		return ERR_PTR(-ENOMEM);
+
+	INIT_WORK(&ext->ws[index].work, refill_export_magazine);
+	queue_work(system_wq, &ext->ws[index].work);
 
 	return exp;
 }
@@ -168,7 +170,7 @@ int tsem_export_show(struct seq_file *sf, void *v)
 	}
 	seq_puts(sf, "}\n");
 
-	free_export(exp, locked);
+	kmem_cache_free(export_cachep, exp);
 	return 0;
 }
 
@@ -293,6 +295,78 @@ int tsem_export_aggregate(void)
 }
 
 /**
+ * tsem export_magazine_allocate() - Allocate a TSEM export magazine.
+ * @ctx: A pointer to the external modeling context that the magazine is
+ *	 to be allocated for.
+ * @size: The number of entries to be created in the magazine.
+
+ * The security event export magazine is an array of export_event
+ * structures that are used to service security hooks that are called
+ * in atomic context.  Each external modeling domain has a magazine
+ * allocated to it and this function allocates and initializes the
+ * memory structures needed to manage that magazine.
+
+ * Return: This function returns a value of zero on success and a negative
+ *	   error code on failure.
+ */
+int tsem_export_magazine_allocate(struct tsem_external *ext, size_t size)
+{
+	unsigned int lp;
+	int retn = -ENOMEM;
+
+	ext->magazine_size = size;
+
+	spin_lock_init(&ext->magazine_lock);
+
+	ext->magazine_index = bitmap_zalloc(ext->magazine_size, GFP_KERNEL);
+	if (!ext->magazine_index)
+		return retn;
+
+	ext->magazine = kcalloc(ext->magazine_size, sizeof(*ext->magazine),
+				GFP_KERNEL);
+	if (!ext->magazine)
+		goto done;
+
+	for (lp = 0; lp < ext->magazine_size; ++lp) {
+		ext->magazine[lp] = kmem_cache_zalloc(export_cachep,
+						      GFP_KERNEL);
+		if (!ext->magazine[lp])
+			goto done;
+	}
+
+	ext->ws = kcalloc(ext->magazine_size, sizeof(*ext->ws), GFP_KERNEL);
+	if (ext->ws)
+		retn = 0;
+
+ done:
+	if (retn)
+		tsem_export_magazine_free(ext);
+
+	return retn;
+}
+
+/**
+ * tsem export_magazine_free() - Releases a TSEM export magazine
+ * @ctx: A pointer to the external modeling context whose magazine is
+ *	 to be released.
+ *
+ * The function is used to free the memory that was allocated by
+ * the tsem_export_magazine_allocate() function for an extenral
+ * modeling context.
+ */
+void tsem_export_magazine_free(struct tsem_external *ext)
+{
+	unsigned int lp;
+
+	for (lp = 0; lp < ext->magazine_size; ++lp)
+		kmem_cache_free(export_cachep, ext->magazine[lp]);
+
+	bitmap_free(ext->magazine_index);
+	kfree(ext->ws);
+	kfree(ext->magazine);
+}
+
+/**
  * tsem export_cache_init() - Initialize the TSEM export cache.
  *
  * This function is called by the TSEM initialization function and sets
@@ -304,20 +378,12 @@ int tsem_export_aggregate(void)
  */
 int __init tsem_export_cache_init(void)
 {
-	int cnt;
 
 	export_cachep = kmem_cache_create("tsem_export_cache",
 					 sizeof(struct export_event), 0,
 					 SLAB_PANIC, 0);
 	if (!export_cachep)
 		return -ENOMEM;
-
-	for (cnt = 0; cnt < MAGAZINE_SIZE; ++cnt) {
-		export_magazine[cnt] = kmem_cache_zalloc(export_cachep,
-							 GFP_KERNEL);
-		if (!export_magazine[cnt])
-			return -ENOMEM;
-	}
 
 	return 0;
 }
