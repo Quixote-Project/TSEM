@@ -7,8 +7,6 @@
  * Implements updates to an external modeling engine.
  */
 
-#define MAGAZINE_SIZE 96
-
 #include <linux/seq_file.h>
 
 #include "tsem.h"

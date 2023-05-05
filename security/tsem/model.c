@@ -7,8 +7,6 @@
  * Implements the an kernel modeling agent.
  */
 
-#define MAGAZINE_SIZE 10
-
 #include <linux/list_sort.h>
 
 #include "tsem.h"
