@@ -181,8 +181,9 @@ struct tsem_file {
 
 struct tsem_event_point {
 	struct list_head list;
-	u8 point[HASH_MAX_DIGESTSIZE];
 	bool valid;
+	uint64_t count;
+	u8 point[HASH_MAX_DIGESTSIZE];
 };
 
 struct tsem_mmap_file_args {

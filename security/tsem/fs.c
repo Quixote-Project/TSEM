@@ -18,6 +18,7 @@ static struct dentry *points;
 static struct dentry *forensics;
 static struct dentry *measurement_file;
 static struct dentry *trajectory;
+static struct dentry *trajectory_count;
 static struct dentry *state;
 static struct dentry *id;
 static struct dentry *aggregate;
@@ -394,6 +395,61 @@ static int trajectory_open(struct inode *inode, struct file *file)
 
 static const struct file_operations trajectory_ops = {
 	.open = trajectory_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release,
+};
+
+static void *trajectory_count_start(struct seq_file *c, loff_t *pos)
+{
+	struct tsem_model *model = tsem_model(current);
+
+	spin_lock(&model->point_lock);
+	return seq_list_start(&model->point_list, *pos);
+}
+
+static void *trajectory_count_next(struct seq_file *c, void *p, loff_t *pos)
+{
+	struct tsem_model *model = tsem_model(current);
+
+	return seq_list_next(p, &model->point_list, pos);
+}
+
+static void trajectory_count_stop(struct seq_file *c, void *pos)
+{
+	struct tsem_model *model = tsem_model(current);
+
+	spin_unlock(&model->point_lock);
+}
+
+static int trajectory_count_show(struct seq_file *c, void *point)
+{
+	struct tsem_event_point *pt;
+
+	pt = list_entry(point, struct tsem_event_point, list);
+	if (!pt->valid)
+		return 0;
+
+	seq_printf(c, "%llu\n", pt->count);
+	return 0;
+}
+
+static const struct seq_operations trajectory_count_seqops = {
+	.start = trajectory_count_start,
+	.next = trajectory_count_next,
+	.stop = trajectory_count_stop,
+	.show = trajectory_count_show
+};
+
+static int trajectory_count_open(struct inode *inode, struct file *file)
+{
+	if (!can_access_fs())
+		return -EACCES;
+	return seq_open(file, &trajectory_count_seqops);
+}
+
+static const struct file_operations trajectory_count_ops = {
+	.open = trajectory_count_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
 	.release = seq_release,
@@ -892,6 +948,12 @@ int __init tsem_fs_init(void)
 	if (IS_ERR(trajectory))
 		goto err;
 
+	trajectory_count = securityfs_create_file("trajectory_count", 0400,
+						  tsem_dir, NULL,
+						  &trajectory_count_ops);
+	if (IS_ERR(trajectory_count))
+		goto err;
+
 	state = securityfs_create_file("state", 0400, tsem_dir, NULL,
 				       &state_ops);
 	if (IS_ERR(state))
@@ -921,6 +983,7 @@ int __init tsem_fs_init(void)
 	securityfs_remove(forensics);
 	securityfs_remove(measurement_file);
 	securityfs_remove(trajectory);
+	securityfs_remove(trajectory_count);
 	securityfs_remove(state);
 	securityfs_remove(id);
 	securityfs_remove(aggregate);
