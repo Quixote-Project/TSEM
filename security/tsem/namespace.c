@@ -39,11 +39,11 @@ static int generate_task_key(const char *keystr, u64 context_id,
 {
 	int retn;
 	bool found_key, valid_key = false;
-	unsigned int size;
+	unsigned int size = tsem_digestsize();
 	struct context_key *entry;
 
 	while (!valid_key) {
-		get_random_bytes(t_ttask->task_key, tsem_digestsize());
+		get_random_bytes(t_ttask->task_key, size);
 		retn = tsem_ns_event_key(t_ttask->task_key, keystr,
 					 p_ttask->task_key);
 		if (retn)
