@@ -14,11 +14,11 @@
 
 static struct dentry *control;
 static struct dentry *tsem_dir;
-static struct dentry *points;
 static struct dentry *forensics;
 static struct dentry *measurement_file;
 static struct dentry *trajectory;
 static struct dentry *trajectory_count;
+static struct dentry *trajectory_points;
 static struct dentry *state;
 static struct dentry *id;
 static struct dentry *aggregate;
@@ -455,7 +455,7 @@ static const struct file_operations trajectory_count_ops = {
 	.release = seq_release,
 };
 
-static void *point_start(struct seq_file *c, loff_t *pos)
+static void *trajectory_point_start(struct seq_file *c, loff_t *pos)
 {
 	struct tsem_model *model = tsem_model(current);
 
@@ -463,45 +463,48 @@ static void *point_start(struct seq_file *c, loff_t *pos)
 	return seq_list_start(&model->point_list, *pos);
 }
 
-static void *point_next(struct seq_file *c, void *p, loff_t *pos)
+static void *trajectory_point_next(struct seq_file *c, void *p, loff_t *pos)
 {
 	struct tsem_model *model = tsem_model(current);
 
 	return seq_list_next(p, &model->point_list, pos);
 }
 
-static void point_stop(struct seq_file *c, void *pos)
+static void trajectory_point_stop(struct seq_file *c, void *pos)
 {
 	struct tsem_model *model = tsem_model(current);
 
 	spin_unlock(&model->point_lock);
 }
 
-static int point_show(struct seq_file *c, void *point)
+static int trajectory_point_show(struct seq_file *c, void *point)
 {
-	struct tsem_event_point *id;
+	struct tsem_event_point *pt;
 
-	id = list_entry(point, struct tsem_event_point, list);
-	seq_printf(c, "%*phN\n", tsem_digestsize(), id->point);
+	pt = list_entry(point, struct tsem_event_point, list);
+	if (!pt->valid)
+		return 0;
+
+	seq_printf(c, "%*phN\n", tsem_digestsize(), pt->point);
 	return 0;
 }
 
-static const struct seq_operations point_seqops = {
-	.start = point_start,
-	.next = point_next,
-	.stop = point_stop,
-	.show = point_show
+static const struct seq_operations trajectory_point_seqops = {
+	.start = trajectory_point_start,
+	.next = trajectory_point_next,
+	.stop = trajectory_point_stop,
+	.show = trajectory_point_show
 };
 
-static int point_open(struct inode *inode, struct file *file)
+static int trajectory_point_open(struct inode *inode, struct file *file)
 {
 	if (!can_access_fs())
 		return -EACCES;
-	return seq_open(file, &point_seqops);
+	return seq_open(file, &trajectory_point_seqops);
 }
 
-static const struct file_operations point_ops = {
-	.open = point_open,
+static const struct file_operations trajectory_point_ops = {
+	.open = trajectory_point_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
 	.release = seq_release,
@@ -927,10 +930,6 @@ int __init tsem_fs_init(void)
 	if (IS_ERR(control))
 		goto err;
 
-	points = securityfs_create_file("points", 0400, tsem_dir, NULL,
-					&point_ops);
-	if (IS_ERR(points))
-		goto err;
 
 	forensics = securityfs_create_file("forensics", 0400, tsem_dir, NULL,
 					   &forensics_ops);
@@ -952,6 +951,12 @@ int __init tsem_fs_init(void)
 						  tsem_dir, NULL,
 						  &trajectory_count_ops);
 	if (IS_ERR(trajectory_count))
+		goto err;
+
+	trajectory_points = securityfs_create_file("trajectory_points", 0400,
+						   tsem_dir, NULL,
+						   &trajectory_point_ops);
+	if (IS_ERR(trajectory_points))
 		goto err;
 
 	state = securityfs_create_file("state", 0400, tsem_dir, NULL,
@@ -979,11 +984,11 @@ int __init tsem_fs_init(void)
 
  err:
 	securityfs_remove(control);
-	securityfs_remove(points);
 	securityfs_remove(forensics);
 	securityfs_remove(measurement_file);
 	securityfs_remove(trajectory);
 	securityfs_remove(trajectory_count);
+	securityfs_remove(trajectory_points);
 	securityfs_remove(state);
 	securityfs_remove(id);
 	securityfs_remove(aggregate);
