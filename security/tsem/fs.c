@@ -15,6 +15,7 @@
 static struct dentry *control;
 static struct dentry *tsem_dir;
 static struct dentry *forensics;
+static struct dentry *forensics_points;
 static struct dentry *measurement_file;
 static struct dentry *trajectory;
 static struct dentry *trajectory_count;
@@ -668,6 +669,61 @@ static const struct file_operations forensics_ops = {
 	.release = seq_release,
 };
 
+static void *forensics_point_start(struct seq_file *c, loff_t *pos)
+{
+	struct tsem_model *model = tsem_model(current);
+
+	spin_lock(&model->point_lock);
+	return seq_list_start(&model->point_list, *pos);
+}
+
+static void *forensics_point_next(struct seq_file *c, void *p, loff_t *pos)
+{
+	struct tsem_model *model = tsem_model(current);
+
+	return seq_list_next(p, &model->point_list, pos);
+}
+
+static void forensics_point_stop(struct seq_file *c, void *pos)
+{
+	struct tsem_model *model = tsem_model(current);
+
+	spin_unlock(&model->point_lock);
+}
+
+static int forensics_point_show(struct seq_file *c, void *point)
+{
+	struct tsem_event_point *pt;
+
+	pt = list_entry(point, struct tsem_event_point, list);
+	if (pt->valid)
+		return 0;
+
+	seq_printf(c, "%*phN\n", tsem_digestsize(), pt->point);
+	return 0;
+}
+
+static const struct seq_operations forensics_point_seqops = {
+	.start = forensics_point_start,
+	.next = forensics_point_next,
+	.stop = forensics_point_stop,
+	.show = forensics_point_show
+};
+
+static int forensics_point_open(struct inode *inode, struct file *file)
+{
+	if (!can_access_fs())
+		return -EACCES;
+	return seq_open(file, &forensics_point_seqops);
+}
+
+static const struct file_operations forensics_point_ops = {
+	.open = forensics_point_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release,
+};
+
 static int measurement_show(struct seq_file *c, void *event)
 {
 	struct tsem_model *model = tsem_model(current);
@@ -936,6 +992,12 @@ int __init tsem_fs_init(void)
 	if (IS_ERR(forensics))
 		goto err;
 
+	forensics_points = securityfs_create_file("forensics_points", 0400,
+						  tsem_dir, NULL,
+						  &forensics_point_ops);
+	if (IS_ERR(forensics_points))
+		goto err;
+
 	measurement_file = securityfs_create_file("measurement", 0400,
 						  tsem_dir, NULL,
 						  &measurement_ops);
@@ -985,6 +1047,7 @@ int __init tsem_fs_init(void)
  err:
 	securityfs_remove(control);
 	securityfs_remove(forensics);
+	securityfs_remove(forensics_points);
 	securityfs_remove(measurement_file);
 	securityfs_remove(trajectory);
 	securityfs_remove(trajectory_count);
