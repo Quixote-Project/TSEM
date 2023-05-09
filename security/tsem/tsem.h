@@ -18,8 +18,7 @@
 #include <net/af_unix.h>
 
 #define TSEM_CONTROL_CAPABILITY CAP_TRUST
-#define TSEM_MAGAZINE_SIZE 96
-#define TSEM_MODEL_MAGAZINE_SIZE 10
+#define TSEM_MAGAZINE_SIZE 8
 
 enum tsem_event_type {
 	TSEM_BPRM_SET_CREDS = 1,
@@ -116,7 +115,7 @@ enum tsem_action_type {
 };
 
 enum tsem_control_type {
-	TSEM_CONTROL_INTERNAL = 1,
+	TSEM_CONTROL_INTERNAL = 0,
 	TSEM_CONTROL_EXTERNAL,
 	TSEM_CONTROL_ENFORCE,
 	TSEM_CONTROL_SEAL,
@@ -127,8 +126,8 @@ enum tsem_control_type {
 	TSEM_CONTROL_MAP_BASE
 };
 
-enum tsem_ns_config {
-	TSEM_NS_INIT = 1,
+enum tsem_ns_reference {
+	TSEM_NS_INITIAL = 1,
 	TSEM_NS_CURRENT
 };
 
@@ -410,14 +409,14 @@ extern int tsem_model_has_pseudonym(struct tsem_inode *tsip,
 extern void tsem_model_load_base(u8 *mapping);
 extern int tsem_model_add_aggregate(void);
 extern void tsem_model_compute_state(void);
-extern void tsem_model_magazine_free(struct tsem_model *);
-extern int tsem_model_cache_init(struct tsem_model *);
+extern void tsem_model_magazine_free(struct tsem_model *model);
+extern int tsem_model_cache_init(struct tsem_model *model);
 
 extern void tsem_ns_put(struct tsem_context *ctx);
 extern int tsem_ns_event_key(u8 *task_key, const char *keystr, u8 *key);
 extern int tsem_ns_create(const enum tsem_control_type type,
-			  const char *digest, const enum tsem_ns_config ns,
-			  const char *key);
+			  const char *digest, const enum tsem_ns_reference ns,
+			  const char *key, const unsigned int cache_size);
 
 extern int tsem_export_show(struct seq_file *m, void *v);
 extern int tsem_export_event(struct tsem_event *ep);

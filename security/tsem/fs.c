@@ -31,16 +31,30 @@ struct control_commands {
 	enum tsem_control_type type;
 };
 
-static struct control_commands commands[] = {
-	{"internal", TSEM_CONTROL_INTERNAL},
-	{"external", TSEM_CONTROL_EXTERNAL},
-	{"enforce", TSEM_CONTROL_ENFORCE},
-	{"seal", TSEM_CONTROL_SEAL},
-	{"trusted", TSEM_CONTROL_TRUSTED},
-	{"untrusted", TSEM_CONTROL_UNTRUSTED},
-	{"state", TSEM_CONTROL_MAP_STATE},
-	{"pseudonym", TSEM_CONTROL_MAP_PSEUDONYM},
-	{"base ", TSEM_CONTROL_MAP_BASE}
+static const char * const control_commands[] = {
+	"internal",
+	"external",
+	"enforce",
+	"seal",
+	"trusted",
+	"untrusted",
+	"state",
+	"pseudonym",
+	"base"
+};
+
+enum namespace_argument_type {
+	NS_REF = 0,
+	NS_DIGEST,
+	NS_KEY,
+	NS_CACHE
+};
+
+static const char * const namespace_arguments[] = {
+	"nsref",
+	"digest",
+	"key",
+	"cache"
 };
 
 static bool can_access_fs(void)
@@ -148,36 +162,61 @@ static int config_point(enum tsem_control_type type, u8 *arg)
 
 static int config_namespace(enum tsem_control_type type, const char *arg)
 {
-	char **argv;
+	char **argv, *argp, *digest = "sha256", *key = NULL;
 	int argc, retn = -EINVAL;
-	enum tsem_ns_config ns;
+	unsigned int lp, cache_size = TSEM_MAGAZINE_SIZE;
+	enum namespace_argument_type ns_arg;
+	enum tsem_ns_reference ns_ref = TSEM_NS_INITIAL;
 
 	argv = argv_split(GFP_KERNEL, arg, &argc);
 	if (!argv)
 		return -ENOMEM;
-	if (argc < 2)
-		goto done;
 
-	if (!crypto_has_shash(argv[0], 0, 0))
-		goto done;
+	for (lp = 0; lp < argc; ++lp) {
+		argp = strchr(argv[lp], '=');
+		if (!argp)
+			goto done;
+		*argp++ = '\0';
 
-	if (!strcmp(argv[1], "init"))
-		ns = TSEM_NS_INIT;
-	else if (!strcmp(argv[1], "current"))
-		ns = TSEM_NS_CURRENT;
-	else
-		goto done;
+		ns_arg = match_string(namespace_arguments,
+				    ARRAY_SIZE(namespace_arguments), argv[lp]);
+		if (ns_arg < 0)
+			goto done;
 
-	if (type == TSEM_CONTROL_INTERNAL) {
-		retn = tsem_ns_create(type, argv[0], ns, NULL);
-		goto done;
+		switch (ns_arg) {
+		case NS_REF:
+			if (!strcmp(argp, "current"))
+				ns_ref = TSEM_NS_CURRENT;
+			else if (!strcmp(argp, "initial"))
+				ns_ref = TSEM_NS_INITIAL;
+			else
+				goto done;
+			break;
+		case NS_DIGEST:
+			digest = argp;
+			if (!crypto_has_shash(digest, 0, 0))
+				goto done;
+			break;
+		case NS_KEY:
+			key = argp;
+			if (strlen(key) % 2)
+				goto done;
+			break;
+		case NS_CACHE:
+			if (kstrtouint(argp, 0, &cache_size))
+				goto done;
+			if (!cache_size)
+				goto done;
+			break;
+		default:
+			break;
+		}
 	}
 
-	if (argc != 3)
+	if (type == TSEM_CONTROL_EXTERNAL && !key)
 		goto done;
-	if (strlen(argv[2]) != tsem_digestsize() * 2)
-		goto done;
-	retn = tsem_ns_create(type, argv[0], ns, argv[2]);
+
+	retn = tsem_ns_create(type, digest, ns_ref, key, cache_size);
 
  done:
 	argv_free(argv);
@@ -525,7 +564,6 @@ static ssize_t write_control(struct file *file, const char __user *buf,
 			     size_t datalen, loff_t *ppos)
 {
 	char *p, *key, *arg, cmdbufr[128];
-	unsigned int lp;
 	ssize_t retn = -EINVAL;
 	long pid;
 	enum tsem_control_type type;
@@ -552,13 +590,10 @@ static ssize_t write_control(struct file *file, const char __user *buf,
 		++arg;
 	}
 
-	for (lp = 0; lp < ARRAY_SIZE(commands); ++lp) {
-		if (!strncmp(cmdbufr, commands[lp].cmd,
-			     strlen(commands[lp].cmd))) {
-			type = commands[lp].type;
-			break;
-		}
-	}
+	type = match_string(control_commands, ARRAY_SIZE(control_commands),
+			    cmdbufr);
+	if (type < 0)
+		goto done;
 
 	switch (type) {
 	case TSEM_CONTROL_EXTERNAL:

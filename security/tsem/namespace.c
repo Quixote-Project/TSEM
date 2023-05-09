@@ -255,7 +255,8 @@ static struct crypto_shash *configure_digest(const char *digest,
  *	   a negative error value on error.
  */
 int tsem_ns_create(const enum tsem_control_type type, const char *digest,
-		   const enum tsem_ns_config ns, const char *key)
+		   const enum tsem_ns_reference ns, const char *key,
+		   unsigned int cache_size)
 {
 	u8 zero_digest[HASH_MAX_DIGESTSIZE];
 	char *use_digest;
@@ -277,7 +278,7 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 	mutex_lock(&context_id_mutex);
 	new_id = context_id + 1;
 
-	retn = tsem_event_magazine_allocate(new_ctx, TSEM_MAGAZINE_SIZE);
+	retn = tsem_event_magazine_allocate(new_ctx, cache_size);
 	if (retn)
 		goto done;
 
@@ -296,7 +297,7 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 		}
 
 		retn = tsem_export_magazine_allocate(new_ctx->external,
-						     TSEM_MAGAZINE_SIZE);
+						     cache_size);
 		if (retn)
 			goto done;
 	}
