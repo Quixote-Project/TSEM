@@ -168,6 +168,12 @@ static int config_namespace(enum tsem_control_type type, const char *arg)
 	enum namespace_argument_type ns_arg;
 	enum tsem_ns_reference ns_ref = TSEM_NS_INITIAL;
 
+	if (!arg) {
+		if (type == TSEM_CONTROL_EXTERNAL)
+			return retn;
+		return tsem_ns_create(type, digest, ns_ref, key, cache_size);
+	}
+
 	argv = argv_split(GFP_KERNEL, arg, &argc);
 	if (!argv)
 		return -ENOMEM;
@@ -598,8 +604,6 @@ static ssize_t write_control(struct file *file, const char __user *buf,
 	switch (type) {
 	case TSEM_CONTROL_EXTERNAL:
 	case TSEM_CONTROL_INTERNAL:
-		if (!arg)
-			goto done;
 		retn = config_namespace(type, arg);
 		break;
 	case TSEM_CONTROL_ENFORCE:
