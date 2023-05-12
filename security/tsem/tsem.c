@@ -30,13 +30,16 @@ static struct tsem_model root_model = {
 	.point_lock = __SPIN_LOCK_INITIALIZER(root_model.point_lock),
 	.point_list = LIST_HEAD_INIT(root_model.point_list),
 	.state_list = LIST_HEAD_INIT(root_model.state_list),
+	.point_end_mutex = __MUTEX_INITIALIZER(root_model.point_end_mutex),
 
 	.trajectory_lock = __SPIN_LOCK_INITIALIZER(root_model.trajectory_lock),
 	.trajectory_list = LIST_HEAD_INIT(root_model.trajectory_list),
+	.trajectory_end_mutex = __MUTEX_INITIALIZER(root_model.trajectory_end_mutex),
 
 	.max_forensics_count = 100,
 	.forensics_lock = __SPIN_LOCK_INITIALIZER(root_model.forensics_lock),
 	.forensics_list = LIST_HEAD_INIT(root_model.forensics_list),
+	.forensics_end_mutex = __MUTEX_INITIALIZER(root_model.forensics_end_mutex),
 
 	.pseudonym_mutex = __MUTEX_INITIALIZER(root_model.pseudonym_mutex),
 	.pseudonym_list = LIST_HEAD_INIT(root_model.pseudonym_list)

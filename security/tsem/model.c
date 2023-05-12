@@ -587,13 +587,16 @@ struct tsem_model *tsem_model_allocate(void)
 	spin_lock_init(&model->point_lock);
 	INIT_LIST_HEAD(&model->point_list);
 	INIT_LIST_HEAD(&model->state_list);
+	mutex_init(&model->point_end_mutex);
 
 	spin_lock_init(&model->trajectory_lock);
 	INIT_LIST_HEAD(&model->trajectory_list);
+	mutex_init(&model->trajectory_end_mutex);
 
 	model->max_forensics_count = 100;
 	spin_lock_init(&model->forensics_lock);
 	INIT_LIST_HEAD(&model->forensics_list);
+	mutex_init(&model->forensics_end_mutex);
 
 	mutex_init(&model->pseudonym_mutex);
 	INIT_LIST_HEAD(&model->pseudonym_list);
