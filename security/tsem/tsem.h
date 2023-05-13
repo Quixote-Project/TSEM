@@ -289,13 +289,11 @@ struct tsem_model {
 	struct list_head *point_end;
 
 	spinlock_t trajectory_lock;
-	unsigned int trajectory_count;
 	struct list_head trajectory_list;
 	struct mutex trajectory_end_mutex;
 	struct list_head *trajectory_end;
 
 	spinlock_t forensics_lock;
-	unsigned int forensics_count;
 	unsigned int max_forensics_count;
 	struct list_head forensics_list;
 	struct mutex forensics_end_mutex;

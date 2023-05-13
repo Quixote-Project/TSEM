@@ -196,7 +196,6 @@ static int add_trajectory_point(struct tsem_event *ep)
 
 	spin_lock(&model->trajectory_lock);
 	list_add_tail(&ep->list, &model->trajectory_list);
-	++model->trajectory_count;
 	spin_unlock(&model->trajectory_lock);
 
 	return 0;
@@ -206,15 +205,11 @@ static int add_forensic_point(struct tsem_event *ep)
 {
 	struct tsem_model *model = tsem_model(current);
 
-	if (model->forensics_count == model->max_forensics_count)
-		return -E2BIG;
-
 	ep->pid = 0;
 	tsem_event_get(ep);
 
 	spin_lock(&model->forensics_lock);
 	list_add_tail(&ep->list, &model->forensics_list);
-	++model->forensics_count;
 	spin_unlock(&model->forensics_lock);
 
 	return 0;
