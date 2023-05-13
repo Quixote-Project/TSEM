@@ -29,7 +29,6 @@ enum tsem_action_type tsem_root_actions[TSEM_EVENT_CNT] = {
 static struct tsem_model root_model = {
 	.point_lock = __SPIN_LOCK_INITIALIZER(root_model.point_lock),
 	.point_list = LIST_HEAD_INIT(root_model.point_list),
-	.state_list = LIST_HEAD_INIT(root_model.state_list),
 	.point_end_mutex = __MUTEX_INITIALIZER(root_model.point_end_mutex),
 
 	.trajectory_lock = __SPIN_LOCK_INITIALIZER(root_model.trajectory_lock),

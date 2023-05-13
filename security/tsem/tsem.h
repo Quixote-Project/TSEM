@@ -284,8 +284,8 @@ struct tsem_model {
 
 	spinlock_t point_lock;
 	struct list_head point_list;
-	struct list_head state_list;
 	struct mutex point_end_mutex;
+	unsigned int point_count;
 	struct list_head *point_end;
 
 	spinlock_t trajectory_lock;

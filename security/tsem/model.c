@@ -7,7 +7,7 @@
  * Implements the an kernel modeling agent.
  */
 
-#include <linux/list_sort.h>
+#include <linux/sort.h>
 
 #include "tsem.h"
 
@@ -179,8 +179,8 @@ static struct tsem_event_point *add_event_point(u8 *point, bool valid,
 	memcpy(state->point, point, tsem_digestsize());
 
 	spin_lock(&model->point_lock);
+	++model->point_count;
 	list_add_tail(&entry->list, &model->point_list);
-	list_add_tail(&state->list, &model->state_list);
 	spin_unlock(&model->point_lock);
 
  done:
@@ -275,22 +275,24 @@ static int update_events_measurement(struct tsem_event *ep)
 	return retn;
 }
 
-static int state_sort(void *priv, const struct list_head *a,
-		      const struct list_head *b)
+static int state_sort(const void *a, const void *b)
 {
-	unsigned int lp, retn;
+	unsigned int lp, retn = 0;
 	struct tsem_event_point *ap, *bp;
 
-	ap = container_of(a, struct tsem_event_point, list);
-	bp = container_of(b, struct tsem_event_point, list);
+	ap = *((struct tsem_event_point **) a);
+	bp = *((struct tsem_event_point **) b);
 
-	for (lp = 0; lp < tsem_digestsize() - 1; ++lp) {
+	for (lp = 0; lp < tsem_digestsize(); ++lp) {
 		if (ap->point[lp] == bp->point[lp])
 			continue;
-		retn = ap->point[lp] > bp->point[lp];
+
+		if (ap->point[lp] < bp->point[lp])
+			retn = -1;
+		else
+			retn = 1;
 		goto done;
 	}
-	retn = ap->point[lp] > bp->point[lp];
 
  done:
 	return retn;
@@ -305,7 +307,9 @@ void tsem_model_compute_state(void)
 {
 	u8 state[HASH_MAX_DIGESTSIZE];
 	int retn;
-	struct tsem_event_point *entry;
+	unsigned int lp, count, pt_count = 0;
+	struct list_head *end;
+	struct tsem_event_point *end_point, *entry, **points = NULL;
 	struct tsem_model *model = tsem_model(current);
 	SHASH_DESC_ON_STACK(shash, tfm);
 
@@ -328,28 +332,46 @@ void tsem_model_compute_state(void)
 		goto done;
 
 	spin_lock(&model->point_lock);
-	list_sort(NULL, &model->state_list, state_sort);
+	end = model->point_list.prev;
+	count = model->point_count;
+	spin_unlock(&model->point_lock);
 
-	memcpy(model->state, state, tsem_digestsize());
-	list_for_each_entry(entry, &model->state_list, list) {
-		if (get_host_measurement(entry->point, state))
-			goto done_unlock;
-
-		if (crypto_shash_init(shash))
-			goto done_unlock;
-		if (crypto_shash_update(shash, model->state,
-					tsem_digestsize()))
-			goto done_unlock;
-		if (crypto_shash_finup(shash, state, tsem_digestsize(),
-				       model->state))
-			goto done_unlock;
+	points = vmalloc_array(sizeof(*points), count);
+	if (!points) {
+		retn = -ENOMEM;
+		goto done;
 	}
 
- done_unlock:
-	spin_unlock(&model->point_lock);
+	end_point = container_of(end, struct tsem_event_point, list);
+	list_for_each_entry(entry, &model->point_list, list) {
+		points[pt_count++] = entry;
+		if (end_point == entry)
+			break;
+	}
+	sort(points, count, sizeof(*points), state_sort, NULL);
+
+	memcpy(model->state, state, tsem_digestsize());
+	for (lp = 0; lp < pt_count; ++lp) {
+		entry = points[lp];
+
+		if (get_host_measurement(entry->point, state))
+			goto done;
+
+		if (crypto_shash_init(shash))
+			goto done;
+		if (crypto_shash_update(shash, model->state,
+					tsem_digestsize()))
+			goto done;
+		if (crypto_shash_finup(shash, state, tsem_digestsize(),
+				       model->state))
+			goto done;
+	}
+
  done:
 	if (retn)
 		memset(model->state, '\0', tsem_digestsize());
+
+	vfree(points);
 }
 
 /**
@@ -586,7 +608,6 @@ struct tsem_model *tsem_model_allocate(void)
 
 	spin_lock_init(&model->point_lock);
 	INIT_LIST_HEAD(&model->point_list);
-	INIT_LIST_HEAD(&model->state_list);
 	mutex_init(&model->point_end_mutex);
 
 	spin_lock_init(&model->trajectory_lock);
@@ -625,11 +646,6 @@ void tsem_model_free(struct tsem_context *ctx)
 	struct tsem_model *model = ctx->model;
 
 	list_for_each_entry_safe(ep, tmp_ep, &model->point_list, list) {
-		list_del(&ep->list);
-		kmem_cache_free(point_cachep, ep);
-	}
-
-	list_for_each_entry_safe(ep, tmp_ep, &model->state_list, list) {
 		list_del(&ep->list);
 		kmem_cache_free(point_cachep, ep);
 	}
