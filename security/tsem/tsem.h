@@ -4,7 +4,15 @@
  * Copyright (C) 2023 Enjellic Systems Development, LLC
  * Author: Dr. Greg Wettstein <greg@enjellic.com>
  *
- * TSEM specific includes.
+ * This is the single include file that documents all of the externally
+ * visible types and functions that are used by TSEM.  This file is
+ * currently organized into four major sections: includes, definitions,
+ * enumerations, structures and function declarations.
+ *
+ * Include files that are referenced by more than a single compilation
+ * should be included in this file.  Includes that are needed to
+ * satisfy compilation requirements for only a single file should be
+ * included in the needing that include.
  */
 
 #include <uapi/linux/in.h>
@@ -17,9 +25,38 @@
 #include <crypto/hash_info.h>
 #include <net/af_unix.h>
 
+/* The capability needed to manage TSEM. */
 #define TSEM_CONTROL_CAPABILITY CAP_TRUST
+
+/*
+ * The number of 'slots' in the structure magazines that are used to
+ * satisfy modeling of security events that are called in atomic context.
+ */
 #define TSEM_MAGAZINE_SIZE 8
 
+/**
+ * enum tsem_event_type - Ordinal value for a security event.
+ * @TSEM_BPRM_SET_CREDS: Ordinal value for bprm_creds_for_exec.
+ * @TSEM_GENERIC_EVENT: Ordinal value for a generically modeled event.
+ * @TSEM_TASK_KILL: Ordinal value for task kill.
+ * @....: Remainder follows with a similar naming format that has
+ *        TSEM_ prep ended to the raw LSM security hook name.
+ * @TSEM_EVENT_CNT: The final ordinal value is used to define the
+ *		    length of the following arrays that are indexed
+ *		    by the ordinal value of the hook:
+ *
+ * This enumeration is used to designate an ordinal value for each
+ * security event, ie. LSM hook, that TSEM is implementing modeling
+ * for.  This value is used to identify the hook that is either having
+ * its event description being exported to an external Trusted Modeling
+ * Agent (TMA) or modeled by the internal TMA implementation.
+ *
+ * The primary use of this enumeration is to conditionalize code paths
+ * based on the security hook being processed and to index the
+ * tsem_names array and the array that defines the action that is to
+ * be taken in response to an event that generates a permissions
+ * violation.
+ */
 enum tsem_event_type {
 	TSEM_BPRM_SET_CREDS = 1,
 	TSEM_GENERIC_EVENT,
@@ -108,12 +145,95 @@ enum tsem_event_type {
 	TSEM_EVENT_CNT
 };
 
+/**
+ * enum tsem_action_type - Ordinal value for security responses.
+ * @TSEM_ACTION_LOG: Ordinal value to indicate that a security event
+ *		     that results in a model permissions violation
+ *		     should be logged.
+ * @TSEM_ACTION_EPERM: Ordinal value to indicate that a security event
+ *		       generating a model permissions violation should
+ *		       return -EPERM to the caller.
+ *
+ * This enumeration type is used to designate what type of action is
+ * to be taken when the processing of a security event hook results in
+ * a model violation.  The TSEM_ACTION_LOG and TSEM_ACTION_EPERM
+ * translate into the classical concepts of logging or enforcing
+ * actions used by other mandatory access control architectures.
+ */
 enum tsem_action_type {
 	TSEM_ACTION_LOG = 0,
 	TSEM_ACTION_EPERM,
 	TSEM_ACTION_CNT
 };
 
+/**
+ * enum tsem_control_type - Ordinal values for TSEM control actions.
+ * @TSEM_CONTROL_INTERNAL: This ordinal value is set when the first
+ *			   word of an argument string written to the
+ *			   control file is the word 'internal'.  This
+ *			   designates that the security namespace will
+ *			   be modeled by the internal TMA.
+ * @TSEM_CONTROL_EXTERNAL: This ordinal value is set when the first
+ *			   word of an argument string written to the
+ *			   control file is the word 'external'.  This
+ *			   designates that the security namespace will
+ *			   be model by an external TMA.
+ * @TSEM_CONTROL_ENFORCE: This ordinal value is set when the word
+ *			  'enforce' is written to the control file.
+ *			  This indicates that model is to be placed
+ *			  in 'enforcing' mode and security events that
+ *			  result in model violations will return EPERM.
+ * @TSEM_CONTROL_SEAL: This ordinal value is set when the word 'seal'
+ *		       is written to the control file.  This indicates
+ *		       that the model for security domain will treat
+ *		       all security events that do not conform to the
+ *		       model as 'forensics' events.
+ * @TSEM_CONTROL_TRUSTED: This ordinal value is used when the first
+ *			  word of an argument string written to the
+ *			  control file is the word 'trusted'.  This
+ *			  is interpreted as a directive to set the
+ *			  trust status of the task that executed the
+ *			  security event to be trusted.
+ * @TSEM_CONTROL_UNTRUSTED: This ordinal value is used when the first
+ *			    word of an argument string written to the
+ *			    control file is the word 'untrusted'.
+ *			    This is interpreted as a directive to set
+ *			    the trust status of the task that executed
+ *			    the security event to be untrusted.
+ * @TSEM_CONTROL_MAP_STATE: This ordinal value is used when the first
+ *			    word of an argument string written to the
+ *			    control file is the word 'state'.  The
+ *			    argument to this directive will be an
+ *			    ASCII hexadecimally encoded string of the
+ *			    current model's digest size that will be
+ *			    treated as a security state point for
+ *			    inclusion in the security model for the
+ *			    security domain/namespace.
+ * @TSEM_CONTROL_MAP_PSEUDONYM: This ordinal value is used when the
+ *				first word of an argument string
+ *				written to the control file is the
+ *				word 'pseudonym'.  The argument to
+ *				this directive will be an ASCII
+ *				hexadecimally encoded string of the
+ *				current model's digest size that will
+ *				be treated as a pseudonym directive
+ *				for the security domain/namespace.
+ * TSEM_CONTROL_MAP_BASE: This ordinal value is used when the first
+ *			  word of an argument string written to the
+ *			  control file is the word 'base'.  The
+ *			  argument to this directive will be an ASCII
+ *			  hexadecimally encoded string of the current
+ *			  model's digest size that will be treated as
+ *			  the base value for the computation of the
+ *			  functional values (measurement and state) of
+ *			  the security domain/namespace.
+
+ * This enumeration type is used to designate what type of control
+ * action is to be implemented when arguments are written to the TSEM
+ * control file (/sys/kernel/security/tsem/control).  The ordinal
+ * values govern the processing of the command and the interpretation
+ * of the rest of the command argument string.
+ */
 enum tsem_control_type {
 	TSEM_CONTROL_INTERNAL = 0,
 	TSEM_CONTROL_EXTERNAL,
@@ -126,23 +246,108 @@ enum tsem_control_type {
 	TSEM_CONTROL_MAP_BASE
 };
 
+/**
+ * enum tsem_ns_reference - Ordinal value for DAC namespace reference.
+ * @TSEM_NS_INITIAL: This ordinal value indicates that the uid/gid
+ *		     values should be interpreted against the initial
+ *		     user namespace.
+ * @TSEM_NS_CURRENT: This ordinal value indicates that the uid/gid
+ *		     values should be interpreted against the user
+ *		     namespace that is in effect for the process being
+ *		     modeled.
+ *
+ * This enumeration type is used to indicate what user namespace
+ * should be referenced when the uid/gid values are interpreted for
+ * the creation of either the COE or CELL identities.  The enumeration
+ * ordinal passed to the tsem_ns_create() function, to configure the
+ * security domain/namespace, is set by the nsref argument to either
+ * the 'internal' or 'external' control commands.
+ */
 enum tsem_ns_reference {
 	TSEM_NS_INITIAL = 1,
 	TSEM_NS_CURRENT
 };
 
+/**
+ * enum tsem_task_trust - Ordinal value describing task trust status.
+ * @TSEM_TASK_TRUSTED: This ordinal value indicates that the task has
+ *		       not executed a security event that has resulted
+ *		       in a security behavior not described by the
+ *		       security model the task is being governed by.
+ * @TSEM_TASK_UNTRUSTED: This ordinal value indicates that the task
+ *		          has requested the execution of a security event
+ *		          that resulted in a security behavior not
+ *		          permitted by the security model the task is
+ *		          being governed by.
+ * @TSEM_TASK_TRUST_PENDING: This ordinal value indicates that the setting
+ *			     of the task trust status is pending a response
+ *		             from an external TMA.
+ *
+ * This enumeration type is used to specify the three different trust
+ * states that a task can be in.  The trust status of a task is
+ * regulated by the trust_status member of struct tsem_task.  A task
+ * carrying the status of TSEM_TASK_TRUSTED means that it has
+ * not requested the execution of any security events that are
+ * inconsistent with the security model that the task is running in.
+ *
+ * If a task requests execution of a security event that is
+ * inconsistent with the security model it is operating in, and the
+ * domain is running in 'sealed' mode, the task trust status is set to
+ * TSEM_TASK_UNTRUSTED.  This value is 'sticky' in that it will be
+ * propagated to any child tasks that are spawned from an untrusted
+ * task.
+ *
+ * In the case of an externally modeled security domain/namespace, the
+ * task trust status cannot be determined until the modeling of the
+ * security event has been completed.  The tsem_export_event()
+ * function sets the trust status TSEM_TASK_TRUST_PENDING and then
+ * places the task into an interruptible sleep state.
+ *
+ * Only two events will cause the task to be removed from sleep state.
+ * Either the task is killed or a control message is written to the
+ * TSEM control file that specifies the trust status of the task.  See
+ * the description of the TSEM_CONTROL_TRUSTED and
+ * TSEM_CONTROL_UNTRUSTED enumeration types.
+ */
 enum tsem_task_trust {
 	TSEM_TASK_TRUSTED = 1,
 	TSEM_TASK_UNTRUSTED = 2,
 	TSEM_TASK_TRUST_PENDING = 4
 };
 
+/**
+ * enum tsem_inode_state - Ordinal value for inode reference state.
+ * @TSEM_INODE_COLLECTING: This ordinal value indicates that the uid/gid
+ *		     	   values should be interpreted against the initial
+ *		     	   user namespace.
+ * @TSEM_INODE_COLLECTED: This ordinal value indicates that the uid/gid
+ *		     	  values should be interpreted against the user
+ *		     	  namespace that is in effect for the process being
+ *		          modeled.
+ *
+ * This enumeration type is used to specify the status of the inode
+ * that is having a digest value computed on the file that it is
+ * referencing.  The purpose of this enumeration is so that the
+ * recursive call to the TSEM_FILE_OPEN hook, caused by the kernel
+ * opening the file to compute the checksum, can be bypassed.
+ *
+ * The state value of the inode is carried in struct tsem_inode and is
+ * set and interrogated by the add_file_digest() function.  If the
+ * status of the inode is TSEM_INODE_COLLECTED and the iversion of the
+ * inode is the same as the collection time, the cached value for
+ * currently active model digest is returned.
+
+ * If the test for the relevancy of the cached digest value fails the
+ * status of the inode is set to TSEM_INODE_COLLECTING.  The
+ * tsem_file_open() function will check the inode status when it is
+ * invoked by the integrity_kernel_read() function and if it is
+ * set to 'collecting', a successful permissions check is returned so
+ * that the kernel can open the file and compute its digest.
+ */
 enum tsem_inode_state {
 	TSEM_INODE_COLLECTING = 1,
 	TSEM_INODE_COLLECTED
 };
-
-struct export_event;
 
 struct tsem_COE {
 	uid_t uid;
@@ -309,6 +514,8 @@ struct tsem_model {
 	struct tsem_event_point **magazine;
 };
 
+struct export_event;
+
 struct tsem_external {
 	spinlock_t export_lock;
 	struct list_head export_list;
@@ -351,6 +558,12 @@ struct tsem_task {
 	struct tsem_context *context;
 };
 
+struct tsem_inode {
+	struct mutex mutex;
+	struct list_head digest_list;
+	enum tsem_inode_state status;
+};
+
 /**
  * struct tsem_inode_digest - Hash function specific file checksum.
  * @list:	The list structure used to link multiple digest values
@@ -384,12 +597,6 @@ struct tsem_inode_digest {
 	char *name;
 	u64 version;
 	u8 value[HASH_MAX_DIGESTSIZE];
-};
-
-struct tsem_inode {
-	struct mutex mutex;
-	struct list_head digest_list;
-	enum tsem_inode_state status;
 };
 
 extern struct lsm_blob_sizes tsem_blob_sizes;
@@ -489,3 +696,34 @@ static inline unsigned int tsem_digestsize(void)
 {
 	return crypto_shash_digestsize(tsem_digest());
 }
+
+/*  LocalWords:  SPDX GPL Enjellic LLC TSEM uapi linux crypto enum tsem bprm ie
+ */
+/*  LocalWords:  creds LSM TMA conditionalize SETPGID GETPGID GETSID SETNICE ns
+ */
+/*  LocalWords:  SETIOPRIO GETIOPRIO PRLIMIT SETRLIMIT SETSCHEDULER PRCTL MMAP
+ */
+/*  LocalWords:  GETSCHEDULER FCNTL SOCKETPAIR SENDMSG RECVMSG GETSOCKNAME SHM
+ */
+/*  LocalWords:  GETPEERNAME SETSOCKOPT PTRACE TRACEME UMOUNT PIVOTROOT STATFS
+ */
+/*  LocalWords:  SHMCTL SHMAT SEM SEMCTL SEMOP SYSLOG SETTIME QUOTACTL MSGCTL
+ */
+/*  LocalWords:  MSGSND MSGRCV IPC ALLOC NETLINK INODE SYMLINK MKDIR RMDIR BPF
+ */
+/*  LocalWords:  MKNOD SETATTR GETATTR SETXATTR GETXATTR LISTXATTR REMOVEXATTR
+ */
+/*  LocalWords:  KILLPRIV PROG CNT EPERM namespace hexadecimally DAC uid gid af
+ */
+/*  LocalWords:  COE nsref struct interruptible inode euid suid egid sgid fsuid
+ */
+/*  LocalWords:  fsgid capeff umode DIGESTSIZE uuid bool uint mmap args reqprot
+ */
+/*  LocalWords:  prot kern tsip sockaddr addr len ipv unix kref pid pathname ws
+ */
+/*  LocalWords:  digestsize ctx spinlock mutex dentry wq digestname shash tfm
+ */
+/*  LocalWords:  checksum extern lsm const fs ep fmt init keystr param params
+ */
+/*  LocalWords:  inline iversion
+ */
