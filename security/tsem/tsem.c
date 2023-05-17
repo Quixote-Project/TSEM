@@ -6,6 +6,7 @@
  *
  * TSEM initialization infrastructure.
  */
+#define ROOT_MAGAZINE_SIZE 96
 
 #define TRAPPED_MSG_LENGTH 128
 
@@ -50,9 +51,25 @@ static int tsem_ready __lsm_ro_after_init;
 
 static bool tsem_available __lsm_ro_after_init;
 
+static unsigned int magazine_size __lsm_ro_after_init = ROOT_MAGAZINE_SIZE;
+
 static bool no_root_modeling __lsm_ro_after_init;
 
 static char *default_hash_function __lsm_ro_after_init;
+
+static int __init set_magazine_size(char *magazine_value)
+{
+	if (kstrtouint(magazine_value, 0, &magazine_size))
+		pr_warn("tsem: Failed to parse root cache size.\n");
+
+	if (!magazine_size) {
+		pr_warn("tsem: Forcing non-zero cache size.\n");
+		magazine_size = ROOT_MAGAZINE_SIZE;
+	}
+
+	return 1;
+}
+__setup("tsem_cache=", set_magazine_size);
 
 static int __init set_modeling_mode(char *mode_value)
 {
@@ -1909,7 +1926,7 @@ static int __init tsem_init(void)
 	retn = tsem_event_cache_init();
 	if (retn)
 		return retn;
-	retn = tsem_event_magazine_allocate(ctx, TSEM_MAGAZINE_SIZE);
+	retn = tsem_event_magazine_allocate(ctx, magazine_size);
 	if (retn)
 		goto done;
 
