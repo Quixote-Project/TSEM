@@ -289,6 +289,9 @@ static int model_generic_event(enum tsem_event_type event, bool locked)
 	struct tsem_event *ep;
 	struct tsem_event_parameters params;
 
+	if (!tsem_context(current)->id && no_root_modeling)
+		return 0;
+
 	params.u.event_type = event;
 
 	if (locked)
