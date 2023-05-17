@@ -295,6 +295,9 @@ static int tsem_file_open(struct file *file)
 	struct tsem_event *ep = NULL;
 	struct tsem_event_parameters params;
 
+	if (unlikely(!tsem_ready))
+		return 0;
+
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "filename=%s, flags=0x%x",
 			 file->f_path.dentry->d_name.name, file->f_flags);
@@ -330,6 +333,9 @@ static int tsem_mmap_file(struct file *file, unsigned long reqprot,
 	struct tsem_event *ep = NULL;
 	struct tsem_event_parameters params;
 	struct tsem_mmap_file_args args;
+
+	if (unlikely(!tsem_ready))
+		return 0;
 
 	if (tsem_task_untrusted(current)) {
 		p = "anonymous mapping";
@@ -402,6 +408,9 @@ static int tsem_file_fcntl(struct file *file, unsigned int cmd,
 			   unsigned long arg)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+
+	if (unlikely(!tsem_ready))
+		return 0;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "name=%s, cmd=%u",
@@ -660,6 +669,9 @@ static int tsem_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 static int tsem_bprm_creds_for_exec(struct linux_binprm *bprm)
 {
 	struct tsem_task *task = tsem_task(current);
+
+	if (unlikely(!tsem_ready))
+		return 0;
 
 	return tsem_map_task(bprm->file, task->task_id);
 }
