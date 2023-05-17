@@ -15,11 +15,11 @@
 static struct dentry *control;
 static struct dentry *tsem_dir;
 static struct dentry *forensics;
-static struct dentry *forensics_count;
+static struct dentry *forensics_counts;
 static struct dentry *forensics_points;
 static struct dentry *measurement_file;
 static struct dentry *trajectory;
-static struct dentry *trajectory_count;
+static struct dentry *trajectory_counts;
 static struct dentry *trajectory_points;
 static struct dentry *state;
 static struct dentry *id;
@@ -1183,10 +1183,10 @@ int __init tsem_fs_init(void)
 	if (IS_ERR(forensics))
 		goto err;
 
-	forensics_count = securityfs_create_file("forensics_count", 0400,
+	forensics_counts = securityfs_create_file("forensics_counts", 0400,
 						 tsem_dir, NULL,
 						 &forensics_count_ops);
-	if (IS_ERR(forensics_count))
+	if (IS_ERR(forensics_counts))
 		goto err;
 
 	forensics_points = securityfs_create_file("forensics_points", 0400,
@@ -1206,10 +1206,10 @@ int __init tsem_fs_init(void)
 	if (IS_ERR(trajectory))
 		goto err;
 
-	trajectory_count = securityfs_create_file("trajectory_count", 0400,
+	trajectory_counts = securityfs_create_file("trajectory_counts", 0400,
 						  tsem_dir, NULL,
 						  &trajectory_count_ops);
-	if (IS_ERR(trajectory_count))
+	if (IS_ERR(trajectory_counts))
 		goto err;
 
 	trajectory_points = securityfs_create_file("trajectory_points", 0400,
@@ -1244,11 +1244,11 @@ int __init tsem_fs_init(void)
  err:
 	securityfs_remove(control);
 	securityfs_remove(forensics);
-	securityfs_remove(forensics_count);
+	securityfs_remove(forensics_counts);
 	securityfs_remove(forensics_points);
 	securityfs_remove(measurement_file);
 	securityfs_remove(trajectory);
-	securityfs_remove(trajectory_count);
+	securityfs_remove(trajectory_counts);
 	securityfs_remove(trajectory_points);
 	securityfs_remove(state);
 	securityfs_remove(id);
