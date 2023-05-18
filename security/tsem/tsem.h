@@ -552,7 +552,7 @@ struct tsem_context {
 };
 
 struct tsem_task {
-	int trust_status;
+	enum tsem_task_trust trust_status;
 	u8 task_id[HASH_MAX_DIGESTSIZE];
 	u8 task_key[HASH_MAX_DIGESTSIZE];
 	struct tsem_context *context;
