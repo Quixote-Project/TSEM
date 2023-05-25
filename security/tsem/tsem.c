@@ -463,12 +463,13 @@ static int tsem_task_alloc(struct task_struct *new, unsigned long flags)
 
 	new_task->trust_status = old_task->trust_status;
 	new_task->context = old_task->context;
-	memcpy(new_task->task_key, old_task->task_key, HASH_MAX_DIGESTSIZE);
 	memcpy(new_task->task_id, old_task->task_id, HASH_MAX_DIGESTSIZE);
 
-	if (new_task->context->id)
-		kref_get(&new_task->context->kref);
+	if (!new_task->context->id)
+		return 0;
 
+	kref_get(&new_task->context->kref);
+	memcpy(new_task->task_key, old_task->task_key, HASH_MAX_DIGESTSIZE);
 	return 0;
 }
 
