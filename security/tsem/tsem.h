@@ -351,6 +351,8 @@ enum tsem_inode_state {
 
 /**
  * struct tsem_task - TSEM task control structure.
+ * @tma_for_ns: The context identity number of the namespace that
+ *		the task has control over if any.
  * @trust_status: The enumeration type that specifies the trust state of
  *		  the process.
  * @task_id: The hash specific digest that identifies the process.
@@ -390,6 +392,15 @@ enum tsem_inode_state {
  * structure of the trust orchestrator when a security modeling
  * namespace is created by the orchestrator.
  *
+ * As an additional protection, the creation of a namespace causes the
+ * context id of the created namespace to be placed in the task that
+ * will serve as the trust orchestrator for the namespace.  This
+ * context id must match the context id of a process that a trust
+ * control request is being sent to.  Like the authentication key
+ * this value is not propagated on task allocation so only the task
+ * that has nominated the security modeling namespace will have
+ * posession of the necessary credentials to control it.
+ *
  * The context member of the structure contains a pointer to the
  * tsem_context structure allocated when a security modeling namespace
  * is created by the tsem_ns_create() function.  This structure will
@@ -397,6 +408,7 @@ enum tsem_inode_state {
  * have its security behavior modeled.
  */
 struct tsem_task {
+	uint64_t tma_for_ns;
 	enum tsem_task_trust trust_status;
 	u8 task_id[HASH_MAX_DIGESTSIZE];
 	u8 task_key[HASH_MAX_DIGESTSIZE];

@@ -83,13 +83,16 @@ static int control_COE(unsigned long cmd, pid_t pid, char *keystr)
 	COE = find_task_by_vpid(pid);
 	if (COE != NULL) {
 		task = tsem_task(COE);
+		if (tsem_context(COE)->id != tma->tma_for_ns) {
+			retn = -EINVAL;
+			goto done;
+		}
+
 		retn = tsem_ns_event_key(task->task_key, keystr, event_key);
 		if (retn)
 			goto done;
 
-		if (memcmp(tma->task_key, event_key,
-			   tsem_digestsize())) {
-			pr_warn("tsem: Invalid process release request.\n");
+		if (memcmp(tma->task_key, event_key, tsem_digestsize())) {
 			retn = -EINVAL;
 			goto done;
 		}
@@ -107,6 +110,9 @@ static int control_COE(unsigned long cmd, pid_t pid, char *keystr)
 
  done:
 	rcu_read_unlock();
+
+	if (retn == -EINVAL)
+		pr_warn("tsem: Invalid process release request.\n");
 
 	if (wakeup)
 		wake_up_process(COE);

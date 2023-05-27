@@ -500,8 +500,12 @@ static int tsem_task_kill(struct task_struct *target,
 
 	if (SI_FROMKERNEL(info))
 		return retn;
-	if (capable(CAP_TRUST))
-		return retn;
+	if (capable(CAP_TRUST)) {
+		if (!tsem_task(current)->tma_for_ns)
+			return retn;
+		if (tsem_task(current)->tma_for_ns == tgt_ctx->id)
+			return retn;
+	}
 	if (has_capability_noaudit(target, CAP_TRUST))
 		return -EPERM;
 	if (src_ctx->id != tgt_ctx->id)

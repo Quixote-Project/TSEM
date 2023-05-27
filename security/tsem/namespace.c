@@ -113,7 +113,8 @@ static struct tsem_external *allocate_external(u64 context_id,
 		kfree(external);
 		remove_task_key(context_id);
 		external = ERR_PTR(retn);
-	}
+	} else
+		p_ttask->tma_for_ns = context_id;
 
 	return external;
 }
