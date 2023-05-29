@@ -26,7 +26,7 @@
 #include <net/af_unix.h>
 
 /* The capability needed to manage TSEM. */
-#define TSEM_CONTROL_CAPABILITY CAP_TRUST
+#define TSEM_CONTROL_CAPABILITY CAP_ML
 
 /*
  * The number of 'slots' in the structure magazines that are used to

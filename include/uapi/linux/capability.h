@@ -419,9 +419,9 @@ struct vfs_ns_cap_data {
 
 /* Allow modifications to the trust status of the system */
 
-#define CAP_TRUST	41
+#define CAP_ML	41
 
-#define CAP_LAST_CAP         CAP_TRUST
+#define CAP_LAST_CAP         CAP_ML
 
 #define cap_valid(x) ((x) >= 0 && (x) <= CAP_LAST_CAP)
 
