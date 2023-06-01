@@ -231,6 +231,8 @@ int tsem_export_event(struct tsem_event *ep)
  * tsem_export_action() - Exports the action taken to a security violation.
  * @event: The TSEM event type number for which the log event is being
  *	   generated.
+ * @locked: A boolean flag indicating whether or not the security hook
+ *	    being reported on is called in atomic context.
  *
  * This function queues for export a description of an event that
  * was being disciplined.
@@ -238,14 +240,17 @@ int tsem_export_event(struct tsem_event *ep)
  * Return: This function returns 0 if the export was successful or
  *	   an error value if it was not.
  */
-int tsem_export_action(enum tsem_event_type event)
+int tsem_export_action(enum tsem_event_type event, bool locked)
 {
 	struct tsem_context *ctx = tsem_context(current);
 	struct export_event *exp;
 
-	exp = kmem_cache_zalloc(export_cachep, GFP_KERNEL);
-	if (!exp)
+	exp = allocate_export(locked);
+	if (!exp) {
+		pr_warn("tsem: domain %llu failed export allocation.\n",
+			ctx->id);
 		return -ENOMEM;
+	}
 
 	exp->type = LOG_EVENT;
 	exp->u.action.type = event;
