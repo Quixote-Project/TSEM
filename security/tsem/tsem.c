@@ -1365,6 +1365,9 @@ static int tsem_key_alloc(struct key *key, const struct cred *cred,
 {
 	char msg[TRAPPED_MSG_LENGTH];
 
+	if (unlikely(!tsem_ready))
+		return 0;
+
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
 			  "uid=%d, gid=%d, euid=%d, egid=%d, flags=%lu",
@@ -1374,9 +1377,6 @@ static int tsem_key_alloc(struct key *key, const struct cred *cred,
 			  from_kgid(&init_user_ns, cred->egid), flags);
 		return return_trapped_task(TSEM_KEY_ALLOC, msg, false);
 	}
-
-	if (unlikely(!tsem_ready))
-		return 0;
 
 	return model_generic_event(TSEM_KEY_ALLOC, false);
 }
@@ -1534,14 +1534,14 @@ static int tsem_inode_mknod(struct inode *dir, struct dentry *dentry,
 {
 	char msg[TRAPPED_MSG_LENGTH];
 
+	if (unlikely(!tsem_ready))
+		return 0;
+
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "name=%s, mode=%u, dev=%u",
 			  dentry->d_name.name, mode, dev);
 		return return_trapped_task(TSEM_INODE_MKNOD, msg, false);
 	}
-
-	if (unlikely(!tsem_ready))
-		return 0;
 
 	return model_generic_event(TSEM_INODE_MKNOD, false);
 }
@@ -1549,6 +1549,9 @@ static int tsem_inode_mknod(struct inode *dir, struct dentry *dentry,
 static int tsem_inode_setattr(struct dentry *dentry, struct iattr *attr)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+
+	if (unlikely(!tsem_ready))
+		return 0;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -1560,9 +1563,6 @@ static int tsem_inode_setattr(struct dentry *dentry, struct iattr *attr)
 		return return_trapped_task(TSEM_INODE_SETATTR, msg, false);
 	}
 
-	if (unlikely(!tsem_ready))
-		return 0;
-
 	return model_generic_event(TSEM_INODE_SETATTR, false);
 }
 
@@ -1570,14 +1570,14 @@ static int tsem_inode_getattr(const struct path *path)
 {
 	char msg[TRAPPED_MSG_LENGTH];
 
+	if (unlikely(!tsem_ready))
+		return 0;
+
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "name=%s",
 			  path->dentry->d_name.name);
 		return return_trapped_task(TSEM_INODE_GETATTR, msg, false);
 	}
-
-	if (unlikely(!tsem_ready))
-		return 0;
 
 	return model_generic_event(TSEM_INODE_GETATTR, false);
 }
