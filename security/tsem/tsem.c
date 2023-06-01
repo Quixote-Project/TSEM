@@ -486,8 +486,11 @@ static int tsem_task_kill(struct task_struct *target,
 			  struct kernel_siginfo *info, int sig,
 			  const struct cred *cred)
 {
-	int retn = 0;
 	char msg[TRAPPED_MSG_LENGTH];
+	int retn = 0;
+	struct tsem_event *ep;
+	struct tsem_event_parameters params;
+	struct tsem_task_kill_args args;
 	struct tsem_context *src_ctx = tsem_context(current);
 	struct tsem_context *tgt_ctx = tsem_context(target);
 
@@ -500,20 +503,28 @@ static int tsem_task_kill(struct task_struct *target,
 
 	if (SI_FROMKERNEL(info))
 		return retn;
-	if (capable(TSEM_CONTROL_CAPABILITY)) {
-		if (!tsem_task(current)->tma_for_ns)
-			return retn;
-		if (tsem_task(current)->tma_for_ns == tgt_ctx->id)
-			return retn;
-	}
-	if (has_capability_noaudit(target, TSEM_CONTROL_CAPABILITY))
-		return -EPERM;
-	if (src_ctx->id != tgt_ctx->id)
-		return -EPERM;
 	if (sig == SIGURG)
-		return 0;
+		return retn;
+	if (!capable(TSEM_CONTROL_CAPABILITY) &&
+	    has_capability_noaudit(target, TSEM_CONTROL_CAPABILITY))
+		return -EPERM;
 
-	return model_generic_event(TSEM_TASK_KILL, true);
+	args.cross_model = src_ctx->id != tgt_ctx->id;
+	args.signal = sig;
+	memcpy(args.target, tsem_task(target)->task_id, tsem_digestsize());
+	params.u.task_kill = &args;
+
+	ep = tsem_map_event_locked(TSEM_TASK_KILL, &params);
+	if (IS_ERR(ep)) {
+		retn = PTR_ERR(ep);
+		goto done;
+	}
+
+	retn = model_event(ep);
+	tsem_event_put(ep);
+
+ done:
+	return retn;
 }
 
 static int tsem_ptrace_traceme(struct task_struct *parent)

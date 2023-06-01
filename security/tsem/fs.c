@@ -384,7 +384,7 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "cross", "%u", args->cross_model);
 	tsem_fs_show_key(c, ",", "signal", "%u", args->signal);
-	tsem_fs_show_key(c, "}", "target", "*%phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "}", "target", "%*phN", tsem_digestsize(),
 			 args->target);
 }
 
