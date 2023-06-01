@@ -170,9 +170,12 @@ static int config_namespace(enum tsem_control_type type, const char *arg)
 {
 	char **argv, *argp, *digest = "sha256", *key = NULL;
 	int argc, retn = -EINVAL;
-	unsigned int lp, cache_size = TSEM_MAGAZINE_SIZE;
+	unsigned int lp, cache_size = TSEM_MAGAZINE_SIZE_INTERNAL;
 	enum namespace_argument_type ns_arg;
 	enum tsem_ns_reference ns_ref = TSEM_NS_INITIAL;
+
+	if (type == TSEM_CONTROL_EXTERNAL)
+		cache_size = TSEM_MAGAZINE_SIZE_EXTERNAL;
 
 	if (!arg) {
 		if (type == TSEM_CONTROL_EXTERNAL)

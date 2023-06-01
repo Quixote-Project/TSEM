@@ -32,7 +32,8 @@
  * The number of 'slots' in the structure magazines that are used to
  * satisfy modeling of security events that are called in atomic context.
  */
-#define TSEM_MAGAZINE_SIZE 8
+#define TSEM_MAGAZINE_SIZE_INTERNAL 16
+#define TSEM_MAGAZINE_SIZE_EXTERNAL 96
 
 /**
  * enum tsem_event_type - Ordinal value for a security event.

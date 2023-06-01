@@ -616,7 +616,7 @@ struct tsem_model *tsem_model_allocate(void)
 	mutex_init(&model->pseudonym_mutex);
 	INIT_LIST_HEAD(&model->pseudonym_list);
 
-	if (magazine_allocate(model, TSEM_MAGAZINE_SIZE)) {
+	if (magazine_allocate(model, TSEM_MAGAZINE_SIZE_INTERNAL)) {
 		kfree(model);
 		model = NULL;
 	}
@@ -706,7 +706,7 @@ int __init tsem_model_cache_init(struct tsem_model *model)
 	if (!point_cachep)
 		return -ENOMEM;
 
-	if (magazine_allocate(model, TSEM_MAGAZINE_SIZE)) {
+	if (magazine_allocate(model, TSEM_MAGAZINE_SIZE_INTERNAL)) {
 		kmem_cache_destroy(point_cachep);
 		return -ENOMEM;
 	}
