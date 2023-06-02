@@ -32,6 +32,7 @@
  * The number of 'slots' in the structure magazines that are used to
  * satisfy modeling of security events that are called in atomic context.
  */
+#define TSEM_ROOT_MAGAZINE_SIZE	96
 #define TSEM_MAGAZINE_SIZE_INTERNAL 16
 #define TSEM_MAGAZINE_SIZE_EXTERNAL 96
 
