@@ -64,6 +64,8 @@ static int __init set_magazine_size(char *magazine_value)
 		magazine_size = TSEM_ROOT_MAGAZINE_SIZE;
 	}
 
+	pr_info("tsem: Setting default root cache size to %u.\n",
+		magazine_size);
 	return 1;
 }
 __setup("tsem_cache=", set_magazine_size);
@@ -1900,6 +1902,7 @@ static int __init set_ready(void)
 		goto done;
 
 	tsem_ready = 1;
+	pr_info("tsem: Now ready for modeling.\n");
 
  done:
 	return retn;
