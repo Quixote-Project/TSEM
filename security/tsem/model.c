@@ -331,7 +331,7 @@ void tsem_model_compute_state(void)
 	count = model->point_count;
 	spin_unlock(&model->point_lock);
 
-	points = vmalloc_array(sizeof(*points), count);
+	points = vmalloc(sizeof(*points) * count);
 	if (!points) {
 		retn = -ENOMEM;
 		goto done;
