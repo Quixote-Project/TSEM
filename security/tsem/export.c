@@ -96,13 +96,15 @@ struct export_event *allocate_export(bool locked)
 
 	spin_unlock(&ext->magazine_lock);
 
-	if (!exp)
-		return ERR_PTR(-ENOMEM);
+	if (exp) {
+		INIT_WORK(&ext->ws[index].work, refill_export_magazine);
+		queue_work(system_wq, &ext->ws[index].work);
+		return exp;
+	}
 
-	INIT_WORK(&ext->ws[index].work, refill_export_magazine);
-	queue_work(system_wq, &ext->ws[index].work);
-
-	return exp;
+	pr_warn("tsem: %s in %llu failed export allocation, cache size=%u.\n",
+		current->comm, tsem_context(current)->id, ext->magazine_size);
+	return ERR_PTR(-ENOMEM);
 }
 
 static void trigger_event(struct tsem_context *ctx)

@@ -435,11 +435,8 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	struct tsem_task *task = tsem_task(current);
 
 	ep = tsem_event_allocate(locked);
-	if (IS_ERR(ep)) {
-		pr_warn("tsem: domain %llu failed event allocation for %s.\n",
-			tsem_context(current)->id, tsem_names[event]);
+	if (IS_ERR(ep))
 		return ep;
-	}
 
 	ep->event = event;
 	ep->locked = locked;
@@ -567,13 +564,15 @@ struct tsem_event *tsem_event_allocate(bool locked)
 
 	spin_unlock(&ctx->magazine_lock);
 
-	if (!ep)
-		return ERR_PTR(-ENOMEM);
+	if (ep) {
+		INIT_WORK(&ctx->ws[index].work, refill_event_magazine);
+		queue_work(system_wq, &ctx->ws[index].work);
+		return ep;
+	}
 
-	INIT_WORK(&ctx->ws[index].work, refill_event_magazine);
-	queue_work(system_wq, &ctx->ws[index].work);
-
-	return ep;
+	pr_warn("tsem: %s in %llu failed event allocation, cache size=%u.\n",
+		current->comm, tsem_context(current)->id, ctx->magazine_size);
+	return ERR_PTR(-ENOMEM);
 }
 
 /**

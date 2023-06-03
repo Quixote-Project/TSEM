@@ -284,7 +284,7 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 		goto done;
 
 	if (type == TSEM_CONTROL_INTERNAL) {
-		model = tsem_model_allocate();
+		model = tsem_model_allocate(cache_size);
 		if (!model)
 			goto done;
 		new_ctx->model = model;

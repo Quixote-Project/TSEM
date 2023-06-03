@@ -1948,7 +1948,7 @@ static int __init tsem_init(void)
 
 	memcpy(ctx->actions, tsem_root_actions, sizeof(tsem_root_actions));
 
-	retn = tsem_model_cache_init(model);
+	retn = tsem_model_cache_init(model, magazine_size);
 	if (retn)
 		goto done;
 

@@ -32,7 +32,7 @@
  * The number of 'slots' in the structure magazines that are used to
  * satisfy modeling of security events that are called in atomic context.
  */
-#define TSEM_ROOT_MAGAZINE_SIZE	96
+#define TSEM_ROOT_MAGAZINE_SIZE	48
 #define TSEM_MAGAZINE_SIZE_INTERNAL 16
 #define TSEM_MAGAZINE_SIZE_EXTERNAL 96
 
@@ -958,7 +958,7 @@ extern void tsem_fs_show_key(struct seq_file *c, char *term, char *key,
 			     char *fmt, ...);
 extern int tsem_fs_init(void);
 
-extern struct tsem_model *tsem_model_allocate(void);
+extern struct tsem_model *tsem_model_allocate(size_t size);
 extern void tsem_model_free(struct tsem_context *ctx);
 extern int tsem_model_event(struct tsem_event *ep);
 extern int tsem_model_load_point(u8 *point);
@@ -969,7 +969,7 @@ extern void tsem_model_load_base(u8 *mapping);
 extern int tsem_model_add_aggregate(void);
 extern void tsem_model_compute_state(void);
 extern void tsem_model_magazine_free(struct tsem_model *model);
-extern int tsem_model_cache_init(struct tsem_model *model);
+extern int tsem_model_cache_init(struct tsem_model *model, size_t size);
 
 extern void tsem_ns_put(struct tsem_context *ctx);
 extern int tsem_ns_event_key(u8 *task_key, const char *keystr, u8 *key);

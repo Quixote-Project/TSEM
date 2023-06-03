@@ -71,15 +71,17 @@ static struct tsem_event_point *alloc_event_point(struct tsem_model *model,
 	}
 	spin_unlock(&model->magazine_lock);
 
-	if (!tep) {
-		pr_warn("tsem: Failed event point allocation.\n");
-		return NULL;
+	if (tep) {
+		INIT_WORK(&model->ws[index].work, refill_point_magazine);
+		queue_work(system_wq, &model->ws[index].work);
+		return tep;
 	}
 
-	INIT_WORK(&model->ws[index].work, refill_point_magazine);
-	queue_work(system_wq, &model->ws[index].work);
+	pr_warn("tsem: %s in %llu failed point allocation, cache size=%u.\n",
+		current->comm, tsem_context(current)->id,
+		model->magazine_size);
+	return ERR_PTR(-ENOMEM);
 
-	return tep;
 }
 
 static int magazine_allocate(struct tsem_model *model, size_t size)
@@ -584,6 +586,7 @@ int tsem_model_add_aggregate(void)
 
 /**
  * tsem_model_allocate() - Allocates a kernel TMA modeling structure.
+ * @size: The number of slots in the event point magazine for the model.
  *
  * This function allocates and initializes a tsem_model structure
  * that is used to hold modeling information for an in kernel
@@ -593,7 +596,7 @@ int tsem_model_add_aggregate(void)
  *	   returned.  If an error occurs an error return value is
  *	   encoded in the returned pointer.
  */
-struct tsem_model *tsem_model_allocate(void)
+struct tsem_model *tsem_model_allocate(size_t size)
 {
 	struct tsem_model *model = NULL;
 
@@ -616,7 +619,7 @@ struct tsem_model *tsem_model_allocate(void)
 	mutex_init(&model->pseudonym_mutex);
 	INIT_LIST_HEAD(&model->pseudonym_list);
 
-	if (magazine_allocate(model, TSEM_MAGAZINE_SIZE_INTERNAL)) {
+	if (magazine_allocate(model, size)) {
 		kfree(model);
 		model = NULL;
 	}
@@ -690,6 +693,8 @@ void tsem_model_magazine_free(struct tsem_model *model)
 /**
  * tsem model_init() - Initialize the TSEM event point cache.
  * @model: A pointer to the model that is being initialized.
+ * @size: The number of slots in the event point magazine for the root
+ *	  model.
  *
  * This function is called by the primary TSEM initialization function
  * and sets up the cache that will be used to dispense tsem_event_point
@@ -698,7 +703,7 @@ void tsem_model_magazine_free(struct tsem_model *model)
  * Return: This function returns a value of zero on success and a negative
  *	   error code on failure.
  */
-int __init tsem_model_cache_init(struct tsem_model *model)
+int __init tsem_model_cache_init(struct tsem_model *model, size_t size)
 {
 	point_cachep = kmem_cache_create("tsem_event_point_cache",
 					 sizeof(struct tsem_event_point), 0,
@@ -706,7 +711,7 @@ int __init tsem_model_cache_init(struct tsem_model *model)
 	if (!point_cachep)
 		return -ENOMEM;
 
-	if (magazine_allocate(model, TSEM_MAGAZINE_SIZE_INTERNAL)) {
+	if (magazine_allocate(model, size)) {
 		kmem_cache_destroy(point_cachep);
 		return -ENOMEM;
 	}
