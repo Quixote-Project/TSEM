@@ -169,7 +169,7 @@ static struct tsem_event_point *add_event_point(u8 *point, bool valid,
 	struct tsem_model *model = tsem_model(current);
 
 	entry = alloc_event_point(model, locked);
-	if (!entry)
+	if (IS_ERR(entry))
 		goto done;
 
 	entry->valid = valid;
@@ -443,18 +443,21 @@ int tsem_model_event(struct tsem_event *ep)
 
 	if (ctx->sealed) {
 		point = add_event_point(ep->mapping, false, ep->locked);
-		if (point)
+		if (IS_ERR(point))
+			retn = PTR_ERR(point);
+		else {
 			retn = add_forensic_point(ep);
-		task->trust_status = TSEM_TASK_UNTRUSTED;
+			task->trust_status = TSEM_TASK_UNTRUSTED;
+		}
 	} else {
 		point = add_event_point(ep->mapping, true, ep->locked);
-		if (point)
+		if (IS_ERR(point))
+			retn = PTR_ERR(point);
+		else
 			retn = add_trajectory_point(ep);
 	}
 
-	if (retn || !point)
-		retn = -EPERM;
-	else
+	if (!retn)
 		++point->count;
 
  done:
@@ -482,7 +485,7 @@ int tsem_model_load_point(u8 *point)
 	if (have_point(point))
 		return 0;
 
-	if (!add_event_point(point, true, false))
+	if (IS_ERR(add_event_point(point, true, false)))
 		return retn;
 
 	if (!ctx->model->have_aggregate) {
