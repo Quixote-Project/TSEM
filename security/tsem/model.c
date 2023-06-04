@@ -165,20 +165,15 @@ static struct tsem_event_point *have_point(u8 *point)
 static struct tsem_event_point *add_event_point(u8 *point, bool valid,
 						bool locked)
 {
-	struct tsem_event_point *state, *entry = NULL;
+	struct tsem_event_point *entry;
 	struct tsem_model *model = tsem_model(current);
 
 	entry = alloc_event_point(model, locked);
 	if (!entry)
 		goto done;
 
-	state = alloc_event_point(model, locked);
-	if (!state)
-		goto done;
-
 	entry->valid = valid;
 	memcpy(entry->point, point, tsem_digestsize());
-	memcpy(state->point, point, tsem_digestsize());
 
 	spin_lock(&model->point_lock);
 	++model->point_count;
