@@ -80,7 +80,7 @@ static struct tsem_event_point *alloc_event_point(struct tsem_model *model,
 	pr_warn("tsem: %s in %llu failed point allocation, cache size=%u.\n",
 		current->comm, tsem_context(current)->id,
 		model->magazine_size);
-	return ERR_PTR(-ENOMEM);
+	return NULL;
 
 }
 
@@ -169,8 +169,8 @@ static struct tsem_event_point *add_event_point(u8 *point, bool valid,
 	struct tsem_model *model = tsem_model(current);
 
 	entry = alloc_event_point(model, locked);
-	if (IS_ERR(entry))
-		goto done;
+	if (!entry)
+		return ERR_PTR(-ENOMEM);
 
 	entry->valid = valid;
 	memcpy(entry->point, point, tsem_digestsize());
@@ -180,7 +180,6 @@ static struct tsem_event_point *add_event_point(u8 *point, bool valid,
 	list_add_tail(&entry->list, &model->point_list);
 	spin_unlock(&model->point_lock);
 
- done:
 	return entry;
 }
 
@@ -441,19 +440,16 @@ int tsem_model_event(struct tsem_event *ep)
 	if (retn)
 		goto done;
 
+	retn = -ENOMEM;
 	if (ctx->sealed) {
 		point = add_event_point(ep->mapping, false, ep->locked);
-		if (IS_ERR(point))
-			retn = PTR_ERR(point);
-		else {
+		if (point) {
 			retn = add_forensic_point(ep);
 			task->trust_status = TSEM_TASK_UNTRUSTED;
 		}
 	} else {
 		point = add_event_point(ep->mapping, true, ep->locked);
-		if (IS_ERR(point))
-			retn = PTR_ERR(point);
-		else
+		if (point)
 			retn = add_trajectory_point(ep);
 	}
 
@@ -485,7 +481,7 @@ int tsem_model_load_point(u8 *point)
 	if (have_point(point))
 		return 0;
 
-	if (IS_ERR(add_event_point(point, true, false)))
+	if (!add_event_point(point, true, false))
 		return retn;
 
 	if (!ctx->model->have_aggregate) {
@@ -497,8 +493,8 @@ int tsem_model_load_point(u8 *point)
 	}
 
 	ep = tsem_event_allocate(false);
-	if (IS_ERR(ep))
-		return PTR_ERR(ep);
+	if (!ep)
+		return retn;
 
 	kref_init(&ep->kref);
 	memcpy(ep->mapping, point, tsem_digestsize());
@@ -565,12 +561,12 @@ void tsem_model_load_base(u8 *mapping)
  */
 int tsem_model_add_aggregate(void)
 {
-	int retn;
+	int retn = -ENOMEM;
 	struct tsem_event *ep;
 
 	ep = tsem_event_allocate(false);
-	if (IS_ERR(ep))
-		return PTR_ERR(ep);
+	if (!ep)
+		return retn;
 
 	kref_init(&ep->kref);
 	ep->digestsize = tsem_digestsize();

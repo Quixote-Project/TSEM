@@ -104,7 +104,7 @@ struct export_event *allocate_export(bool locked)
 
 	pr_warn("tsem: %s in %llu failed export allocation, cache size=%u.\n",
 		current->comm, tsem_context(current)->id, ext->magazine_size);
-	return ERR_PTR(-ENOMEM);
+	return NULL;
 }
 
 static void trigger_event(struct tsem_context *ctx)

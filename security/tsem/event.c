@@ -435,8 +435,8 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	struct tsem_task *task = tsem_task(current);
 
 	ep = tsem_event_allocate(locked);
-	if (IS_ERR(ep))
-		return ep;
+	if (!ep)
+		return ERR_PTR(-ENOMEM);
 
 	ep->event = event;
 	ep->locked = locked;
@@ -533,8 +533,8 @@ void tsem_event_get(struct tsem_event *ep)
  *	    done in atomic context and must be serviced from the
  *	    pre-allocated event description structures.
  *
- * Return: This function returns a pointer to the allocated structure which
- *	   on failure will have an error return code embedded in it.
+ * Return: This function returns a pointer to the allocated structure or
+ *	   a NULL pointer in the event of an allocation failure.
  */
 struct tsem_event *tsem_event_allocate(bool locked)
 {
@@ -572,7 +572,7 @@ struct tsem_event *tsem_event_allocate(bool locked)
 
 	pr_warn("tsem: %s in %llu failed event allocation, cache size=%u.\n",
 		current->comm, tsem_context(current)->id, ctx->magazine_size);
-	return ERR_PTR(-ENOMEM);
+	return NULL;
 }
 
 /**
