@@ -419,7 +419,7 @@ enum tsem_inode_state {
  * have its security behavior modeled.
  */
 struct tsem_task {
-	uint64_t tma_for_ns;
+	u64 tma_for_ns;
 	enum tsem_task_trust trust_status;
 	u8 task_id[HASH_MAX_DIGESTSIZE];
 	u8 task_key[HASH_MAX_DIGESTSIZE];
@@ -1304,7 +1304,7 @@ struct tsem_event_parameters {
 struct tsem_event_point {
 	struct list_head list;
 	bool valid;
-	uint64_t count;
+	u64 count;
 	u8 point[HASH_MAX_DIGESTSIZE];
 };
 
