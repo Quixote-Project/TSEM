@@ -361,19 +361,19 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 
 	switch (sap->family) {
 	case AF_INET:
-		tsem_fs_show_key(c, "}", "addr", "%u", sap->ipv4);
+		tsem_fs_show_key(c, "}", "addr", "%u", sap->u.ipv4);
 		break;
 	case AF_INET6:
 		tsem_fs_show_key(c, "}", "addr", "%*phN",
-			 (int) sizeof(sap->ipv6.in6_u.u6_addr8),
-			 sap->ipv6.in6_u.u6_addr8);
+			 (int) sizeof(sap->u.ipv6.in6_u.u6_addr8),
+			 sap->u.ipv6.in6_u.u6_addr8);
 		break;
 	case AF_UNIX:
-		tsem_fs_show_key(c, "}", "addr", "%s", sap->path);
+		tsem_fs_show_key(c, "}", "addr", "%s", sap->u.path);
 		break;
 	default:
 		tsem_fs_show_key(c, "}", "addr", "%*phN", tsem_digestsize(),
-				 sap->mapping);
+				 sap->u.mapping);
 		break;
 	}
 }

@@ -342,24 +342,25 @@ static int get_file_cell(struct file *file, struct tsem_event *ep)
 
 static int get_socket_accept(struct tsem_event *ep)
 {
+	char *p, path[UNIX_PATH_MAX + 1];
 	int size, retn = 0;
-	u8 *p;
 	struct tsem_socket_accept_args *sap = &ep->CELL.socket_accept;
 
 	if (sap->family == AF_INET || sap->family == AF_INET6)
 		return retn;
 
 	if (sap->family != AF_UNIX) {
-		memcpy(sap->mapping, tsem_context(current)->zero_digest,
+		memcpy(sap->u.mapping, tsem_context(current)->zero_digest,
 		       tsem_digestsize());
 		return retn;
 	}
 
-	memset(sap->path, '\0', sizeof(sap->path));
-	p = sap->af_unix->addr->name->sun_path;
-	size = sap->af_unix->addr->len -
+	memset(path, '\0', sizeof(path));
+	p = sap->u.af_unix->addr->name->sun_path;
+	size = sap->u.af_unix->addr->len -
 		offsetof(struct sockaddr_un, sun_path);
-	strncpy(sap->path, p, size);
+	strncpy(path, p, size);
+	memcpy(sap->u.path, path, sizeof(sap->u.path));
 
 	return retn;
 }

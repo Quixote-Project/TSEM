@@ -877,12 +877,12 @@ static int tsem_socket_accept(struct socket *sock, struct socket *newsock)
 	args.family = sk->sk_family;
 	args.type = sock->type;
 	args.port = sk->sk_num;
-	args.ipv4 = sk->sk_rcv_saddr;
+	args.u.ipv4 = sk->sk_rcv_saddr;
 	if (args.family == AF_UNIX)
-		args.af_unix = unix_sk(sk);
+		args.u.af_unix = unix_sk(sk);
 	ipv6 = inet6_rcv_saddr(sk);
 	if (ipv6)
-		args.ipv6 = *ipv6;
+		args.u.ipv6 = *ipv6;
 
 	params.u.socket_accept = &args;
 

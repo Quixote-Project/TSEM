@@ -1060,11 +1060,13 @@ struct tsem_socket_accept_args {
 	u16 family;
 	u16 type;
 	__be16 port;
-	__be32 ipv4;
-	struct in6_addr ipv6;
-	struct unix_sock *af_unix;
-	char path[UNIX_PATH_MAX + 1];
-	u8 mapping[HASH_MAX_DIGESTSIZE];
+	union {
+		__be32 ipv4;
+		struct in6_addr ipv6;
+		struct unix_sock *af_unix;
+		char path[UNIX_PATH_MAX + 1];
+		u8 mapping[HASH_MAX_DIGESTSIZE];
+	} u;
 };
 
 /**
