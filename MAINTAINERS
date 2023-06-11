@@ -19028,7 +19028,7 @@ F:	security/selinux/
 
 TSEM SECURITY MODULE
 M:	Greg Wettstein <greg@enjellic.com>
-S:	Supported
+S:	Maintained
 L:	linux-security-module@vger.kernel.org
 F:	Documentation/admin-guide/LSM/tsem.rst
 F:	Documentation/ABI/testing/tsemfs
