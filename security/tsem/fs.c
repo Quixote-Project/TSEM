@@ -1198,8 +1198,8 @@ int __init tsem_fs_init(void)
 	if (IS_ERR(forensics_counts))
 		goto err;
 
-	forensics_points = securityfs_create_file("forensics_points", 0400,
-						  tsem_dir, NULL,
+	forensics_points = securityfs_create_file("forensics_coefficients",
+						  0400, tsem_dir, NULL,
 						  &forensics_point_ops);
 	if (IS_ERR(forensics_points))
 		goto err;
@@ -1221,8 +1221,8 @@ int __init tsem_fs_init(void)
 	if (IS_ERR(trajectory_counts))
 		goto err;
 
-	trajectory_points = securityfs_create_file("trajectory_points", 0400,
-						   tsem_dir, NULL,
+	trajectory_points = securityfs_create_file("trajectory_coefficients",
+						   0400, tsem_dir, NULL,
 						   &trajectory_point_ops);
 	if (IS_ERR(trajectory_points))
 		goto err;
