@@ -12,18 +12,20 @@
 
 #include "tsem.h"
 
-static struct dentry *control;
 static struct dentry *tsem_dir;
-static struct dentry *forensics;
-static struct dentry *forensics_counts;
-static struct dentry *forensics_points;
-static struct dentry *measurement_file;
-static struct dentry *trajectory;
-static struct dentry *trajectory_counts;
-static struct dentry *trajectory_points;
-static struct dentry *state;
+static struct dentry *control;
 static struct dentry *id;
 static struct dentry *aggregate;
+static struct dentry *internal_tma;
+static struct dentry *model;
+static struct dentry *forensics;
+static struct dentry *forensics_counts;
+static struct dentry *forensics_coeff;
+static struct dentry *trajectory;
+static struct dentry *trajectory_counts;
+static struct dentry *trajectory_coeff;
+static struct dentry *measurement;
+static struct dentry *state;
 static struct dentry *external_tma;
 
 struct control_commands {
@@ -1186,52 +1188,6 @@ int __init tsem_fs_init(void)
 	if (IS_ERR(control))
 		goto err;
 
-
-	forensics = securityfs_create_file("forensics", 0400, tsem_dir, NULL,
-					   &forensics_ops);
-	if (IS_ERR(forensics))
-		goto err;
-
-	forensics_counts = securityfs_create_file("forensics_counts", 0400,
-						 tsem_dir, NULL,
-						 &forensics_count_ops);
-	if (IS_ERR(forensics_counts))
-		goto err;
-
-	forensics_points = securityfs_create_file("forensics_coefficients",
-						  0400, tsem_dir, NULL,
-						  &forensics_point_ops);
-	if (IS_ERR(forensics_points))
-		goto err;
-
-	measurement_file = securityfs_create_file("measurement", 0400,
-						  tsem_dir, NULL,
-						  &measurement_ops);
-	if (IS_ERR(measurement_file))
-		goto err;
-
-	trajectory = securityfs_create_file("trajectory", 0400, tsem_dir, NULL,
-					    &trajectory_ops);
-	if (IS_ERR(trajectory))
-		goto err;
-
-	trajectory_counts = securityfs_create_file("trajectory_counts", 0400,
-						  tsem_dir, NULL,
-						  &trajectory_count_ops);
-	if (IS_ERR(trajectory_counts))
-		goto err;
-
-	trajectory_points = securityfs_create_file("trajectory_coefficients",
-						   0400, tsem_dir, NULL,
-						   &trajectory_point_ops);
-	if (IS_ERR(trajectory_points))
-		goto err;
-
-	state = securityfs_create_file("state", 0400, tsem_dir, NULL,
-				       &state_ops);
-	if (IS_ERR(state))
-		goto err;
-
 	id = securityfs_create_file("id", 0400, tsem_dir, NULL, &id_ops);
 	if (IS_ERR(control))
 		goto err;
@@ -1241,29 +1197,84 @@ int __init tsem_fs_init(void)
 	if (IS_ERR(aggregate))
 		goto err;
 
+	internal_tma = securityfs_create_dir("InternalTMA", tsem_dir);
+	if (IS_ERR(internal_tma))
+		goto err;
+
+	model = securityfs_create_dir("model0", internal_tma);
+	if (IS_ERR(model))
+		goto err;
+
+	forensics = securityfs_create_file("forensics", 0400, model, NULL,
+					   &forensics_ops);
+	if (IS_ERR(forensics))
+		goto err;
+
+	forensics_counts = securityfs_create_file("forensics_counts", 0400,
+						 model, NULL,
+						 &forensics_count_ops);
+	if (IS_ERR(forensics_counts))
+		goto err;
+
+	forensics_coeff = securityfs_create_file("forensics_coefficients",
+						 0400, model, NULL,
+						 &forensics_point_ops);
+	if (IS_ERR(forensics_coeff))
+		goto err;
+
+	trajectory = securityfs_create_file("trajectory", 0400, model, NULL,
+					     &trajectory_ops);
+	if (IS_ERR(trajectory))
+		goto err;
+
+	trajectory_counts = securityfs_create_file("trajectory_counts", 0400,
+						   model, NULL,
+						   &trajectory_count_ops);
+	if (IS_ERR(trajectory_counts))
+		goto err;
+
+	trajectory_coeff = securityfs_create_file("trajectory_coefficients",
+						  0400, model, NULL,
+						  &trajectory_point_ops);
+	if (IS_ERR(trajectory_coeff))
+		goto err;
+
+	measurement = securityfs_create_file("measurement", 0400,
+						  model, NULL,
+						  &measurement_ops);
+	if (IS_ERR(measurement))
+		goto err;
+
+	state = securityfs_create_file("state", 0400, model, NULL,
+					&state_ops);
+	if (IS_ERR(state))
+		goto err;
+
 	external_tma = securityfs_create_dir("ExternalTMA", tsem_dir);
 	if (IS_ERR(external_tma))
 		goto err;
 
-	retn = 0;
+	 retn = 0;
 
- done:
-	return retn;
+  done:
+	 return retn;
 
- err:
-	securityfs_remove(control);
-	securityfs_remove(forensics);
-	securityfs_remove(forensics_counts);
-	securityfs_remove(forensics_points);
-	securityfs_remove(measurement_file);
-	securityfs_remove(trajectory);
-	securityfs_remove(trajectory_counts);
-	securityfs_remove(trajectory_points);
-	securityfs_remove(state);
-	securityfs_remove(id);
-	securityfs_remove(aggregate);
-	securityfs_remove(external_tma);
+  err:
+	 securityfs_remove(tsem_dir);
+	 securityfs_remove(control);
+	 securityfs_remove(id);
+	 securityfs_remove(aggregate);
+	 securityfs_remove(internal_tma);
+	 securityfs_remove(model);
+	 securityfs_remove(forensics);
+	 securityfs_remove(forensics_counts);
+	 securityfs_remove(forensics_coeff);
+	 securityfs_remove(trajectory);
+	 securityfs_remove(trajectory_counts);
+	 securityfs_remove(trajectory_coeff);
+	 securityfs_remove(measurement);
+	 securityfs_remove(state);
+	 securityfs_remove(external_tma);
 
-	return retn;
-
+	 return retn;
 }
