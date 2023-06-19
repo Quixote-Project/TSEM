@@ -1254,27 +1254,27 @@ int __init tsem_fs_init(void)
 	if (IS_ERR(external_tma))
 		goto err;
 
-	 retn = 0;
+	retn = 0;
 
-  done:
-	 return retn;
+ done:
+	return retn;
 
-  err:
-	 securityfs_remove(tsem_dir);
-	 securityfs_remove(control);
-	 securityfs_remove(id);
-	 securityfs_remove(aggregate);
-	 securityfs_remove(internal_tma);
-	 securityfs_remove(model);
-	 securityfs_remove(forensics);
-	 securityfs_remove(forensics_counts);
-	 securityfs_remove(forensics_coeff);
-	 securityfs_remove(trajectory);
-	 securityfs_remove(trajectory_counts);
-	 securityfs_remove(trajectory_coeff);
-	 securityfs_remove(measurement);
-	 securityfs_remove(state);
-	 securityfs_remove(external_tma);
+ err:
+	securityfs_remove(tsem_dir);
+	securityfs_remove(control);
+	securityfs_remove(id);
+	securityfs_remove(aggregate);
+	securityfs_remove(internal_tma);
+	securityfs_remove(model);
+	securityfs_remove(forensics);
+	securityfs_remove(forensics_counts);
+	securityfs_remove(forensics_coeff);
+	securityfs_remove(trajectory);
+	securityfs_remove(trajectory_counts);
+	securityfs_remove(trajectory_coeff);
+	securityfs_remove(measurement);
+	securityfs_remove(state);
+	securityfs_remove(external_tma);
 
-	 return retn;
+	return retn;
 }
