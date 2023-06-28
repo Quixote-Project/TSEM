@@ -19,7 +19,7 @@
 
 #include "tsem.h"
 
-struct lsm_blob_sizes tsem_blob_sizes __lsm_ro_after_init = {
+struct lsm_blob_sizes tsem_blob_sizes __ro_after_init = {
 	.lbs_task = sizeof(struct tsem_task),
 	.lbs_inode = sizeof(struct tsem_inode)
 };
@@ -47,15 +47,15 @@ static struct tsem_model root_model = {
 
 static struct tsem_context root_context;
 
-static int tsem_ready __lsm_ro_after_init;
+static int tsem_ready __ro_after_init;
 
-static bool tsem_available __lsm_ro_after_init;
+static bool tsem_available __ro_after_init;
 
-static unsigned int magazine_size __lsm_ro_after_init = TSEM_ROOT_MAGAZINE_SIZE;
+static unsigned int magazine_size __ro_after_init = TSEM_ROOT_MAGAZINE_SIZE;
 
-static bool no_root_modeling __lsm_ro_after_init;
+static bool no_root_modeling __ro_after_init;
 
-static char *default_hash_function __lsm_ro_after_init;
+static char *default_hash_function __ro_after_init;
 
 static int __init set_magazine_size(char *magazine_value)
 {
@@ -1589,7 +1589,7 @@ static int tsem_inode_getattr(const struct path *path)
 	return model_generic_event(TSEM_INODE_GETATTR, NOLOCK);
 }
 
-static int tsem_inode_setxattr(struct user_namespace *mnt_userns,
+static int tsem_inode_setxattr(struct mnt_idmap *idmap,
 			       struct dentry *dentry, const char *name,
 			       const void *value, size_t size, int flags)
 {
@@ -1630,7 +1630,7 @@ static int tsem_inode_listxattr(struct dentry *dentry)
 	return model_generic_event(TSEM_INODE_LISTXATTR, NOLOCK);
 }
 
-static int tsem_inode_removexattr(struct user_namespace *mnt,
+static int tsem_inode_removexattr(struct mnt_idmap *idmap,
 				  struct dentry *dentry, const char *name)
 {
 	char msg[TRAPPED_MSG_LENGTH];
@@ -1644,8 +1644,7 @@ static int tsem_inode_removexattr(struct user_namespace *mnt,
 	return model_generic_event(TSEM_INODE_REMOVEXATTR, NOLOCK);
 }
 
-static int tsem_inode_killpriv(struct user_namespace *mnt_userns,
-			       struct dentry *dentry)
+static int tsem_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry)
 {
 	char msg[TRAPPED_MSG_LENGTH];
 
@@ -1734,7 +1733,7 @@ static int tsem_bpf_prog(struct bpf_prog *prog)
 }
 #endif
 
-static struct security_hook_list tsem_hooks[] __lsm_ro_after_init = {
+static struct security_hook_list tsem_hooks[] __ro_after_init = {
 	LSM_HOOK_INIT(task_alloc, tsem_task_alloc),
 	LSM_HOOK_INIT(task_free, tsem_task_free),
 	LSM_HOOK_INIT(task_kill, tsem_task_kill),
