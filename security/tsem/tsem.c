@@ -506,6 +506,8 @@ static int tsem_task_kill(struct task_struct *target,
 		return return_trapped_task(TSEM_TASK_KILL, msg, true);
 	}
 
+	args.cross_model = src_ctx->id != tgt_ctx->id;
+
 	if (SI_FROMKERNEL(info))
 		return retn;
 	if (sig == SIGURG)
@@ -513,8 +515,9 @@ static int tsem_task_kill(struct task_struct *target,
 	if (!capable(TSEM_CONTROL_CAPABILITY) &&
 	    has_capability_noaudit(target, TSEM_CONTROL_CAPABILITY))
 		return -EPERM;
+	if (!capable(TSEM_CONTROL_CAPABILITY) && args.cross_model)
+		return -EPERM;
 
-	args.cross_model = src_ctx->id != tgt_ctx->id;
 	args.signal = sig;
 	memcpy(args.target, tsem_task(target)->task_id, tsem_digestsize());
 	params.u.task_kill = &args;
