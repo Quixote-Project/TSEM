@@ -290,6 +290,11 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 		new_ctx->model = model;
 	}
 	if (type == TSEM_CONTROL_EXTERNAL) {
+		if (crypto_shash_digestsize(tfm)*2 != strlen(key)) {
+			retn = -EINVAL;
+			goto done;
+		}
+
 		new_ctx->external = allocate_external(new_id, key);
 		if (IS_ERR(new_ctx->external)) {
 			retn = PTR_ERR(new_ctx->external);
