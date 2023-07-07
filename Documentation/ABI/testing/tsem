@@ -181,14 +181,14 @@ Description:
 			orchestrator for the namespace at the time
 			its creation.
 
-		state HEXID
+		state value=HEXID
 			The state keyword is used to indicate that the
 			security state coefficient identified by the
 			ASCII base 16 encoded value specified by HEXID
 			should be loaded into the current security
 			model as a valid security event coefficient.
 
-		pseudonym HEXID
+		pseudonym valid=HEXID
 			The pseudonym keyword is used to indicate that
 			the pathname, identified by the ASCII base 16
 			encoded value HEXID, should be designated to
@@ -204,7 +204,7 @@ Description:
 			that has been designated for use by the
 			security modeling namespace.
 
-		base HEXID
+		base value=HEXID
 			The base keyword is used to indicate that the
 			ASCII base 16 encoded value HEXID should be
 			registered as the value used to generate

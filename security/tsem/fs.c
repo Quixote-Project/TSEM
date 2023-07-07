@@ -204,14 +204,26 @@ static int config_context(unsigned long cmd, char *bufr)
 	return retn;
 }
 
-static int config_point(enum tsem_control_type type, u8 *arg)
+static int config_point(enum tsem_control_type type, char *arg)
 {
+	char *argp;
 	int retn = -EINVAL;
 	u8 mapping[HASH_MAX_DIGESTSIZE];
 
-	if (strlen(arg) != tsem_digestsize() * 2)
+	if (!arg)
 		goto done;
-	if (hex2bin(mapping, arg, tsem_digestsize()))
+
+	argp = strchr(arg, '=');
+	if (!argp)
+		goto done;
+	*argp++ = '\0';
+
+	if (strcmp(arg, "value"))
+		goto done;
+
+	if (strlen(argp) != tsem_digestsize()*2)
+		goto done;
+	if (hex2bin(mapping, argp, tsem_digestsize()))
 		goto done;
 
 	if (type == TSEM_CONTROL_MAP_STATE)
@@ -734,8 +746,6 @@ static ssize_t write_control(struct file *file, const char __user *buf,
 	case TSEM_CONTROL_MAP_STATE:
 	case TSEM_CONTROL_MAP_PSEUDONYM:
 	case TSEM_CONTROL_MAP_BASE:
-		if (!arg)
-			goto done;
 		retn = config_point(type, arg);
 		break;
 	}
