@@ -59,6 +59,16 @@ static const char * const namespace_arguments[] = {
 	"cache"
 };
 
+enum control_argument_type {
+	CONTROL_KEY = 0,
+	CONTROL_PID
+};
+
+static const char * const control_arguments[] = {
+	"key",
+	"pid"
+};
+
 static bool can_access_fs(void)
 {
 	struct tsem_context *ctx = tsem_context(current);
@@ -119,6 +129,55 @@ static int control_COE(unsigned long cmd, pid_t pid, char *keystr)
 	if (wakeup)
 		wake_up_process(COE);
 
+	return retn;
+}
+
+static int config_COE(unsigned long cmd, char *arg)
+{
+	char **argv, *argp, *key = NULL;
+	int argc, retn = -EINVAL;
+	unsigned int lp;
+	long pid = 0;
+	enum control_argument_type control_arg;
+
+	if (!*arg)
+		return retn;
+
+	argv = argv_split(GFP_KERNEL, arg, &argc);
+	if (!argv)
+		return -ENOMEM;
+
+	for (lp = 0; lp < argc; ++lp) {
+		argp = strchr(argv[lp], '=');
+		if (!argp)
+			goto done;
+		*argp++ = '\0';
+
+		control_arg = match_string(control_arguments,
+					   ARRAY_SIZE(control_arguments),
+					   argv[lp]);
+		if (control_arg < 0)
+			goto done;
+
+		switch (control_arg) {
+		case CONTROL_KEY:
+			key = argp;
+			if (strlen(key) != tsem_digestsize()*2)
+				goto done;
+			break;
+		case CONTROL_PID:
+			if (kstrtol(argp, 0, &pid))
+				goto done;
+			break;
+		}
+	}
+
+	if (!key || !pid)
+		goto done;
+	retn = control_COE(cmd, pid, key);
+
+ done:
+	argv_free(argv);
 	return retn;
 }
 
@@ -628,9 +687,8 @@ static int open_control(struct inode *inode, struct file *filp)
 static ssize_t write_control(struct file *file, const char __user *buf,
 			     size_t datalen, loff_t *ppos)
 {
-	char *p, *key, *arg, cmdbufr[128];
+	char *p, *arg, cmdbufr[128];
 	ssize_t retn = -EINVAL;
-	long pid;
 	enum tsem_control_type type;
 
 	if (*ppos != 0)
@@ -671,19 +729,7 @@ static ssize_t write_control(struct file *file, const char __user *buf,
 		break;
 	case TSEM_CONTROL_TRUSTED:
 	case TSEM_CONTROL_UNTRUSTED:
-		if (!arg)
-			goto done;
-
-		key = strchr(arg, ' ');
-		if (!key)
-			goto done;
-		*key++ = '\0';
-		if (strlen(key) != tsem_digestsize() * 2)
-			goto done;
-
-		if (kstrtol(arg, 0, &pid))
-			goto done;
-		retn = control_COE(type, pid, key);
+		retn = config_COE(type, arg);
 		break;
 	case TSEM_CONTROL_MAP_STATE:
 	case TSEM_CONTROL_MAP_PSEUDONYM:
