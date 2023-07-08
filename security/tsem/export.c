@@ -68,7 +68,7 @@ static void refill_export_magazine(struct work_struct *work)
 	spin_unlock(&ws->u.ext->magazine_lock);
 }
 
-struct export_event *allocate_export(bool locked)
+static struct export_event *allocate_export(bool locked)
 {
 	unsigned int index;
 	struct export_event *exp = NULL;

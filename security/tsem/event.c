@@ -232,7 +232,7 @@ static int get_file_digest(struct file *file, struct inode *inode,
 	return retn;
 }
 
-int add_file_digest(struct file *file, struct tsem_file *tfp)
+static int add_file_digest(struct file *file, struct tsem_file *tfp)
 {
 	int retn = 0;
 	u8 measurement[HASH_MAX_DIGESTSIZE];
