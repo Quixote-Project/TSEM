@@ -1260,7 +1260,7 @@ trust implemented by a TPM or a hardware based TMA.
 
 Quixote
 =======
-	
+
 	"He is awkward, past his prime and engaged in a task beyond his
 	 capacities."
 				- Don Quixote's able mount Rocinante

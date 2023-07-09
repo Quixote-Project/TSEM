@@ -559,9 +559,9 @@ Description:
 				representation of the scope identifier
 				assigned to the socket.
 
-		If the event type is a socket_accept a socket_accept 
-		key value will be included characterizes either an
-		IPV4, IPV6 or a generic socket description with the
+		If the event type is a socket_accept a socket_accept
+		key value will be included that characterizes either
+		an IPV4, IPV6 or a generic socket description with the
 		following event descriptions:
 
 			family: N
