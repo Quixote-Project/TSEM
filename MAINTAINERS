@@ -19026,14 +19026,6 @@ F:	include/uapi/linux/selinux_netlink.h
 F:	scripts/selinux/
 F:	security/selinux/
 
-TSEM SECURITY MODULE
-M:	Greg Wettstein <greg@enjellic.com>
-S:	Maintained
-L:	linux-security-module@vger.kernel.org
-F:	Documentation/admin-guide/LSM/tsem.rst
-F:	Documentation/ABI/testing/tsemfs
-F:	security/tsem/
-
 SENSABLE PHANTOM
 M:	Jiri Slaby <jirislaby@kernel.org>
 S:	Maintained
@@ -21473,6 +21465,14 @@ S:	Maintained
 W:	https://github.com/srcres258/linux-doc
 T:	git git://github.com/srcres258/linux-doc.git doc-zh-tw
 F:	Documentation/translations/zh_TW/
+
+TSEM SECURITY MODULE
+M:	Greg Wettstein <greg@enjellic.com>
+S:	Maintained
+L:	linux-security-module@vger.kernel.org
+F:	Documentation/admin-guide/LSM/tsem.rst
+F:	Documentation/ABI/testing/tsem
+F:	security/tsem/
 
 TTY LAYER
 M:	Greg Kroah-Hartman <gregkh@linuxfoundation.org>
