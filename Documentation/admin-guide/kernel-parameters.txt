@@ -6497,23 +6497,27 @@
 			with CPUID.16h support and partial CPUID.15h support.
 			Format: <unsigned int>
 
-	tsem_mode=	[TSEM] Set the mode that the Trusted Security Event
-			Modeling LSM is to run in.
-			Format: 1
-			1 -- Disable root domain modeling.
-
 	tsem_cache=	[TSEM] Define the size of the caches used to hold
 			pointers to structures that will be used to model
 			security events occurring in the root modeling
-			namespace that are called in atomic context.
+			namespace that are called in atomic context.  The
+			value is the size of the arrays of pointers to the
+			pre-allocated structures that will be maintained.
+			For example, a value of 16 means each array would
+			have 16 entries in it.
 			Format: <integer>
 			Default: 96
 
 	tsem_digest=	[TSEM] Define the cryptographic hash function that
-			will be used to create security event coefficients
-			for in the root modeling namespace.
+			will be used to generate the security event
+			coefficients in the root modeling namespace.
 			Format: {name of the cryptographic hash function}
 			Default: sha256
+
+	tsem_mode=	[TSEM] Set the mode that the Trusted Security Event
+			Modeling LSM is to run in.
+			Format: 1
+			1 -- Disable root domain modeling.
 
 	tsx=		[X86] Control Transactional Synchronization
 			Extensions (TSX) feature in Intel processors that
