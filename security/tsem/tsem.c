@@ -508,7 +508,7 @@ static int tsem_task_kill(struct task_struct *target,
 
 	args.cross_model = src_ctx->id != tgt_ctx->id;
 
-	if (SI_FROMKERNEL(info))
+	if (info != SEND_SIG_NOINFO && SI_FROMKERNEL(info))
 		return retn;
 	if (sig == SIGURG)
 		return retn;
