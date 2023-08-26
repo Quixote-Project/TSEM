@@ -28,6 +28,8 @@ enum tsem_action_type tsem_root_actions[TSEM_EVENT_CNT] = {
 	TSEM_ACTION_EPERM	/* Undefined. */
 };
 
+static atomic64_t task_instance;
+
 static struct tsem_model root_model = {
 	.point_lock = __SPIN_LOCK_INITIALIZER(root_model.point_lock),
 	.point_list = LIST_HEAD_INIT(root_model.point_list),
@@ -464,6 +466,7 @@ static int tsem_task_alloc(struct task_struct *new, unsigned long flags)
 	struct tsem_task *old_task = tsem_task(current);
 	struct tsem_task *new_task = tsem_task(new);
 
+	new_task->instance = old_task->instance;
 	new_task->trust_status = old_task->trust_status;
 	new_task->context = old_task->context;
 	memcpy(new_task->task_id, old_task->task_id, HASH_MAX_DIGESTSIZE);
@@ -698,12 +701,17 @@ static int tsem_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 
 static int tsem_bprm_creds_for_exec(struct linux_binprm *bprm)
 {
+	int retn;
 	struct tsem_task *task = tsem_task(current);
 
 	if (unlikely(!tsem_ready))
 		return 0;
 
-	return tsem_map_task(bprm->file, task->task_id);
+	retn = tsem_map_task(bprm->file, task->task_id);
+	if (!retn)
+		task->instance = atomic64_inc_return(&task_instance);
+
+	return retn;
 }
 
 static int tsem_inode_alloc_security(struct inode *inode)

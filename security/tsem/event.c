@@ -442,6 +442,7 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	ep->event = event;
 	ep->locked = locked;
 	ep->pid = task_pid_nr(current);
+	ep->instance = task->instance;
 	memcpy(ep->comm, current->comm, sizeof(ep->comm));
 	memcpy(ep->task_id, task->task_id, tsem_digestsize());
 

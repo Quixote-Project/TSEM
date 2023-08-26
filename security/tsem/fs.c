@@ -318,8 +318,9 @@ static void show_event(struct seq_file *c, struct tsem_event *ep)
 		tsem_fs_show_key(c, ",", "pid", "%u", ep->pid);
 	tsem_fs_show_key(c, ",", "process", "%s", ep->comm);
 	tsem_fs_show_key(c, ",", "type", "%s", tsem_names[ep->event]);
-	tsem_fs_show_key(c, "}, ", "task_id", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, ",", "task_id", "%*phN", tsem_digestsize(),
 			 ep->task_id);
+	tsem_fs_show_key(c, "}, ", "ttd", "%llu", ep->instance);
 
 	tsem_fs_show_field(c, "COE");
 	tsem_fs_show_key(c, ",", "uid", "%u", ep->COE.uid);

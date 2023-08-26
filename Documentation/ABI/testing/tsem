@@ -326,6 +326,13 @@ Description:
 				Describes how the TASK_ID value is
 				generated.
 
+			ttd: NN
+				The ASCII base 10 representation of
+				the task temporal disambiguator.  This
+				is a 64 bit value used to identify
+				different execution instances of tasks
+				with identical task identity values.
+
 		The COE key has the following characteristic keys.
 		Keys that involve discretionary access values
 		(uids/gids) will have their numeric value computed

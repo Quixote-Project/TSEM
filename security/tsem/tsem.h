@@ -397,6 +397,12 @@ enum tsem_inode_state {
  * task_id digest creates security state points that are specific to
  * the executable file that was used to start the task.
  *
+ * The instance member of the structure is used to temporally
+ * disambiguate instances of the same task_id.  A single 64-bit
+ * counter is used to generate the instance.  This counter is
+ * incremented and assigned to the instance member of the structure on
+ * each invocation of the tsem_bprm_creds_for_exec() function.
+ *
  * The task_key member holds the authentication key that will be used
  * to authenticate a process that is requesting the ability to set the
  * trust status of a process.  This value is generated for the task
@@ -420,6 +426,7 @@ enum tsem_inode_state {
  */
 struct tsem_task {
 	u64 tma_for_ns;
+	u64 instance;
 	enum tsem_task_trust trust_status;
 	u8 task_id[HASH_MAX_DIGESTSIZE];
 	u8 task_key[HASH_MAX_DIGESTSIZE];
@@ -431,6 +438,7 @@ struct tsem_task {
  * @kref: Reference count for the context.
  * @work: Work structure for delayed release of the context.
  * @id: The index number of the context.
+ * @instance: The instance number counter for the task identity.
  * @sealed: Status variable indicating whether or not the
  *	    modeling context can be modified.
  * @use_current_ns: Status variable indicating which user namespace
@@ -483,7 +491,7 @@ struct tsem_task {
  * TSEM code uses a pattern of testing this value for non-zero status
  * as an indication of whether or not the task is running in a
  * subordinate modeling namespace.
-
+ *
  * Each security modeling namespace can have an independent
  * cryptographic digest function that is used as the compression
  * function for generating the digest values that are used to model
@@ -491,7 +499,7 @@ struct tsem_task {
  * is allocated for this digest function at the time that the
  * tsem_context structure is created and is maintained in this
  * structure for subsequent use during event processing.
-
+ *
  * Each cryptographic digest function has a 'zero message' value that
  * is the result of the initialization and closure of a hash function
  * that has no other input.  This zero digest value is computed at the
@@ -506,7 +514,7 @@ struct tsem_task {
  * model should be enforcing or logging.  Currently the specification
  * is all or nothing for all of the events, with plans to make the
  * actions individually configurable.
-
+ *
  * Each security event that is processed requires a struct tsem_event
  * structure that drives either the internal modeling of an event or
  * its export to an external modeling agent.  Some security event
@@ -1199,6 +1207,7 @@ struct tsem_event {
 	enum tsem_event_type event;
 	bool locked;
 	pid_t pid;
+	u64 instance;
 	char *pathname;
 	char comm[TASK_COMM_LEN];
 
