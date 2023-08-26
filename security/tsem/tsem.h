@@ -1208,6 +1208,7 @@ struct tsem_event {
 	bool locked;
 	pid_t pid;
 	u64 instance;
+	u64 timestamp;
 	char *pathname;
 	char comm[TASK_COMM_LEN];
 
