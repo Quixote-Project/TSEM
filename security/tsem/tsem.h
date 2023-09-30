@@ -48,7 +48,6 @@
 /**
  * enum tsem_event_type - Ordinal value for a security event.
  * @TSEM_BPRM_SET_CREDS: Ordinal value for bprm_creds_for_exec.
- * @TSEM_GENERIC_EVENT: Ordinal value for a generically modeled event.
  * @TSEM_TASK_KILL: Ordinal value for task kill.
  * @....: Remainder follows with a similar naming format that has
  *        TSEM_ prep ended to the raw LSM security hook name.
@@ -70,7 +69,6 @@
  */
 enum tsem_event_type {
 	TSEM_BPRM_SET_CREDS = 1,
-	TSEM_GENERIC_EVENT,
 	TSEM_TASK_KILL,
 	TSEM_TASK_SETPGID,
 	TSEM_TASK_GETPGID,
@@ -1130,11 +1128,11 @@ struct tsem_task_kill_args {
  * @file: If the security event references a file this structure will
  *	  contain the struct tsem_file structure that describes the
  *	  characteristics of the file.
+ * @no_params: This boolean value is set if the security event if
+ *	       the security event is being generically modeled and will
+ *	       have no characterizing parameters.
  * @CELL: The CELL union is used to hold the data structures that
  *	  characterize the CELL identity of the event.
- * @CELL.event_type: In the case of a generically modeled event this
- *		     member will contain the enumeration value
- *		     identifying the event.
  * @CELL.mmap_file: The structure describing the characteristics of
  *		    a mmap_file security event.
  * @CELL.socket_create: The structure describing the characteristics
@@ -1219,8 +1217,8 @@ struct tsem_event {
 	struct tsem_COE COE;
 	struct tsem_file file;
 
+	bool no_params;
 	union {
-		u32 event_type;
 		struct tsem_mmap_file_args mmap_file;
 		struct tsem_socket_create_args socket_create;
 		struct tsem_socket_connect_args socket_connect;
@@ -1234,9 +1232,6 @@ struct tsem_event {
  * @u: A union that encapsulates all of the different structures that
  *     are used to characterize the argument so the TSEM security
  *     event handlers.
- * @u.event_type: This structure member holds the enum tsem_event_type
- *		  enumeration value of the event whose characteristics
- *		  are encapsulated in the function.
  * @u.file: If the security event references a VFS file this member
  *	    hold a pointer to the description of the file.
  _file event.
@@ -1267,7 +1262,6 @@ struct tsem_event {
  */
 struct tsem_event_parameters {
 	union {
-		u32 event_type;
 		struct file *file;
 		struct tsem_mmap_file_args *mmap_file;
 		struct tsem_socket_create_args *socket_create;

@@ -448,6 +448,12 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	memcpy(ep->task_id, task->task_id, tsem_digestsize());
 
 	get_COE(&ep->COE);
+
+	if (!params) {
+		ep->no_params = true;
+		goto done;
+	}
+
 	switch (event) {
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_SET_CREDS:
@@ -473,14 +479,12 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	case TSEM_TASK_KILL:
 		ep->CELL.task_kill = *params->u.task_kill;
 		break;
-	case TSEM_GENERIC_EVENT:
-		ep->CELL.event_type = params->u.event_type;
-		break;
 	default:
 		WARN_ONCE(true, "Unhandled event type: %d\n", event);
 		break;
 	}
 
+ done:
 	if (retn) {
 		kmem_cache_free(event_cachep, ep);
 		ep = ERR_PTR(retn);

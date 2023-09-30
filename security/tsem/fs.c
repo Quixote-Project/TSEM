@@ -471,8 +471,7 @@ static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	tsem_fs_show_field(c, tsem_names[ep->event]);
-	tsem_fs_show_key(c, "}", "type", "%s",
-			 tsem_names[ep->CELL.event_type]);
+	seq_puts(c, "}");
 }
 
 static void *trajectory_start(struct seq_file *c, loff_t *pos)
@@ -1138,6 +1137,9 @@ struct dentry *tsem_fs_create_external(const char *name)
  */
 void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 {
+	if (ep->no_params)
+		show_event_generic(c, ep);
+
 	switch (ep->event) {
 	case TSEM_FILE_OPEN:
 		show_event(c, ep);
@@ -1158,9 +1160,6 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_TASK_KILL:
 		show_task_kill(c, ep);
-		break;
-	case TSEM_GENERIC_EVENT:
-		show_event_generic(c, ep);
 		break;
 	default:
 		break;

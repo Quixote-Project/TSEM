@@ -347,9 +347,9 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 			goto done;
 		break;
 
-	case TSEM_GENERIC_EVENT:
-		p = (u8 *) tsem_names[ep->CELL.event_type];
-		size = strlen(tsem_names[ep->CELL.event_type]);
+	default:
+		p = (u8 *) tsem_names[ep->event];
+		size = strlen(tsem_names[ep->event]);
 		retn = crypto_shash_update(shash, p, size);
 		if (retn)
 			goto done;
@@ -359,9 +359,6 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_finup(shash, p, size, mapping);
 		if (retn)
 			goto done;
-		break;
-
-	default:
 		break;
 	}
 
