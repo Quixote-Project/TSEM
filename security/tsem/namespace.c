@@ -119,6 +119,37 @@ static struct tsem_external *allocate_external(u64 context_id,
 	return external;
 }
 
+static struct tsem_external *allocate_export(u64 context_id)
+{
+	int retn = -ENOMEM;
+	char bufr[20 + 1];
+	struct tsem_external *external;
+
+	external = kzalloc(sizeof(*external), GFP_KERNEL);
+	if (!external)
+		goto done;
+
+	spin_lock_init(&external->export_lock);
+	INIT_LIST_HEAD(&external->export_list);
+
+	init_waitqueue_head(&external->wq);
+
+	scnprintf(bufr, sizeof(bufr), "%llu", context_id);
+	external->dentry = tsem_fs_create_external(bufr);
+	if (IS_ERR(external->dentry)) {
+		retn = PTR_ERR(external->dentry);
+		external->dentry = NULL;
+	} else
+		retn = 0;
+
+ done:
+	if (retn) {
+		kfree(external);
+		external = ERR_PTR(retn);
+	}
+	return external;
+}
+
 static void wq_put(struct work_struct *work)
 {
 	struct tsem_context *ctx;
@@ -307,6 +338,22 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 		if (retn)
 			goto done;
 	}
+	if (type == TSEM_CONTROL_EXPORT) {
+		new_ctx->external = allocate_export(new_id);
+		if (IS_ERR(new_ctx->external)) {
+			retn = PTR_ERR(new_ctx->external);
+			new_ctx->external = NULL;
+			goto done;
+		}
+
+		retn = tsem_export_magazine_allocate(new_ctx->external,
+						     cache_size);
+		if (retn)
+			goto done;
+
+		new_ctx->external->export_only = true;
+	}
+
 
 	kref_init(&new_ctx->kref);
 
@@ -324,7 +371,8 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 
  done:
 	if (retn) {
-		remove_task_key(new_id);
+		if (type != TSEM_CONTROL_EXPORT)
+			remove_task_key(new_id);
 		crypto_free_shash(tfm);
 		tsem_event_magazine_free(new_ctx);
 		kfree(use_digest);
@@ -338,7 +386,7 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 		tsk->context = new_ctx;
 		if (type == TSEM_CONTROL_EXTERNAL)
 			retn = tsem_export_aggregate();
-		else
+		if (type == TSEM_CONTROL_INTERNAL)
 			retn = tsem_model_add_aggregate();
 	}
 

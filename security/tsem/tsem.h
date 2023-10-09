@@ -246,6 +246,7 @@ enum tsem_action_type {
 enum tsem_control_type {
 	TSEM_CONTROL_INTERNAL = 0,
 	TSEM_CONTROL_EXTERNAL,
+	TSEM_CONTROL_EXPORT,
 	TSEM_CONTROL_ENFORCE,
 	TSEM_CONTROL_SEAL,
 	TSEM_CONTROL_TRUSTED,
@@ -815,6 +816,8 @@ struct tsem_model {
  * structure for the external modeling namespace.
  */
 struct tsem_external {
+	bool export_only;
+
 	spinlock_t export_lock;
 	struct list_head export_list;
 	struct dentry *dentry;

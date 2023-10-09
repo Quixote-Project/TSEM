@@ -207,7 +207,7 @@ int tsem_export_event(struct tsem_event *ep)
 	list_add_tail(&exp->list, &ctx->external->export_list);
 	spin_unlock(&ctx->external->export_lock);
 
-	if (ep->locked) {
+	if (ctx->external->export_only || ep->locked) {
 		trigger_event(ctx);
 		return 0;
 	}

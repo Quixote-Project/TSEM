@@ -36,6 +36,7 @@ struct control_commands {
 static const char * const control_commands[] = {
 	"internal",
 	"external",
+	"export",
 	"enforce",
 	"seal",
 	"trusted",
@@ -247,7 +248,7 @@ static int config_namespace(enum tsem_control_type type, const char *arg)
 	enum namespace_argument_type ns_arg;
 	enum tsem_ns_reference ns_ref = TSEM_NS_INITIAL;
 
-	if (type == TSEM_CONTROL_EXTERNAL)
+	if (type == TSEM_CONTROL_EXTERNAL || type == TSEM_CONTROL_EXPORT)
 		cache_size = TSEM_MAGAZINE_SIZE_EXTERNAL;
 
 	if (!arg) {
@@ -734,6 +735,7 @@ static ssize_t write_control(struct file *file, const char __user *buf,
 	switch (type) {
 	case TSEM_CONTROL_EXTERNAL:
 	case TSEM_CONTROL_INTERNAL:
+	case TSEM_CONTROL_EXPORT:
 		retn = config_namespace(type, arg);
 		break;
 	case TSEM_CONTROL_ENFORCE:
