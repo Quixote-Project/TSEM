@@ -393,3 +393,56 @@ int tsem_ns_create(const enum tsem_control_type type, const char *digest,
 	mutex_unlock(&context_id_mutex);
 	return retn;
 }
+
+/**
+ * tsem_ns_export() - Configure root namespace for export only modeling.
+ *
+ * This function is called to setup the root security modeling namespace
+ * for the export of security event descriptions in tsem_mode=2
+ * operation.
+ *
+ * Return: This function returns 0 if the setup of the root namespace
+ *	   for export was successul and a negative error value if
+ *	   the setup fails.
+ */
+int tsem_ns_export(void)
+{
+	int retn = -ENOMEM;
+	struct tsem_context *new_ctx;
+	struct tsem_task *tsk = tsem_task(current);
+
+	new_ctx = kzalloc(sizeof(*new_ctx), GFP_KERNEL);
+	if (!new_ctx)
+		return retn;
+	*new_ctx = *tsem_context(current);
+
+	new_ctx->external = allocate_export(tsem_context(current)->id);
+	if (IS_ERR(new_ctx->external)) {
+		retn = PTR_ERR(new_ctx->external);
+		new_ctx->external = NULL;
+		goto done;
+	}
+
+	retn = tsem_export_magazine_allocate(new_ctx->external,
+					     5 * TSEM_MAGAZINE_SIZE_EXTERNAL);
+	if (retn)
+		goto done;
+
+	new_ctx->external->export_only = true;
+
+ done:
+	if (retn) {
+		tsem_event_magazine_free(new_ctx);
+		if (new_ctx->external)
+			tsem_export_magazine_free(new_ctx->external);
+		kfree(new_ctx);
+	} else {
+		new_ctx->tfm = tsk->context->tfm;
+		new_ctx->digestname = tsk->context->digestname;
+		memcpy(new_ctx->zero_digest, tsk->context->zero_digest,
+		       crypto_shash_digestsize(tsk->context->tfm));
+		tsk->context = new_ctx;
+	}
+
+	return retn;
+}

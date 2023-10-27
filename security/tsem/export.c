@@ -119,7 +119,7 @@ int tsem_export_show(struct seq_file *sf, void *v)
 	struct export_event *exp = NULL;
 	struct tsem_context *ctx = tsem_context(current);
 
-	if (!ctx->id)
+	if (!ctx->id && !ctx->external)
 		return -ENODATA;
 
 	spin_lock(&ctx->external->export_lock);

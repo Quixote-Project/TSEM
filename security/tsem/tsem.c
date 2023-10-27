@@ -55,7 +55,11 @@ static bool tsem_available __ro_after_init;
 
 static unsigned int magazine_size __ro_after_init = TSEM_ROOT_MAGAZINE_SIZE;
 
-static bool no_root_modeling __ro_after_init;
+static enum mode_type {
+	FULL_MODELING,
+	NO_ROOT_MODELING,
+	EXPORT_ONLY
+} tsem_mode __ro_after_init;
 
 static char *default_hash_function __ro_after_init;
 
@@ -85,7 +89,9 @@ static int __init set_modeling_mode(char *mode_value)
 	}
 
 	if (mode == 1)
-		no_root_modeling = true;
+		tsem_mode = NO_ROOT_MODELING;
+	else if (mode == 2)
+		tsem_mode = EXPORT_ONLY;
 	else
 		pr_warn("tsem: Unknown mode specified.\n");
 	return 1;
@@ -273,7 +279,9 @@ static int model_event(struct tsem_event *ep)
 	int retn;
 	struct tsem_context *ctx = tsem_context(current);
 
-	if (!ctx->id && no_root_modeling)
+	if (tsem_mode == NO_ROOT_MODELING && !ctx->id)
+		return 0;
+	if (unlikely(tsem_mode == EXPORT_ONLY && !ctx->id && !ctx->external))
 		return 0;
 
 	if (!ctx->external)
@@ -291,7 +299,7 @@ static int model_generic_event(enum tsem_event_type event, bool locked)
 	int retn;
 	struct tsem_event *ep;
 
-	if (!tsem_context(current)->id && no_root_modeling)
+	if (!tsem_context(current)->id && tsem_mode == NO_ROOT_MODELING)
 		return 0;
 
 	if (locked)
@@ -1911,8 +1919,14 @@ static int __init set_ready(void)
 	if (retn)
 		goto done;
 
+	if (tsem_mode == EXPORT_ONLY) {
+		retn = tsem_ns_export();
+		if (retn)
+			goto done;
+	}
+
+	pr_info("tsem: Now active.\n");
 	tsem_ready = 1;
-	pr_info("tsem: Now ready for modeling.\n");
 
  done:
 	return retn;
@@ -1937,6 +1951,7 @@ late_initcall(set_ready);
 static int __init tsem_init(void)
 {
 	int retn;
+	char *msg;
 	struct tsem_task *tsk = tsem_task(current);
 	struct tsem_context *ctx = &root_context;
 	struct tsem_model *model = &root_model;
@@ -1966,8 +1981,19 @@ static int __init tsem_init(void)
 	if (retn)
 		goto done;
 
-	pr_info("tsem: Initialized %s modeling.\n",
-		no_root_modeling ? "domain only" : "full");
+	switch (tsem_mode) {
+	case FULL_MODELING:
+		msg = "full";
+		break;
+	case NO_ROOT_MODELING:
+		msg = "namespace only";
+		break;
+	case EXPORT_ONLY:
+		msg = "export";
+		break;
+	}
+	pr_info("tsem: Initialized %s modeling.\n", msg);
+
 	tsem_available = true;
 	tsk->trust_status = TSEM_TASK_TRUSTED;
 	retn = 0;

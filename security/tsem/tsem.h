@@ -1447,6 +1447,7 @@ extern int tsem_ns_event_key(u8 *task_key, const char *keystr, u8 *key);
 extern int tsem_ns_create(const enum tsem_control_type type,
 			  const char *digest, const enum tsem_ns_reference ns,
 			  const char *key, const unsigned int cache_size);
+extern int tsem_ns_export(void);
 
 extern int tsem_export_show(struct seq_file *m, void *v);
 extern int tsem_export_event(struct tsem_event *ep);
