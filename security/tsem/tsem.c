@@ -193,7 +193,7 @@ const char * const tsem_names[TSEM_EVENT_CNT] = {
 	"bpf_prog"
 };
 
-static const int pseudo_filesystems[] = {
+static const unsigned long pseudo_filesystems[] = {
 	PROC_SUPER_MAGIC,
 	SYSFS_MAGIC,
 	DEBUGFS_MAGIC,
@@ -209,22 +209,14 @@ static const int pseudo_filesystems[] = {
 	EFIVARFS_MAGIC
 };
 
-static bool bypass_inode(struct inode *inode)
+static bool bypass_filesystem(struct inode *inode)
 {
-	bool retn = true;
-
 	unsigned int lp;
-
-	if (!S_ISREG(inode->i_mode))
-		goto done;
 
 	for (lp = 0; lp < ARRAY_SIZE(pseudo_filesystems); ++lp)
 		if (inode->i_sb->s_magic == pseudo_filesystems[lp])
-			goto done;
-	retn = false;
-
- done:
-	return retn;
+			return true;
+	return false;
 }
 
 static int event_action(struct tsem_context *ctx, enum tsem_event_type event)
@@ -332,7 +324,9 @@ static int tsem_file_open(struct file *file)
 		return trapped_task(TSEM_FILE_OPEN, msg, NOLOCK);
 	}
 
-	if (bypass_inode(inode))
+	if (!S_ISREG(inode->i_mode))
+		goto done;
+	if (bypass_filesystem(inode))
 		goto done;
 	if (tsem_inode(inode)->status == TSEM_INODE_COLLECTING)
 		goto done;
@@ -379,7 +373,9 @@ static int tsem_mmap_file(struct file *file, unsigned long reqprot,
 		goto done;
 	if (file) {
 		inode = file_inode(file);
-		if (bypass_inode(inode))
+		if (!S_ISREG(inode->i_mode))
+			goto done;
+		if (bypass_filesystem(inode))
 			goto done;
 	}
 
@@ -413,7 +409,7 @@ static int tsem_file_ioctl(struct file *file, unsigned int cmd,
 		return trapped_task(TSEM_FILE_IOCTL, msg, NOLOCK);
 	}
 
-	if (bypass_inode(file_inode(file)))
+	if (bypass_filesystem(file_inode(file)))
 		return 0;
 
 	return model_generic_event(TSEM_FILE_IOCTL, NOLOCK);
@@ -446,7 +442,7 @@ static int tsem_file_fcntl(struct file *file, unsigned int cmd,
 		return trapped_task(TSEM_FILE_FCNTL, msg, NOLOCK);
 	}
 
-	if (bypass_inode(file_inode(file)))
+	if (bypass_filesystem(file_inode(file)))
 		return 0;
 
 	return model_generic_event(TSEM_FILE_FCNTL, NOLOCK);
@@ -732,7 +728,7 @@ static void tsem_inode_free_security(struct inode *inode)
 {
 	struct tsem_inode_digest *digest, *tmp_digest;
 
-	if (bypass_inode(inode))
+	if (bypass_filesystem(inode))
 		return;
 
 	list_for_each_entry_safe(digest, tmp_digest,
@@ -1445,13 +1441,16 @@ static int tsem_inode_create(struct inode *dir,
 {
 	char msg[TRAPPED_MSG_LENGTH];
 
+	if (unlikely(!tsem_ready))
+		return 0;
+
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "name=%s, mode=%u",
 			  dentry->d_name.name, mode);
 		return trapped_inode(TSEM_INODE_CREATE, dir, msg, NOLOCK);
 	}
 
-	if (bypass_inode(dir))
+	if (bypass_filesystem(dir))
 		return 0;
 	return model_generic_event(TSEM_INODE_CREATE, NOLOCK);
 }
@@ -1461,13 +1460,16 @@ static int tsem_inode_link(struct dentry *old_dentry, struct inode *dir,
 {
 	char msg[TRAPPED_MSG_LENGTH];
 
+	if (unlikely(!tsem_ready))
+		return 0;
+
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "old_name=%s, new_name=%s",
 			  old_dentry->d_name.name, new_dentry->d_name.name);
 		return trapped_task(TSEM_INODE_LINK, msg, NOLOCK);
 	}
 
-	if (bypass_inode(dir))
+	if (bypass_filesystem(dir))
 		return 0;
 	return model_generic_event(TSEM_INODE_LINK, NOLOCK);
 }
@@ -1481,7 +1483,7 @@ static int tsem_inode_unlink(struct inode *dir, struct dentry *dentry)
 		return trapped_inode(TSEM_INODE_UNLINK, dir, msg, NOLOCK);
 	}
 
-	if (bypass_inode(dir))
+	if (bypass_filesystem(dir))
 		return 0;
 	return model_generic_event(TSEM_INODE_UNLINK, NOLOCK);
 }
@@ -1491,12 +1493,15 @@ static int tsem_inode_symlink(struct inode *dir, struct dentry *dentry,
 {
 	char msg[TRAPPED_MSG_LENGTH];
 
+	if (unlikely(!tsem_ready))
+		return 0;
+
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "target=%s", dentry->d_name.name);
 		return trapped_task(TSEM_INODE_SYMLINK, msg, NOLOCK);
 	}
 
-	if (bypass_inode(dir))
+	if (bypass_filesystem(dir))
 		return 0;
 	return model_generic_event(TSEM_INODE_SYMLINK, NOLOCK);
 }
@@ -1506,13 +1511,16 @@ static int tsem_inode_mkdir(struct inode *dir, struct dentry *dentry,
 {
 	char msg[TRAPPED_MSG_LENGTH];
 
+	if (unlikely(!tsem_ready))
+		return 0;
+
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "target=%s, mode=%u",
 			  dentry->d_name.name, mode);
 		return trapped_task(TSEM_INODE_MKDIR, msg, NOLOCK);
 	}
 
-	if (bypass_inode(dir))
+	if (bypass_filesystem(dir))
 		return 0;
 	return model_generic_event(TSEM_INODE_MKDIR, NOLOCK);
 }
@@ -1526,7 +1534,7 @@ static int tsem_inode_rmdir(struct inode *dir, struct dentry *dentry)
 		return trapped_task(TSEM_INODE_RMDIR, msg, NOLOCK);
 	}
 
-	if (bypass_inode(dir))
+	if (bypass_filesystem(dir))
 		return 0;
 	return model_generic_event(TSEM_INODE_RMDIR, NOLOCK);
 }
@@ -1542,7 +1550,7 @@ static int tsem_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
 		return trapped_task(TSEM_INODE_RENAME, msg, NOLOCK);
 	}
 
-	if (bypass_inode(old_dir))
+	if (bypass_filesystem(old_dir))
 		return 0;
 	return model_generic_event(TSEM_INODE_RENAME, NOLOCK);
 }
