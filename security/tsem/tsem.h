@@ -68,7 +68,7 @@
  * violation.
  */
 enum tsem_event_type {
-	TSEM_BPRM_SET_CREDS = 1,
+	TSEM_BPRM_COMMITTING_CREDS = 1,
 	TSEM_TASK_KILL,
 	TSEM_TASK_SETPGID,
 	TSEM_TASK_GETPGID,
@@ -426,8 +426,10 @@ enum tsem_inode_state {
 struct tsem_task {
 	u64 tma_for_ns;
 	u64 instance;
+	u64 p_instance;
 	enum tsem_task_trust trust_status;
 	u8 task_id[HASH_MAX_DIGESTSIZE];
+	u8 p_task_id[HASH_MAX_DIGESTSIZE];
 	u8 task_key[HASH_MAX_DIGESTSIZE];
 	struct tsem_context *context;
 };
@@ -1209,12 +1211,14 @@ struct tsem_event {
 	bool locked;
 	pid_t pid;
 	u64 instance;
+	u64 p_instance;
 	u64 timestamp;
 	char *pathname;
 	char comm[TASK_COMM_LEN];
 
 	unsigned int digestsize;
 	u8 task_id[HASH_MAX_DIGESTSIZE];
+	u8 p_task_id[HASH_MAX_DIGESTSIZE];
 	u8 mapping[HASH_MAX_DIGESTSIZE];
 
 	struct tsem_COE COE;

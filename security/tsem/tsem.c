@@ -108,7 +108,7 @@ __setup("tsem_digest=", set_default_hash_function);
 
 const char * const tsem_names[TSEM_EVENT_CNT] = {
 	"undefined",
-	"bprm_set_creds",
+	"bprm_committing_creds",
 	"task_kill",
 	"task_setpgid",
 	"task_getpgid",
@@ -467,9 +467,12 @@ static int tsem_task_alloc(struct task_struct *new, unsigned long flags)
 	struct tsem_task *new_task = tsem_task(new);
 
 	new_task->instance = old_task->instance;
+	new_task->p_instance = old_task->instance;
+
 	new_task->trust_status = old_task->trust_status;
 	new_task->context = old_task->context;
 	memcpy(new_task->task_id, old_task->task_id, HASH_MAX_DIGESTSIZE);
+	memcpy(new_task->p_task_id, old_task->task_id, HASH_MAX_DIGESTSIZE);
 
 	if (!new_task->context->id)
 		return 0;
@@ -699,19 +702,17 @@ static int tsem_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 	return model_generic_event(TSEM_TASK_PRCTL, LOCKED);
 }
 
-static int tsem_bprm_creds_for_exec(struct linux_binprm *bprm)
+static void tsem_bprm_committing_creds(struct linux_binprm *bprm)
 {
-	int retn;
-	struct tsem_task *task = tsem_task(current);
+	u8 task_id[HASH_MAX_DIGESTSIZE];
 
-	if (unlikely(!tsem_ready))
-		return 0;
+	if (tsem_map_task(bprm->file, task_id))
+		memset(task_id, 0xff, sizeof(task_id));
 
-	retn = tsem_map_task(bprm->file, task->task_id);
-	if (!retn)
-		task->instance = atomic64_inc_return(&task_instance);
+	tsem_task(current)->instance = atomic64_inc_return(&task_instance);
+	memcpy(tsem_task(current)->task_id, task_id, tsem_digestsize());
 
-	return retn;
+	return;
 }
 
 static int tsem_inode_alloc_security(struct inode *inode)
@@ -1769,8 +1770,7 @@ static struct security_hook_list tsem_hooks[] __ro_after_init = {
 	LSM_HOOK_INIT(task_prctl, tsem_task_prctl),
 
 	LSM_HOOK_INIT(ptrace_traceme, tsem_ptrace_traceme),
-
-	LSM_HOOK_INIT(bprm_creds_for_exec, tsem_bprm_creds_for_exec),
+	LSM_HOOK_INIT(bprm_committing_creds, tsem_bprm_committing_creds),
 	LSM_HOOK_INIT(inode_alloc_security, tsem_inode_alloc_security),
 	LSM_HOOK_INIT(inode_free_security, tsem_inode_free_security),
 

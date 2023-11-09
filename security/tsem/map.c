@@ -120,7 +120,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 	switch (ep->event) {
 	case TSEM_FILE_OPEN:
 	case TSEM_MMAP_FILE:
-	case TSEM_BPRM_SET_CREDS:
+	case TSEM_BPRM_COMMITTING_CREDS:
 		p = (u8 *) &ep->file.flags;
 		size = sizeof(ep->file.flags);
 		retn = crypto_shash_update(shash, p, size);
@@ -437,7 +437,7 @@ int tsem_map_task(struct file *file, u8 *task_id)
 	struct tsem_event_parameters params;
 
 	params.u.file = file;
-	ep = tsem_event_init(TSEM_BPRM_SET_CREDS, &params, false);
+	ep = tsem_event_init(TSEM_BPRM_COMMITTING_CREDS, &params, false);
 	if (IS_ERR(ep)) {
 		retn = PTR_ERR(ep);
 		ep = NULL;
@@ -445,7 +445,7 @@ int tsem_map_task(struct file *file, u8 *task_id)
 	}
 
 	memset(null_taskid, '\0', tsem_digestsize());
-	retn = map_event(TSEM_BPRM_SET_CREDS, ep, null_taskid, task_id);
+	retn = map_event(TSEM_BPRM_COMMITTING_CREDS, ep, null_taskid, task_id);
 	tsem_event_put(ep);
 
  done:

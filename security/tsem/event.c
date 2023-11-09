@@ -443,9 +443,11 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	ep->locked = locked;
 	ep->pid = task_pid_nr(current);
 	ep->instance = task->instance;
+	ep->p_instance = task->p_instance;
 	ep->timestamp = ktime_get_boottime_ns();
 	memcpy(ep->comm, current->comm, sizeof(ep->comm));
 	memcpy(ep->task_id, task->task_id, tsem_digestsize());
+	memcpy(ep->p_task_id, task->p_task_id, tsem_digestsize());
 
 	get_COE(&ep->COE);
 
@@ -456,7 +458,7 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 
 	switch (event) {
 	case TSEM_FILE_OPEN:
-	case TSEM_BPRM_SET_CREDS:
+	case TSEM_BPRM_COMMITTING_CREDS:
 		retn = get_file_cell(params->u.file, ep);
 		break;
 	case TSEM_MMAP_FILE:
