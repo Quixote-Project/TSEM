@@ -366,8 +366,8 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 	return retn;
 }
 
-static int get_event_mapping(int event, u8 *task_id, u8 *COE_id, u8 *cell_id,
-			     u8 *mapping)
+static int get_event_mapping(int event, u8 *p_task_id, u8 *task_id,
+			     u8 *COE_id, u8 *cell_id, u8 *mapping)
 {
 	int retn = 0;
 	u32 event_id = (u32) event;
@@ -382,14 +382,19 @@ static int get_event_mapping(int event, u8 *task_id, u8 *COE_id, u8 *cell_id,
 				   strlen(tsem_names[event_id]));
 	if (retn)
 		goto done;
-	if (task_id) {
-		retn = crypto_shash_update(shash, task_id, tsem_digestsize());
-		if (retn)
-			goto done;
-	}
+
+	retn = crypto_shash_update(shash, p_task_id, tsem_digestsize());
+	if (retn)
+		goto done;
+
+	retn = crypto_shash_update(shash, task_id, tsem_digestsize());
+	if (retn)
+		goto done;
+
 	retn = crypto_shash_update(shash, COE_id, tsem_digestsize());
 	if (retn)
 		goto done;
+
 	retn = crypto_shash_finup(shash, cell_id, tsem_digestsize(), mapping);
 
  done:
@@ -397,7 +402,7 @@ static int get_event_mapping(int event, u8 *task_id, u8 *COE_id, u8 *cell_id,
 }
 
 static int map_event(enum tsem_event_type event, struct tsem_event *ep,
-		     u8 *task_id, u8 *event_mapping)
+		     u8 *p_task_id, u8 *task_id, u8 *event_mapping)
 {
 	int retn;
 	u8 COE_mapping[HASH_MAX_DIGESTSIZE];
@@ -411,8 +416,8 @@ static int map_event(enum tsem_event_type event, struct tsem_event *ep,
 	if (retn)
 		goto done;
 
-	retn = get_event_mapping(event, task_id, COE_mapping, cell_mapping,
-				 event_mapping);
+	retn = get_event_mapping(event, p_task_id, task_id, COE_mapping,
+				 cell_mapping, event_mapping);
  done:
 	return retn;
 }
@@ -445,7 +450,8 @@ int tsem_map_task(struct file *file, u8 *task_id)
 	}
 
 	memset(null_taskid, '\0', tsem_digestsize());
-	retn = map_event(TSEM_BPRM_COMMITTING_CREDS, ep, null_taskid, task_id);
+	retn = map_event(TSEM_BPRM_COMMITTING_CREDS, ep,
+			 tsem_task(current)->p_task_id, null_taskid, task_id);
 	tsem_event_put(ep);
 
  done:
@@ -479,7 +485,8 @@ struct tsem_event *tsem_map_event(enum tsem_event_type event,
 	if (task->context->external)
 		goto done;
 
-	retn = map_event(event, ep, task->task_id, ep->mapping);
+	retn = map_event(event, ep, task->p_task_id, task->task_id,
+			 ep->mapping);
 	if (retn) {
 		tsem_event_put(ep);
 		ep = ERR_PTR(retn);
@@ -517,7 +524,8 @@ struct tsem_event *tsem_map_event_locked(enum tsem_event_type event,
 	if (task->context->external)
 		goto done;
 
-	retn = map_event(event, ep, task->task_id, ep->mapping);
+	retn = map_event(event, ep, task->p_task_id, task->task_id,
+			 ep->mapping);
 	if (retn) {
 		tsem_event_put(ep);
 		ep = ERR_PTR(retn);
