@@ -712,8 +712,6 @@ static void tsem_bprm_committing_creds(struct linux_binprm *bprm)
 
 	tsem_task(current)->instance = atomic64_inc_return(&task_instance);
 	memcpy(tsem_task(current)->task_id, task_id, tsem_digestsize());
-
-	return;
 }
 
 static int tsem_inode_alloc_security(struct inode *inode)
