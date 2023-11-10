@@ -707,6 +707,9 @@ static void tsem_bprm_committing_creds(struct linux_binprm *bprm)
 {
 	u8 task_id[HASH_MAX_DIGESTSIZE];
 
+	if (unlikely(!tsem_ready))
+		return;
+
 	if (tsem_map_task(bprm->file, task_id))
 		memset(task_id, 0xff, sizeof(task_id));
 
