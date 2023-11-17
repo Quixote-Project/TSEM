@@ -1241,7 +1241,8 @@ struct tsem_event {
  *     event handlers.
  * @u.file: If the security event references a VFS file this member
  *	    hold a pointer to the description of the file.
- _file event.
+ * @u.path: A pointer to a path structure that was supplied as
+ *	    the argument to the tsem_inode_getattr security event.
  * @u.socket_create: This member will point to a structure that
  *		     describes the characteristics of a socket_create
  *		     event.
@@ -1270,6 +1271,7 @@ struct tsem_event {
 struct tsem_event_parameters {
 	union {
 		struct file *file;
+		const struct path *path;
 		struct tsem_mmap_file_args *mmap_file;
 		struct tsem_socket_create_args *socket_create;
 		struct tsem_socket_connect_args *socket_connect;

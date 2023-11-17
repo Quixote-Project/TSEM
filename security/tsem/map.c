@@ -347,6 +347,54 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 			goto done;
 		break;
 
+	case TSEM_INODE_GETATTR:
+		p = (u8 *) &ep->file.uid;
+		size = sizeof(ep->file.uid);
+		retn = crypto_shash_update(shash, p, size);
+		if (retn)
+			goto done;
+
+		p = (u8 *) &ep->file.gid;
+		size = sizeof(ep->file.gid);
+		retn = crypto_shash_update(shash, p, size);
+		if (retn)
+			goto done;
+
+		p = (u8 *) &ep->file.mode;
+		size = sizeof(ep->file.mode);
+		retn = crypto_shash_update(shash, p, size);
+		if (retn)
+			goto done;
+
+		p = (u8 *) &ep->file.name_length;
+		size = sizeof(ep->file.name_length);
+		retn = crypto_shash_update(shash, p, size);
+		if (retn)
+			goto done;
+
+		p = (u8 *) &ep->file.name;
+		size = tsem_digestsize();
+		retn = crypto_shash_update(shash, p, size);
+		if (retn)
+			goto done;
+
+		p = (u8 *) &ep->file.s_magic;
+		size = sizeof(ep->file.s_magic);
+		retn = crypto_shash_update(shash, p, size);
+		if (retn)
+			goto done;
+
+		p = (u8 *) &ep->file.s_id;
+		size = sizeof(ep->file.s_id);
+		retn = crypto_shash_update(shash, p, size);
+		if (retn)
+			goto done;
+
+		p = (u8 *) &ep->file.s_uuid;
+		size = sizeof(ep->file.s_uuid);
+		retn = crypto_shash_finup(shash, p, size, mapping);
+		break;
+
 	default:
 		p = (u8 *) tsem_names[ep->event];
 		size = strlen(tsem_names[ep->event]);

@@ -470,6 +470,15 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 			 args->target);
 }
 
+static void show_inode_getattr(struct seq_file *c, struct tsem_event *ep)
+{
+	show_event(c, ep);
+
+	tsem_fs_show_field(c, tsem_names[ep->event]);
+	show_file(c, ep);
+	seq_putc(c, '}');
+}
+
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
@@ -1165,6 +1174,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_TASK_KILL:
 		show_task_kill(c, ep);
+		break;
+	case TSEM_INODE_GETATTR:
+		show_inode_getattr(c, ep);
 		break;
 	default:
 		break;

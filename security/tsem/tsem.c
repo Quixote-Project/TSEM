@@ -1597,7 +1597,10 @@ static int tsem_inode_setattr(struct dentry *dentry, struct iattr *attr)
 
 static int tsem_inode_getattr(const struct path *path)
 {
+	int retn = 0;
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep = NULL;
+	struct tsem_event_parameters params;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -1608,7 +1611,21 @@ static int tsem_inode_getattr(const struct path *path)
 		return trapped_task(TSEM_INODE_GETATTR, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_INODE_GETATTR, NOLOCK);
+	if (bypass_filesystem(path->dentry->d_inode))
+		return 0;
+
+	params.u.path = path;
+	ep = tsem_map_event(TSEM_INODE_GETATTR, &params);
+	if (IS_ERR(ep)) {
+		retn = PTR_ERR(ep);
+		goto done;
+	}
+
+	retn = model_event(ep);
+	tsem_event_put(ep);
+
+ done:
+	return retn;
 }
 
 static int tsem_inode_setxattr(struct mnt_idmap *idmap,

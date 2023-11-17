@@ -70,16 +70,15 @@ static void get_COE(struct tsem_COE *COE)
 	COE->capeff.mask = current_cred()->cap_effective;
 }
 
-static char *get_path(struct file *file)
+static char *get_path(const struct path *path)
 {
 	int retn = 0;
 	const char *pathname = NULL;
-	char *path, *pathbuffer = NULL;
+	char *retpath, *pathbuffer = NULL;
 
 	pathbuffer = __getname();
 	if (pathbuffer) {
-		pathname = d_absolute_path(&file->f_path, pathbuffer,
-					   PATH_MAX);
+		pathname = d_absolute_path(path, pathbuffer, PATH_MAX);
 		if (IS_ERR(pathname)) {
 			__putname(pathbuffer);
 			pathbuffer = NULL;
@@ -88,17 +87,17 @@ static char *get_path(struct file *file)
 	}
 
 	if (pathname)
-		path = kstrdup(pathname, GFP_KERNEL);
+		retpath = kstrdup(pathname, GFP_KERNEL);
 	else
-		path = kstrdup(file->f_path.dentry->d_name.name, GFP_KERNEL);
+		retpath = kstrdup(path->dentry->d_name.name, GFP_KERNEL);
 	if (!path)
 		retn = -ENOMEM;
 
 	if (pathbuffer)
 		__putname(pathbuffer);
 	if (retn)
-		path = ERR_PTR(retn);
-	return path;
+		retpath = ERR_PTR(retn);
+	return retpath;
 }
 
 static int add_file_name(struct tsem_event *ep)
@@ -297,16 +296,32 @@ static int add_file_digest(struct file *file, struct tsem_file *tfp)
 	return retn;
 }
 
+static void get_inode_cell(struct inode *inode, struct tsem_event *ep)
+{
+	struct user_namespace *ns;
+
+	if (tsem_context(current)->use_current_ns)
+		ns = current_user_ns();
+	else
+		ns = &init_user_ns;
+
+	ep->file.uid = from_kuid(ns, inode->i_uid);
+	ep->file.gid = from_kgid(ns, inode->i_gid);
+	ep->file.mode = inode->i_mode;
+	ep->file.s_magic = inode->i_sb->s_magic;
+	memcpy(ep->file.s_id, inode->i_sb->s_id, sizeof(ep->file.s_id));
+	memcpy(ep->file.s_uuid, inode->i_sb->s_uuid.b,
+	       sizeof(ep->file.s_uuid));
+}
+
 static int get_file_cell(struct file *file, struct tsem_event *ep)
 {
 	int retn = 1;
-	struct inode *inode;
-	struct user_namespace *ns;
+	struct inode *inode = file_inode(file);
 
-	inode = file_inode(file);
 	inode_lock(inode);
 
-	ep->pathname = get_path(file);
+	ep->pathname = get_path(&file->f_path);
 	if (IS_ERR(ep->pathname)) {
 		retn = PTR_ERR(ep->pathname);
 		goto done;
@@ -320,20 +335,33 @@ static int get_file_cell(struct file *file, struct tsem_event *ep)
 	if (retn)
 		goto done;
 
-	if (tsem_context(current)->use_current_ns)
-		ns = current_user_ns();
-	else
-		ns = &init_user_ns;
+	get_inode_cell(inode, ep);
+	retn = 0;
 
-	ep->file.flags = file->f_flags;
+ done:
+	inode_unlock(inode);
+	return retn;
+}
 
-	ep->file.uid = from_kuid(ns, inode->i_uid);
-	ep->file.gid = from_kgid(ns, inode->i_gid);
-	ep->file.mode = inode->i_mode;
-	ep->file.s_magic = inode->i_sb->s_magic;
-	memcpy(ep->file.s_id, inode->i_sb->s_id, sizeof(ep->file.s_id));
-	memcpy(ep->file.s_uuid, inode->i_sb->s_uuid.b,
-	       sizeof(ep->file.s_uuid));
+static int get_path_cell(const struct path *path, struct tsem_event *ep)
+{
+	int retn = 1;
+	struct inode *inode = path->dentry->d_inode;
+
+	inode_lock(inode);
+
+	ep->pathname = get_path(path);
+	if (IS_ERR(ep->pathname)) {
+		retn = PTR_ERR(ep->pathname);
+		goto done;
+	}
+
+	retn = add_file_name(ep);
+	if (retn)
+		goto done;
+
+	get_inode_cell(inode, ep);
+	retn = 0;
 
  done:
 	inode_unlock(inode);
@@ -480,6 +508,9 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 		break;
 	case TSEM_TASK_KILL:
 		ep->CELL.task_kill = *params->u.task_kill;
+		break;
+	case TSEM_INODE_GETATTR:
+		retn = get_path_cell(params->u.path, ep);
 		break;
 	default:
 		WARN_ONCE(true, "Unhandled event type: %d\n", event);
