@@ -1100,6 +1100,48 @@ struct tsem_task_kill_args {
 };
 
 /**
+ * struct tsem_inode_setattr_args - TSEM inode_setattr arguments.
+ * @in.inode: A pointer to the backing inode for the dentry that was
+ *	      passed to the LSM hook.  The relevant values from the inode
+ *	      will be copied into the tsem_file structure.
+ * @in.iattr: A pointer to the iattr structure that was passed to the
+ *	      LSM hook.  The relevant values from this structure will
+ *	      be copied into the structure members below.
+ * @out.valid: The ia_valid member from the iattr structure passed to the
+ *	       LSM hook.
+ * @out.mode: The ia_mode member from the iattr structure passed to the
+ *	      LSM hook.
+ * @out.uid: The ia_uid member from the iattr structure passed to the LSM
+ *	     hook.
+ * @out.gid: The ia_gid member from the iattr structure passed to the LSM
+ *	     hook.
+ * @out.size: The ia_size member from the iattr structure passed to the LSM
+ *	      hook.
+ *
+ * This structure is used to encapsulate information on the arguments
+ * passed to the inode_setattr LSM hook.  The in structure is used to
+ * hold the pointers to the arguments passed to the LSM hook.  Argument
+ * information that is to be held for the life of the event are held
+ * in the out structure.
+ */
+struct tsem_inode_setattr_args {
+	union {
+		struct {
+			struct dentry *dentry;
+			struct iattr *iattr;
+		} in;
+
+		struct {
+			unsigned int valid;
+			umode_t mode;
+			uid_t uid;
+			gid_t gid;
+			loff_t size;
+		} out;
+	};
+};
+
+/**
  * struct tsem_event - TSEM security event description.
  * @index: The index number of the slot in the structure magazine that
  *	   is being refilled.
@@ -1148,6 +1190,8 @@ struct tsem_task_kill_args {
  *			of a socket accept security event.
  * @CELL.task_kill: The structure describing the characteristics of a
  *		    task_kill security event.
+ * @CEll.inode_setattr: The structure describing the characteristics of
+ *			a tsem_inode_setattr event.
  *
  * This structure is the primary data structure for describing
  * security events that are registered in a security modeling
@@ -1231,6 +1275,7 @@ struct tsem_event {
 		struct tsem_socket_connect_args socket_connect;
 		struct tsem_socket_accept_args socket_accept;
 		struct tsem_task_kill_args task_kill;
+		struct tsem_inode_setattr_args inode_setattr;
 	} CELL;
 };
 
@@ -1253,7 +1298,10 @@ struct tsem_event {
  *		     describes the characteristics of a socket_accept
  *		     event.
  * @u.task_kill: This member will point to a structure that describes
- *		     the characteristics of a task_kill function.
+ *		 the characteristics of a task_kill function.
+ * @u.inode_settr: The member will point to a structure that describes
+ *		   the characteristics of the inode_setattr security
+ *		   event.
  *
  * The purpose of this structure is to provide a common encapsulation
  * method for passing the CELL characteristics of a security event
@@ -1277,6 +1325,7 @@ struct tsem_event_parameters {
 		struct tsem_socket_connect_args *socket_connect;
 		struct tsem_socket_accept_args *socket_accept;
 		struct tsem_task_kill_args *task_kill;
+		struct tsem_inode_setattr_args *inode_setattr;
 	} u;
 };
 

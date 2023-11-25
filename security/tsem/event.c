@@ -100,6 +100,36 @@ static char *get_path(const struct path *path)
 	return retpath;
 }
 
+static char *get_path_dentry(const struct dentry *dentry)
+{
+	int retn = 0;
+	const char *pathname = NULL;
+	char *retpath, *pathbuffer = NULL;
+
+	pathbuffer = __getname();
+	if (pathbuffer) {
+		pathname = dentry_path_raw(dentry, pathbuffer, PATH_MAX);
+		if (IS_ERR(pathname)) {
+			__putname(pathbuffer);
+			pathbuffer = NULL;
+			pathname = NULL;
+		}
+	}
+
+	if (pathname)
+		retpath = kstrdup(pathname, GFP_KERNEL);
+	else
+		retpath = kstrdup(dentry->d_name.name, GFP_KERNEL);
+	if (!retpath)
+		retn = -ENOMEM;
+
+	if (pathbuffer)
+		__putname(pathbuffer);
+	if (retn)
+		retpath = ERR_PTR(retn);
+	return retpath;
+}
+
 static int add_file_name(struct tsem_event *ep)
 {
 	int retn;
@@ -440,6 +470,41 @@ static int get_socket_cell(struct tsem_event *ep)
 	return retn;
 }
 
+static int get_inode_setattr(struct tsem_inode_setattr_args *args,
+			     struct tsem_event *ep)
+{
+	struct user_namespace *ns;
+	struct tsem_inode_setattr_args *sp;
+	struct dentry *dentry = args->in.dentry;
+	struct iattr *iattr = args->in.iattr;
+
+	ep->pathname = get_path_dentry(dentry);
+	if (!ep->pathname)
+		return -ENOMEM;
+
+	if (tsem_context(current)->use_current_ns)
+		ns = current_user_ns();
+	else
+		ns = &init_user_ns;
+
+	get_inode_cell(dentry->d_inode, ep);
+
+	sp = &ep->CELL.inode_setattr;
+	memset(sp, '\0', sizeof(*sp));
+
+	sp->out.valid = iattr->ia_valid;
+	if (sp->out.valid & ATTR_MODE)
+		sp->out.mode = iattr->ia_mode;
+	if (sp->out.valid & ATTR_UID)
+		sp->out.uid = from_kuid(ns, iattr->ia_uid);
+	if (sp->out.valid & ATTR_GID)
+		sp->out.gid = from_kgid(ns, iattr->ia_gid);
+	if (sp->out.valid & ATTR_SIZE)
+		sp->out.size = iattr->ia_size;
+
+	return 0;
+}
+
 /**
  * tsem_event_init() - Initialize a security event description structure.
  * @event: The security event number for which the structure is being
@@ -511,6 +576,9 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 		break;
 	case TSEM_INODE_GETATTR:
 		retn = get_path_cell(params->u.path, ep);
+		break;
+	case TSEM_INODE_SETATTR:
+		retn = get_inode_setattr(params->u.inode_setattr, ep);
 		break;
 	default:
 		WARN_ONCE(true, "Unhandled event type: %d\n", event);

@@ -479,6 +479,24 @@ static void show_inode_getattr(struct seq_file *c, struct tsem_event *ep)
 	seq_putc(c, '}');
 }
 
+static void show_inode_setattr(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_inode_setattr_args *args = &ep->CELL.inode_setattr;
+
+	show_event(c, ep);
+
+	tsem_fs_show_field(c, tsem_names[ep->event]);
+	tsem_fs_show_key(c, ",", "valid", "%u", args->out.valid);
+	tsem_fs_show_key(c, ",", "mode", "0%o", args->out.mode);
+	tsem_fs_show_key(c, ",", "uid", "%u", args->out.uid);
+	tsem_fs_show_key(c, ",", "gid", "%u", args->out.gid);
+	tsem_fs_show_key(c, ",", "size", "%lu", args->out.size);
+
+	show_file(c, ep);
+
+	seq_putc(c, '}');
+}
+
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
@@ -1177,6 +1195,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_INODE_GETATTR:
 		show_inode_getattr(c, ep);
+		break;
+	case TSEM_INODE_SETATTR:
+		show_inode_setattr(c, ep);
 		break;
 	default:
 		break;
