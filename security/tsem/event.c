@@ -90,7 +90,7 @@ static char *get_path(const struct path *path)
 		retpath = kstrdup(pathname, GFP_KERNEL);
 	else
 		retpath = kstrdup(path->dentry->d_name.name, GFP_KERNEL);
-	if (!path)
+	if (!retpath)
 		retn = -ENOMEM;
 
 	if (pathbuffer)
