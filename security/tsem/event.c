@@ -344,6 +344,23 @@ static void get_inode_cell(struct inode *inode, struct tsem_event *ep)
 	       sizeof(ep->file.s_uuid));
 }
 
+static void fill_inode(struct inode *inode, struct tsem_inode_cell *ip)
+{
+	struct user_namespace *ns;
+
+	if (tsem_context(current)->use_current_ns)
+		ns = current_user_ns();
+	else
+		ns = &init_user_ns;
+
+	ip->uid = from_kuid(ns, inode->i_uid);
+	ip->gid = from_kgid(ns, inode->i_gid);
+	ip->mode = inode->i_mode;
+	ip->s_magic = inode->i_sb->s_magic;
+	memcpy(ip->s_id, inode->i_sb->s_id, sizeof(ip->s_id));
+	memcpy(ip->s_uuid, inode->i_sb->s_uuid.b, sizeof(ip->s_uuid));
+}
+
 static int get_file_cell(struct file *file, struct tsem_event *ep)
 {
 	int retn = 1;
@@ -505,6 +522,26 @@ static int get_inode_setattr(struct tsem_inode_setattr_args *args,
 	return 0;
 }
 
+static int get_inode_getxattr(struct tsem_inode_getxattr_args *args,
+			      struct tsem_event *ep)
+{
+	const char *name = args->in.name;
+	struct dentry *dentry = args->in.dentry;
+	struct tsem_inode_getxattr_args *ap = &ep->CELL.inode_getxattr;
+
+	fill_inode(dentry->d_inode, &ap->out.inode);
+
+	ap->out.name = kstrdup(name, GFP_KERNEL);
+	if (!ap->out.name)
+		return -ENOMEM;
+
+	ep->pathname = get_path_dentry(dentry);
+	if (!ep->pathname)
+		return -ENOMEM;
+
+	return 0;
+}
+
 /**
  * tsem_event_init() - Initialize a security event description structure.
  * @event: The security event number for which the structure is being
@@ -580,6 +617,9 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	case TSEM_INODE_SETATTR:
 		retn = get_inode_setattr(params->u.inode_setattr, ep);
 		break;
+	case TSEM_INODE_GETXATTR:
+		retn = get_inode_getxattr(params->u.inode_getxattr, ep);
+		break;
 	default:
 		WARN_ONCE(true, "Unhandled event type: %d\n", event);
 		break;
@@ -595,6 +635,22 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	return ep;
 }
 
+static void free_cell(struct tsem_event *ep)
+{
+	kfree(ep->pathname);
+
+	switch (ep->event) {
+	case TSEM_INODE_GETXATTR:
+		kfree(ep->CELL.inode_getxattr.out.name);
+		break;
+
+	default:
+		break;
+	}
+
+	return;
+}
+
 /**
  * tsem_free_event() - Free a security event description.
  * @ep: A pointer to the security event description that is to be freed.
@@ -607,8 +663,8 @@ static void tsem_event_free(struct kref *kref)
 	struct tsem_event *ep;
 
 	ep = container_of(kref, struct tsem_event, kref);
-	if (ep)
-		kfree(ep->pathname);
+	free_cell(ep);
+
 	kmem_cache_free(event_cachep, ep);
 }
 

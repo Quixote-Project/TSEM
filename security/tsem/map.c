@@ -76,6 +76,69 @@ static int get_COE_mapping(struct tsem_event *ep, u8 *mapping)
 	return retn;
 }
 
+static int add_str(struct shash_desc *shash, char *str)
+{
+	u32 value;
+	u8 *p;
+	int retn;
+	int size;
+
+	p = (u8 *) &value;
+	value = strlen(str);
+	size = sizeof(value);
+	retn = crypto_shash_update(shash, p, size);
+	if (retn)
+		goto done;
+
+	p = (u8 *) str;
+	size = strlen(str);
+	retn = crypto_shash_update(shash, p, size);
+
+ done:
+	return retn;
+}
+
+static int add_inode(struct shash_desc *shash, struct tsem_inode_cell *inode)
+{
+	u32 value;
+	u8 *p = (u8 *) &value;
+	int retn;
+	int size = sizeof(value);
+
+	value = inode->uid;
+	retn = crypto_shash_update(shash, p, size);
+	if (retn)
+		goto done;
+
+	value = inode->gid;
+	retn = crypto_shash_update(shash, p, size);
+	if (retn)
+		goto done;
+
+	value = inode->mode;
+	retn = crypto_shash_update(shash, p, size);
+	if (retn)
+		goto done;
+
+	value = inode->s_magic;
+	retn = crypto_shash_update(shash, p, size);
+	if (retn)
+		goto done;
+
+	p = (u8 *) inode->s_id;
+	size = sizeof(inode->s_id);
+	retn = crypto_shash_update(shash, p, size);
+	if (retn)
+		goto done;
+
+	p = (u8 *) inode->s_uuid;
+	size = sizeof(inode->s_uuid);
+	retn = crypto_shash_update(shash, p, size);
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -471,6 +534,22 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		p = (u8 *) &ep->file.s_uuid;
 		size = sizeof(ep->file.s_uuid);
 		retn = crypto_shash_finup(shash, p, size, mapping);
+		break;
+
+	case TSEM_INODE_GETXATTR:
+		retn = add_str(shash, ep->CELL.inode_getxattr.out.name);
+		if (retn)
+			goto done;
+
+		retn = add_str(shash, ep->pathname);
+		if (retn)
+			goto done;
+
+		retn = add_inode(shash, &ep->CELL.inode_getxattr.out.inode);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	default:

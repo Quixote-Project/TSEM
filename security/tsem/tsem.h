@@ -916,6 +916,35 @@ struct tsem_COE {
 };
 
 /**
+ * struct tsem_inode_cell - TSEM inode information.
+ * @uid: The numeric user identity of the file.
+ * @gid: The numeric group identity of the file.
+ * @mode: The discretionary access mode for the file.
+ * @s_magic: The magic number of the filesystem that the file resides
+ *	     in.
+ * @s_id: The name of the block device supporting the filesystem.
+ * @s_uuid: The uuid of the filesystem that the file resides in.
+ *
+ * This structure and the structures that follow up to the struct
+ * tsem_event structure are used to identify the various entities that
+ * are involved in the definition of the CELL identity for a security
+ * event.
+ *
+ * The tsem_inode_cell structure is used to encapsulate the
+ * characteristics of an inode that is used as a parameter in the
+ * CELL definition of an event.
+ *
+ */
+struct tsem_inode_cell {
+	uid_t uid;
+	gid_t gid;
+	umode_t mode;
+	u32 s_magic;
+	u8 s_id[32];
+	u8 s_uuid[16];
+};
+
+/**
  * struct tsem_COE - TSEM file description.
  * @uid: The numeric user identity of the file.
  * @gid: The numeric group identity of the file.
@@ -930,11 +959,6 @@ struct tsem_COE {
  * @s_uuid: The uuid of the filesystem that the file resides in.
  * @digest: The digest value of the contents of the file using the
  *	    hash function defined for the security modeling namespace.
- *
- * This structure and the structures that follow up to the struct
- * tsem_event structure are used to identify the various entities that
- * are involved in the definition of the CELL identity for a security
- * event.
  *
  * The tsem_file structure is used to encapsulate the characteristics
  * of a file that is used as an entity in the CELL definition of an
@@ -1142,6 +1166,37 @@ struct tsem_inode_setattr_args {
 };
 
 /**
+ * struct tsem_inode_getxattr_args - TSEM inode_setxattr arguments.
+ * @in.dentry: A pointer to the backing inode for the dentry that was
+ *	       passed to the LSM hook.  The relevant values from the inode
+ *	       will be copied into the tsem_file structure.
+ * @in.name: A pointer to the name of the extended attribute being
+ *	     queried.
+ * @out.inode: The characteristics of the inode backing the dentry
+ *	       argument.
+ * @out.name: A pointer to the name of the attribute being queried.
+ *
+ * This structure is used to encapsulate information on the arguments
+ * passed to the inode_setgetxattr LSM hook.  The in structure is used to
+ * hold the pointers to the arguments passed to the LSM hook.  Argument
+ * information that is to be held for the life of the event are held
+ * in the out structure.
+ */
+struct tsem_inode_getxattr_args {
+	union {
+		struct {
+			const char *name;
+			struct dentry *dentry;
+		} in;
+
+		struct {
+			char *name;
+			struct tsem_inode_cell inode;
+		} out;
+	};
+};
+
+/**
  * struct tsem_event - TSEM security event description.
  * @index: The index number of the slot in the structure magazine that
  *	   is being refilled.
@@ -1276,6 +1331,7 @@ struct tsem_event {
 		struct tsem_socket_accept_args socket_accept;
 		struct tsem_task_kill_args task_kill;
 		struct tsem_inode_setattr_args inode_setattr;
+		struct tsem_inode_getxattr_args inode_getxattr;
 	} CELL;
 };
 
@@ -1326,6 +1382,7 @@ struct tsem_event_parameters {
 		struct tsem_socket_accept_args *socket_accept;
 		struct tsem_task_kill_args *task_kill;
 		struct tsem_inode_setattr_args *inode_setattr;
+		struct tsem_inode_getxattr_args *inode_getxattr;
 	} u;
 };
 
