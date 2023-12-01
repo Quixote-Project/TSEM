@@ -542,6 +542,43 @@ static int get_inode_getxattr(struct tsem_inode_getxattr_args *args,
 	return 0;
 }
 
+static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args,
+			    struct tsem_event *ep)
+{
+	int retn = -ENOMEM;
+	char *p;
+	const struct path *old_path = args->in.old_path;
+	const struct path *new_path = args->in.new_path;
+	struct tsem_sb_pivotroot_args *ap = &ep->CELL.sb_pivotroot;
+
+	p = get_path(old_path);
+	if (IS_ERR(p)) {
+		retn = PTR_ERR(p);
+		goto done;
+	}
+
+	p = kstrdup(p, GFP_KERNEL);
+	if (!p)
+		goto done;
+	ap->out.old_path = p;
+
+	p = get_path(new_path);
+	if (IS_ERR(p)) {
+		retn = PTR_ERR(p);
+		goto done;
+	}
+
+	p = kstrdup(p, GFP_KERNEL);
+	if (!p)
+		goto done;
+
+	retn = 0;
+	ap->out.new_path = p;
+
+ done:
+	return retn;
+}
+
 /**
  * tsem_event_init() - Initialize a security event description structure.
  * @event: The security event number for which the structure is being
@@ -620,6 +657,9 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	case TSEM_INODE_GETXATTR:
 		retn = get_inode_getxattr(params->u.inode_getxattr, ep);
 		break;
+	case TSEM_SB_PIVOTROOT:
+		retn = get_sb_pivotroot(params->u.sb_pivotroot, ep);
+		break;
 	default:
 		WARN_ONCE(true, "Unhandled event type: %d\n", event);
 		break;
@@ -643,7 +683,10 @@ static void free_cell(struct tsem_event *ep)
 	case TSEM_INODE_GETXATTR:
 		kfree(ep->CELL.inode_getxattr.out.name);
 		break;
-
+	case TSEM_SB_PIVOTROOT:
+		kfree(ep->CELL.sb_pivotroot.out.old_path);
+		kfree(ep->CELL.sb_pivotroot.out.new_path);
+		break;
 	default:
 		break;
 	}

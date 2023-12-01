@@ -1127,7 +1127,11 @@ static int tsem_sb_remount(struct super_block *sb, void *mnt_opts)
 static int tsem_sb_pivotroot(const struct path *old_path,
 			     const struct path *new_path)
 {
+	int retn = 0;
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep = NULL;
+	struct tsem_sb_pivotroot_args args;
+	struct tsem_event_parameters params;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "%s -> %s",
@@ -1136,7 +1140,21 @@ static int tsem_sb_pivotroot(const struct path *old_path,
 		return trapped_task(TSEM_SB_PIVOTROOT, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SB_PIVOTROOT, NOLOCK);
+	args.in.old_path = old_path;
+	args.in.new_path = new_path;
+	params.u.sb_pivotroot = &args;
+
+	ep = tsem_map_event(TSEM_SB_PIVOTROOT, &params);
+	if (IS_ERR(ep)) {
+		retn = PTR_ERR(ep);
+		goto done;
+	}
+
+	retn = model_event(ep);
+	tsem_event_put(ep);
+
+ done:
+	return retn;
 }
 
 static int tsem_sb_statfs(struct dentry *dentry)

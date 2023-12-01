@@ -519,6 +519,19 @@ static void show_inode_getxattr(struct seq_file *c, struct tsem_event *ep)
 	seq_puts(c, "}");
 }
 
+static void show_sb_pivotroot(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_sb_pivotroot_args *args = &ep->CELL.sb_pivotroot;
+
+	show_event(c, ep);
+
+	tsem_fs_show_field(c, tsem_names[ep->event]);
+	tsem_fs_show_key(c, ",", "old_path", "%s", args->out.old_path);
+	tsem_fs_show_key(c, "}", "new_path", "%s", args->out.new_path);
+
+	seq_puts(c, "}");
+}
+
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
@@ -1223,6 +1236,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_INODE_GETXATTR:
 		show_inode_getxattr(c, ep);
+		break;
+	case TSEM_SB_PIVOTROOT:
+		show_sb_pivotroot(c, ep);
 		break;
 	default:
 		break;

@@ -1197,6 +1197,37 @@ struct tsem_inode_getxattr_args {
 };
 
 /**
+ * struct tsem_sb_pivotroot_args - TSEM sb_pivotroot arguments.
+ * @in.old_path: A pointer to the path description for the old root
+ *		 that was passed to the security event hadler.
+ * @in.new_path: A pointer to the path description for the path that will
+ *		 be the new root.
+ * @out.old_path: A pointer to a null terminated buffer containing the
+ *		  the path of the old root.
+ * @out.new_path: A pointer to a null terminated buffer containing the
+ *		  path to the new root.
+ *
+ * This structure is used to encapsulate information on the arguments
+ * passed to the sb_pivotroot LSM hook.  The in structure is used to
+ * hold the pointers to the arguments passed to the LSM hook.  Argument
+ * information that is to be held for the life of the event are held
+ * in the out structure.
+ */
+struct tsem_sb_pivotroot_args {
+	union {
+		struct {
+			const struct path *old_path;
+			const struct path *new_path;
+		} in;
+
+		struct {
+			char *old_path;
+			char *new_path;
+		} out;
+	};
+};
+
+/**
  * struct tsem_event - TSEM security event description.
  * @index: The index number of the slot in the structure magazine that
  *	   is being refilled.
@@ -1332,6 +1363,7 @@ struct tsem_event {
 		struct tsem_task_kill_args task_kill;
 		struct tsem_inode_setattr_args inode_setattr;
 		struct tsem_inode_getxattr_args inode_getxattr;
+		struct tsem_sb_pivotroot_args sb_pivotroot;
 	} CELL;
 };
 
@@ -1383,6 +1415,7 @@ struct tsem_event_parameters {
 		struct tsem_task_kill_args *task_kill;
 		struct tsem_inode_setattr_args *inode_setattr;
 		struct tsem_inode_getxattr_args *inode_getxattr;
+		struct tsem_sb_pivotroot_args *sb_pivotroot;
 	} u;
 };
 
