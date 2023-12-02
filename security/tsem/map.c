@@ -76,6 +76,11 @@ static int get_COE_mapping(struct tsem_event *ep, u8 *mapping)
 	return retn;
 }
 
+static int add_u32(struct shash_desc *shash, u32 value)
+{
+	return crypto_shash_update(shash, (char *) &value, sizeof(value));
+}
+
 static int add_str(struct shash_desc *shash, char *str)
 {
 	u32 value;
@@ -93,6 +98,29 @@ static int add_str(struct shash_desc *shash, char *str)
 	p = (u8 *) str;
 	size = strlen(str);
 	retn = crypto_shash_update(shash, p, size);
+
+ done:
+	return retn;
+}
+
+static int add_path(struct shash_desc *shash, struct tsem_path *path)
+{
+	int retn;
+
+	if (path->fstype) {
+		retn = add_str(shash, path->fstype);
+		if (retn)
+			goto done;
+	} else {
+		retn = add_u32(shash, MAJOR(path->dev));
+		if (retn)
+			goto done;
+		retn = add_u32(shash, MINOR(path->dev));
+		if (retn)
+			goto done;
+	}
+
+	retn = add_str(shash, path->pathname);
 
  done:
 	return retn;
@@ -553,11 +581,11 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_SB_PIVOTROOT:
-		retn = add_str(shash, ep->CELL.sb_pivotroot.out.old_path);
+		retn = add_path(shash, &ep->CELL.sb_pivotroot.out.old_path);
 		if (retn)
 			goto done;
 
-		retn = add_str(shash, ep->CELL.sb_pivotroot.out.new_path);
+		retn = add_path(shash, &ep->CELL.sb_pivotroot.out.new_path);
 		if (retn)
 			goto done;
 

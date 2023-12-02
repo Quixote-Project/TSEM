@@ -339,6 +339,19 @@ static void show_event(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}, ", "capeff", "0x%llx", ep->COE.capeff.value);
 }
 
+static void show_path(struct seq_file *c, char *key, struct tsem_path *path)
+{
+	tsem_fs_show_field(c, key);
+	if (path->fstype)
+		tsem_fs_show_key(c, "fstype", "%s", path->fstype);
+	else {
+		tsem_fs_show_field(c, "dev");
+		tsem_fs_show_key(c, ",", "major", "%u", MAJOR(path->dev));
+		tsem_fs_show_key(c, "}, ", "minor", "%u", MINOR(path->dev));
+	}
+	tsem_fs_show_key(c, "}", "path", "%s", path->pathname);
+}
+
 static void show_file(struct seq_file *c, struct tsem_event *ep)
 {
 	if (ep->event == TSEM_FILE_OPEN)
@@ -526,9 +539,9 @@ static void show_sb_pivotroot(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	tsem_fs_show_field(c, tsem_names[ep->event]);
-	tsem_fs_show_key(c, ",", "old_path", "%s", args->out.old_path);
-	tsem_fs_show_key(c, "}", "new_path", "%s", args->out.new_path);
-
+	show_path(c, "old_path", &args->out.old_path);
+	seq_puts(c, ", ");
+	show_path(c, "new_path", &args->out.new_path);
 	seq_puts(c, "}");
 }
 

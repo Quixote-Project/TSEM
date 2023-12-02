@@ -945,6 +945,22 @@ struct tsem_inode_cell {
 };
 
 /**
+ * struct tsem_path - TSEM path information.
+ * @dev: The device number that the filesystem is mounted on.
+ * @fstype: The name of the filesystem if it is not device based.
+ * @pathname: The pathname from the root.
+ *
+ * The tsem_path structure is used to carry information about the
+ * pathname of a filesystem object that is an argument to a security
+ * event handler.
+ */
+struct tsem_path {
+	dev_t dev;
+	char *fstype;
+	char *pathname;
+};
+
+/**
  * struct tsem_COE - TSEM file description.
  * @uid: The numeric user identity of the file.
  * @gid: The numeric group identity of the file.
@@ -1203,7 +1219,7 @@ struct tsem_inode_getxattr_args {
  * @in.new_path: A pointer to the path description for the path that will
  *		 be the new root.
  * @out.old_path: A pointer to a null terminated buffer containing the
- *		  the path of the old root.
+ *		  path of the old root.
  * @out.new_path: A pointer to a null terminated buffer containing the
  *		  path to the new root.
  *
@@ -1221,8 +1237,8 @@ struct tsem_sb_pivotroot_args {
 		} in;
 
 		struct {
-			char *old_path;
-			char *new_path;
+			struct tsem_path old_path;
+			struct tsem_path new_path;
 		} out;
 	};
 };

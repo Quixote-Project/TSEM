@@ -70,6 +70,23 @@ static void get_COE(struct tsem_COE *COE)
 	COE->capeff.mask = current_cred()->cap_effective;
 }
 
+static int get_root(struct dentry *dentry, struct tsem_path *path)
+{
+	int retn = 0;
+	struct super_block *sb = dentry->d_sb;
+	struct inode *inode = d_backing_inode(sb->s_root);
+
+	if (MAJOR(sb->s_dev) || inode->i_op->rename)
+		path->dev = sb->s_dev;
+	else {
+		path->fstype = kstrdup(sb->s_type->name, GFP_KERNEL);
+		if (IS_ERR(path->fstype))
+			retn = PTR_ERR(path->fstype);
+	}
+
+	return retn;
+}
+
 static char *get_path(const struct path *path)
 {
 	int retn = 0;
@@ -128,6 +145,24 @@ static char *get_path_dentry(const struct dentry *dentry)
 	if (retn)
 		retpath = ERR_PTR(retn);
 	return retpath;
+}
+
+static int fill_path(const struct path *in, struct tsem_path *path)
+{
+	int retn;
+
+	retn = get_root(in->dentry, path);
+	if (retn)
+		goto done;
+
+	path->pathname = get_path(in);
+	if (IS_ERR(path->pathname)) {
+		kfree(path->fstype);
+		retn = PTR_ERR(path->pathname);
+	}
+
+ done:
+	return retn;
 }
 
 static int add_file_name(struct tsem_event *ep)
@@ -545,37 +580,15 @@ static int get_inode_getxattr(struct tsem_inode_getxattr_args *args,
 static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args,
 			    struct tsem_event *ep)
 {
-	int retn = -ENOMEM;
-	char *p;
+	int retn;
 	const struct path *old_path = args->in.old_path;
 	const struct path *new_path = args->in.new_path;
 	struct tsem_sb_pivotroot_args *ap = &ep->CELL.sb_pivotroot;
 
-	p = get_path(old_path);
-	if (IS_ERR(p)) {
-		retn = PTR_ERR(p);
-		goto done;
-	}
+	retn = fill_path(old_path, &ap->out.old_path);
+	if (!retn)
+		retn = fill_path(new_path, &ap->out.new_path);
 
-	p = kstrdup(p, GFP_KERNEL);
-	if (!p)
-		goto done;
-	ap->out.old_path = p;
-
-	p = get_path(new_path);
-	if (IS_ERR(p)) {
-		retn = PTR_ERR(p);
-		goto done;
-	}
-
-	p = kstrdup(p, GFP_KERNEL);
-	if (!p)
-		goto done;
-
-	retn = 0;
-	ap->out.new_path = p;
-
- done:
 	return retn;
 }
 
@@ -684,14 +697,14 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.inode_getxattr.out.name);
 		break;
 	case TSEM_SB_PIVOTROOT:
-		kfree(ep->CELL.sb_pivotroot.out.old_path);
-		kfree(ep->CELL.sb_pivotroot.out.new_path);
+		kfree(ep->CELL.sb_pivotroot.out.old_path.fstype);
+		kfree(ep->CELL.sb_pivotroot.out.old_path.pathname);
+		kfree(ep->CELL.sb_pivotroot.out.new_path.fstype);
+		kfree(ep->CELL.sb_pivotroot.out.new_path.pathname);
 		break;
 	default:
 		break;
 	}
-
-	return;
 }
 
 /**
