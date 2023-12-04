@@ -439,51 +439,15 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_GETATTR:
-		p = (u8 *) &ep->file.uid;
-		size = sizeof(ep->file.uid);
-		retn = crypto_shash_update(shash, p, size);
+		retn = add_path(shash, &ep->CELL.inode_getattr.out.path);
 		if (retn)
 			goto done;
 
-		p = (u8 *) &ep->file.gid;
-		size = sizeof(ep->file.gid);
-		retn = crypto_shash_update(shash, p, size);
+		retn = add_inode(shash, &ep->CELL.inode_getattr.out.inode);
 		if (retn)
 			goto done;
 
-		p = (u8 *) &ep->file.mode;
-		size = sizeof(ep->file.mode);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &ep->file.name_length;
-		size = sizeof(ep->file.name_length);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &ep->file.name;
-		size = tsem_digestsize();
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &ep->file.s_magic;
-		size = sizeof(ep->file.s_magic);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &ep->file.s_id;
-		size = sizeof(ep->file.s_id);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &ep->file.s_uuid;
-		size = sizeof(ep->file.s_uuid);
-		retn = crypto_shash_finup(shash, p, size, mapping);
+		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_INODE_SETATTR:

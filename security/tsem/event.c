@@ -425,31 +425,6 @@ static int get_file_cell(struct file *file, struct tsem_event *ep)
 	return retn;
 }
 
-static int get_path_cell(const struct path *path, struct tsem_event *ep)
-{
-	int retn = 1;
-	struct inode *inode = path->dentry->d_inode;
-
-	inode_lock(inode);
-
-	ep->pathname = get_path(path);
-	if (IS_ERR(ep->pathname)) {
-		retn = PTR_ERR(ep->pathname);
-		goto done;
-	}
-
-	retn = add_file_name(ep);
-	if (retn)
-		goto done;
-
-	get_inode_cell(inode, ep);
-	retn = 0;
-
- done:
-	inode_unlock(inode);
-	return retn;
-}
-
 static int get_socket_accept(struct tsem_event *ep)
 {
 	char *p, path[UNIX_PATH_MAX + 1];
@@ -520,6 +495,16 @@ static int get_socket_cell(struct tsem_event *ep)
 	}
 
 	return retn;
+}
+
+static int get_inode_getattr(struct tsem_inode_getattr_args *args,
+			     struct tsem_event *ep)
+{
+	const struct path *path = args->path_arg;
+	struct inode *inode = d_backing_inode(path->dentry);
+
+	fill_inode(inode, &ep->CELL.inode_getattr.out.inode);
+	return fill_path(path, &ep->CELL.inode_getattr.out.path);
 }
 
 static int get_inode_setattr(struct tsem_inode_setattr_args *args,
@@ -662,7 +647,7 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 		ep->CELL.task_kill = *params->u.task_kill;
 		break;
 	case TSEM_INODE_GETATTR:
-		retn = get_path_cell(params->u.path, ep);
+		retn = get_inode_getattr(params->u.inode_getattr, ep);
 		break;
 	case TSEM_INODE_SETATTR:
 		retn = get_inode_setattr(params->u.inode_setattr, ep);
@@ -693,6 +678,10 @@ static void free_cell(struct tsem_event *ep)
 	kfree(ep->pathname);
 
 	switch (ep->event) {
+	case TSEM_INODE_GETATTR:
+		kfree(ep->CELL.inode_getattr.out.path.fstype);
+		kfree(ep->CELL.inode_getattr.out.path.pathname);
+		break;
 	case TSEM_INODE_GETXATTR:
 		kfree(ep->CELL.inode_getxattr.out.name);
 		break;

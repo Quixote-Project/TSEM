@@ -485,11 +485,24 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 
 static void show_inode_getattr(struct seq_file *c, struct tsem_event *ep)
 {
-	show_event(c, ep);
+	struct tsem_inode_cell *ip = &ep->CELL.inode_getattr.out.inode;
 
+	show_event(c, ep);
 	tsem_fs_show_field(c, tsem_names[ep->event]);
-	show_file(c, ep);
-	seq_putc(c, '}');
+
+	show_path(c, "path", &ep->CELL.inode_getattr.out.path);
+	seq_puts(c, ", ");
+
+	tsem_fs_show_field(c, "inode");
+	tsem_fs_show_key(c, ",", "uid", "%u", ip->uid);
+	tsem_fs_show_key(c, ",", "gid", "%u", ip->gid);
+	tsem_fs_show_key(c, ",", "mode", "0%o", ip->mode);
+	tsem_fs_show_key(c, ",", "s_magic", "0x%0x", ip->s_magic);
+	tsem_fs_show_key(c, ",", "s_id", "%s", ip->s_id);
+	tsem_fs_show_key(c, "}", "s_uuid", "%*phN", sizeof(ip->s_uuid),
+			 ip->s_uuid);
+
+	seq_puts(c, "}");
 }
 
 static void show_inode_setattr(struct seq_file *c, struct tsem_event *ep)

@@ -1140,6 +1140,27 @@ struct tsem_task_kill_args {
 };
 
 /**
+ * struct tsem_inode_getattr_args - TSEM inode_getattr arguments.
+ * @u.path_arg: A pointer to the structure passed to the security
+ *		event handler that describes the object of the
+ *		event.
+ * @u.path: A description of the path to the object retained for the
+ *	    life of the security event description.
+ *
+ * This structure is used to encapsulate information on the arguments
+ * passed to the inode_getattr LSM hook.
+ */
+struct tsem_inode_getattr_args {
+	union {
+		const struct path *path_arg;
+		struct {
+			struct tsem_path path;
+			struct tsem_inode_cell inode;
+		} out;
+	};
+};
+
+/**
  * struct tsem_inode_setattr_args - TSEM inode_setattr arguments.
  * @in.inode: A pointer to the backing inode for the dentry that was
  *	      passed to the LSM hook.  The relevant values from the inode
@@ -1292,6 +1313,8 @@ struct tsem_sb_pivotroot_args {
  *			of a socket accept security event.
  * @CELL.task_kill: The structure describing the characteristics of a
  *		    task_kill security event.
+ * @CEll.inode_getattr: The structure describing the characteristics of
+ *			a tsem_inode_getattr event.
  * @CEll.inode_setattr: The structure describing the characteristics of
  *			a tsem_inode_setattr event.
  *
@@ -1377,6 +1400,7 @@ struct tsem_event {
 		struct tsem_socket_connect_args socket_connect;
 		struct tsem_socket_accept_args socket_accept;
 		struct tsem_task_kill_args task_kill;
+		struct tsem_inode_getattr_args inode_getattr;
 		struct tsem_inode_setattr_args inode_setattr;
 		struct tsem_inode_getxattr_args inode_getxattr;
 		struct tsem_sb_pivotroot_args sb_pivotroot;
@@ -1429,6 +1453,7 @@ struct tsem_event_parameters {
 		struct tsem_socket_connect_args *socket_connect;
 		struct tsem_socket_accept_args *socket_accept;
 		struct tsem_task_kill_args *task_kill;
+		struct tsem_inode_getattr_args *inode_getattr;
 		struct tsem_inode_setattr_args *inode_setattr;
 		struct tsem_inode_getxattr_args *inode_getxattr;
 		struct tsem_sb_pivotroot_args *sb_pivotroot;
