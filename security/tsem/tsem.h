@@ -1211,6 +1211,8 @@ struct tsem_inode_setattr_args {
  *	       will be copied into the tsem_file structure.
  * @in.name: A pointer to the name of the extended attribute being
  *	     queried.
+ * @out.path: The path to object that is the subject of the security
+ *	      event hook.
  * @out.inode: The characteristics of the inode backing the dentry
  *	       argument.
  * @out.name: A pointer to the name of the attribute being queried.
@@ -1229,8 +1231,9 @@ struct tsem_inode_getxattr_args {
 		} in;
 
 		struct {
-			char *name;
+			struct tsem_path path;
 			struct tsem_inode_cell inode;
+			char *name;
 		} out;
 	};
 };

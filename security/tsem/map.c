@@ -488,15 +488,15 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_GETXATTR:
-		retn = add_str(shash, ep->pathname);
-		if (retn)
-			goto done;
-
-		retn = add_str(shash, ep->CELL.inode_getxattr.out.name);
+		retn = add_path(shash, &ep->CELL.inode_getxattr.out.path);
 		if (retn)
 			goto done;
 
 		retn = add_inode(shash, &ep->CELL.inode_getxattr.out.inode);
+		if (retn)
+			goto done;
+
+		retn = add_str(shash, ep->CELL.inode_getxattr.out.name);
 		if (retn)
 			goto done;
 

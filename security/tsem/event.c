@@ -565,21 +565,23 @@ static int get_inode_setattr(struct tsem_inode_setattr_args *args,
 static int get_inode_getxattr(struct tsem_inode_getxattr_args *args,
 			      struct tsem_event *ep)
 {
+	int retn = 0;
 	const char *name = args->in.name;
 	struct dentry *dentry = args->in.dentry;
 	struct tsem_inode_getxattr_args *ap = &ep->CELL.inode_getxattr;
+
+	retn = fill_path_dentry(dentry, &ap->out.path);
+	if (retn)
+		goto done;
 
 	fill_inode(dentry->d_inode, &ap->out.inode);
 
 	ap->out.name = kstrdup(name, GFP_KERNEL);
 	if (!ap->out.name)
-		return -ENOMEM;
+		retn = -ENOMEM;
 
-	ep->pathname = get_path_dentry(dentry);
-	if (!ep->pathname)
-		return -ENOMEM;
-
-	return 0;
+ done:
+	return retn;
 }
 
 static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args,

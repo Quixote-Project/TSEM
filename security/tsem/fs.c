@@ -540,18 +540,19 @@ static void show_inode_getxattr(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	tsem_fs_show_field(c, tsem_names[ep->event]);
-	tsem_fs_show_key(c, ",", "name", "%s", args->out.name);
-	tsem_fs_show_key(c, ",", "path", "%s", ep->pathname);
 
+	show_path(c, "path", &ep->CELL.inode_setattr.out.path);
+	seq_puts(c, ", ");
 	tsem_fs_show_field(c, "inode");
 	tsem_fs_show_key(c, ",", "uid", "%u", ip->uid);
 	tsem_fs_show_key(c, ",", "gid", "%u", ip->gid);
 	tsem_fs_show_key(c, ",", "mode", "0%o", ip->mode);
 	tsem_fs_show_key(c, ",", "s_magic", "0x%0x", ip->s_magic);
 	tsem_fs_show_key(c, ",", "s_id", "%s", ip->s_id);
-	tsem_fs_show_key(c, "}", "s_uuid", "%*phN", sizeof(ip->s_uuid),
+	tsem_fs_show_key(c, "}, ", "s_uuid", "%*phN", sizeof(ip->s_uuid),
 			 ip->s_uuid);
-	seq_puts(c, "}");
+
+	tsem_fs_show_key(c, "}", "name", "%s", args->out.name);
 }
 
 static void show_sb_pivotroot(struct seq_file *c, struct tsem_event *ep)
