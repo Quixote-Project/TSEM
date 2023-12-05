@@ -709,6 +709,8 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.inode_getattr.out.path.pathname);
 		break;
 	case TSEM_INODE_GETXATTR:
+		kfree(ep->CELL.inode_getxattr.out.path.fstype);
+		kfree(ep->CELL.inode_getxattr.out.path.pathname);
 		kfree(ep->CELL.inode_getxattr.out.name);
 		break;
 	case TSEM_SB_PIVOTROOT:
