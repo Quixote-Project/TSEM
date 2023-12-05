@@ -1193,6 +1193,8 @@ struct tsem_inode_setattr_args {
 		} in;
 
 		struct {
+			struct tsem_path path;
+			struct tsem_inode_cell inode;
 			unsigned int valid;
 			umode_t mode;
 			uid_t uid;

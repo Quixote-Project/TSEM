@@ -165,6 +165,24 @@ static int fill_path(const struct path *in, struct tsem_path *path)
 	return retn;
 }
 
+static int fill_path_dentry(struct dentry *dentry, struct tsem_path *path)
+{
+	int retn;
+
+	retn = get_root(dentry, path);
+	if (retn)
+		goto done;
+
+	path->pathname = get_path_dentry(dentry);
+	if (IS_ERR(path->pathname)) {
+		kfree(path->fstype);
+		retn = PTR_ERR(path->pathname);
+	}
+
+ done:
+	return retn;
+}
+
 static int add_file_name(struct tsem_event *ep)
 {
 	int retn;
@@ -510,24 +528,25 @@ static int get_inode_getattr(struct tsem_inode_getattr_args *args,
 static int get_inode_setattr(struct tsem_inode_setattr_args *args,
 			     struct tsem_event *ep)
 {
+	int retn;
 	struct user_namespace *ns;
 	struct tsem_inode_setattr_args *sp;
 	struct dentry *dentry = args->in.dentry;
 	struct iattr *iattr = args->in.iattr;
 
-	ep->pathname = get_path_dentry(dentry);
-	if (!ep->pathname)
-		return -ENOMEM;
+	sp = &ep->CELL.inode_setattr;
+	memset(sp, '\0', sizeof(*sp));
+
+	retn = fill_path_dentry(dentry, &sp->out.path);
+	if (retn)
+		goto done;
 
 	if (tsem_context(current)->use_current_ns)
 		ns = current_user_ns();
 	else
 		ns = &init_user_ns;
 
-	get_inode_cell(dentry->d_inode, ep);
-
-	sp = &ep->CELL.inode_setattr;
-	memset(sp, '\0', sizeof(*sp));
+	fill_inode(d_backing_inode(dentry), &sp->out.inode);
 
 	sp->out.valid = iattr->ia_valid;
 	if (sp->out.valid & ATTR_MODE)
@@ -539,7 +558,8 @@ static int get_inode_setattr(struct tsem_inode_setattr_args *args,
 	if (sp->out.valid & ATTR_SIZE)
 		sp->out.size = iattr->ia_size;
 
-	return 0;
+ done:
+	return retn;
 }
 
 static int get_inode_getxattr(struct tsem_inode_getxattr_args *args,
@@ -680,6 +700,10 @@ static void free_cell(struct tsem_event *ep)
 	switch (ep->event) {
 	case TSEM_INODE_GETATTR:
 		kfree(ep->CELL.inode_getattr.out.path.fstype);
+		kfree(ep->CELL.inode_getattr.out.path.pathname);
+		break;
+	case TSEM_INODE_SETATTR:
+		kfree(ep->CELL.inode_setattr.out.path.fstype);
 		kfree(ep->CELL.inode_getattr.out.path.pathname);
 		break;
 	case TSEM_INODE_GETXATTR:
