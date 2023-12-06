@@ -337,6 +337,8 @@ static void show_event(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, ",", "fsuid", "%u", ep->COE.fsuid);
 	tsem_fs_show_key(c, ",", "fsgid", "%u", ep->COE.fsgid);
 	tsem_fs_show_key(c, "}, ", "capeff", "0x%llx", ep->COE.capeff.value);
+
+	tsem_fs_show_field(c, tsem_names[ep->event]);
 }
 
 static void show_path(struct seq_file *c, char *key, struct tsem_path *path)
@@ -391,7 +393,6 @@ static void show_mmap(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "type", "%u", args->file == NULL);
 	tsem_fs_show_key(c, ",", "reqprot", "%u", args->reqprot);
 	tsem_fs_show_key(c, ",", "prot", "%u", args->prot);
@@ -410,7 +411,6 @@ static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "family", "%u", args->family);
 	tsem_fs_show_key(c, ",", "type", "%u", args->type);
 	tsem_fs_show_key(c, ",", "protocol", "%u", args->protocol);
@@ -425,9 +425,7 @@ static void show_socket(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "family", "%u", scp->family);
-
 	switch (scp->family) {
 	case AF_INET:
 		ipv4 = (struct sockaddr_in *) &scp->u.ipv4;
@@ -459,7 +457,6 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "family", "%u", sap->family);
 	tsem_fs_show_key(c, ",", "type", "%u", sap->type);
 	tsem_fs_show_key(c, ",", "port", "%u", sap->port);
@@ -489,7 +486,6 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_field(c, tsem_names[ep->event]);
 	tsem_fs_show_key(c, ",", "cross", "%u", args->cross_model);
 	tsem_fs_show_key(c, ",", "signal", "%u", args->signal);
 	tsem_fs_show_key(c, "}", "target", "%*phN", tsem_digestsize(),
@@ -499,7 +495,6 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 static void show_inode_getattr(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
-	tsem_fs_show_field(c, tsem_names[ep->event]);
 
 	show_path(c, "path", &ep->CELL.inode_getattr.out.path);
 	seq_puts(c, ", ");
@@ -513,8 +508,6 @@ static void show_inode_setattr(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_inode_setattr_args *args = &ep->CELL.inode_setattr;
 
 	show_event(c, ep);
-
-	tsem_fs_show_field(c, tsem_names[ep->event]);
 
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
@@ -533,8 +526,6 @@ static void show_inode_getxattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_field(c, tsem_names[ep->event]);
-
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
 	show_inode(c, "}, ", &args->out.inode);
@@ -548,7 +539,6 @@ static void show_sb_pivotroot(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_field(c, tsem_names[ep->event]);
 	show_path(c, "old_path", &args->out.old_path);
 	seq_puts(c, ", ");
 	show_path(c, "new_path", &args->out.new_path);
@@ -558,8 +548,6 @@ static void show_sb_pivotroot(struct seq_file *c, struct tsem_event *ep)
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
-
-	tsem_fs_show_field(c, tsem_names[ep->event]);
 	seq_puts(c, "}");
 }
 
