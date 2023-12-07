@@ -584,6 +584,21 @@ static int get_inode_getxattr(struct tsem_inode_getxattr_args *args,
 	return retn;
 }
 
+static int get_inode_listxattr(struct tsem_inode_getxattr_args *args,
+			       struct tsem_event *ep)
+{
+	int retn;
+	struct dentry *dentry = args->in.dentry;
+	struct tsem_inode_getxattr_args *ap = &ep->CELL.inode_getxattr;
+
+	retn = fill_path_dentry(dentry, &ap->out.path);
+	if (retn)
+		return retn;
+
+	fill_inode(dentry->d_inode, &ap->out.inode);
+	return 0;
+}
+
 static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args,
 			    struct tsem_event *ep)
 {
@@ -677,6 +692,9 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	case TSEM_INODE_GETXATTR:
 		retn = get_inode_getxattr(params->u.inode_getxattr, ep);
 		break;
+	case TSEM_INODE_LISTXATTR:
+		retn = get_inode_listxattr(params->u.inode_getxattr, ep);
+		break;
 	case TSEM_SB_PIVOTROOT:
 		retn = get_sb_pivotroot(params->u.sb_pivotroot, ep);
 		break;
@@ -712,6 +730,10 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.inode_getxattr.out.path.fstype);
 		kfree(ep->CELL.inode_getxattr.out.path.pathname);
 		kfree(ep->CELL.inode_getxattr.out.name);
+		break;
+	case TSEM_INODE_LISTXATTR:
+		kfree(ep->CELL.inode_getxattr.out.path.fstype);
+		kfree(ep->CELL.inode_getxattr.out.path.pathname);
 		break;
 	case TSEM_SB_PIVOTROOT:
 		kfree(ep->CELL.sb_pivotroot.out.old_path.fstype);

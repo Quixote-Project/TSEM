@@ -1724,14 +1724,37 @@ static int tsem_inode_getxattr(struct dentry *dentry, const char *name)
 
 static int tsem_inode_listxattr(struct dentry *dentry)
 {
+	int retn = 0;
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep = NULL;
+	struct tsem_inode_getxattr_args args;
+	struct tsem_event_parameters params;
+
+	if (unlikely(!tsem_ready))
+		return 0;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "fname=%s", dentry->d_name.name);
 		return trapped_task(TSEM_INODE_LISTXATTR, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_INODE_LISTXATTR, NOLOCK);
+	if (bypass_filesystem(dentry->d_inode))
+		return 0;
+
+	args.in.dentry = dentry;
+	params.u.inode_getxattr = &args;
+
+	ep = tsem_map_event(TSEM_INODE_LISTXATTR, &params);
+	if (IS_ERR(ep)) {
+		retn = PTR_ERR(ep);
+		goto done;
+	}
+
+	retn = model_event(ep);
+	tsem_event_put(ep);
+
+ done:
+	return retn;
 }
 
 static int tsem_inode_removexattr(struct mnt_idmap *idmap,
