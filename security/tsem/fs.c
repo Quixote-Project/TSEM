@@ -1257,6 +1257,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		show_inode_setattr(c, ep);
 		break;
 	case TSEM_INODE_GETXATTR:
+	case TSEM_INODE_REMOVEXATTR:
 		show_inode_getxattr(c, ep);
 		break;
 	case TSEM_INODE_LISTXATTR:

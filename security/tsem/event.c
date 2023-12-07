@@ -690,6 +690,7 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 		retn = get_inode_setattr(params->u.inode_setattr, ep);
 		break;
 	case TSEM_INODE_GETXATTR:
+	case TSEM_INODE_REMOVEXATTR:
 		retn = get_inode_getxattr(params->u.inode_getxattr, ep);
 		break;
 	case TSEM_INODE_LISTXATTR:
@@ -727,6 +728,7 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.inode_getattr.out.path.pathname);
 		break;
 	case TSEM_INODE_GETXATTR:
+	case TSEM_INODE_REMOVEXATTR:
 		kfree(ep->CELL.inode_getxattr.out.path.fstype);
 		kfree(ep->CELL.inode_getxattr.out.path.pathname);
 		kfree(ep->CELL.inode_getxattr.out.name);
