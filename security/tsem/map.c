@@ -7,6 +7,8 @@
  * This file implements mapping of events into security event points.
  */
 
+#include <linux/base64.h>
+
 #include "tsem.h"
 
 static int get_COE_mapping(struct tsem_event *ep, u8 *mapping)
@@ -485,6 +487,40 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 			goto done;
 
 		retn = crypto_shash_final(shash, mapping);
+		break;
+
+	case TSEM_INODE_SETXATTR:
+		retn = add_path(shash, &ep->CELL.inode_getxattr.out.path);
+		if (retn)
+			goto done;
+
+		retn = add_str(shash, ep->CELL.inode_getxattr.out.name);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_update(shash,
+					   ep->CELL.inode_getxattr.out.value,
+					   size);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.inode_getxattr.out.flags);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		if (retn)
+			goto done;
+
+		p = kzalloc(BASE64_CHARS(size) + 1, GFP_KERNEL);
+		if (!p) {
+			retn = -ENOMEM;
+			goto done;
+		}
+		base64_encode(ep->CELL.inode_getxattr.out.value, size, p);
+
+		kfree(ep->CELL.inode_getxattr.out.value);
+		ep->CELL.inode_getxattr.out.value = p;
 		break;
 
 	case TSEM_INODE_GETXATTR:

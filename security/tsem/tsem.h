@@ -1228,12 +1228,17 @@ struct tsem_inode_getxattr_args {
 		struct {
 			const char *name;
 			struct dentry *dentry;
+			const void *value;
+			size_t size;
+			int flags;
 		} in;
 
 		struct {
 			struct tsem_path path;
 			struct tsem_inode_cell inode;
 			char *name;
+			char *value;
+			int flags;
 		} out;
 	};
 };

@@ -1673,7 +1673,11 @@ static int tsem_inode_setxattr(struct mnt_idmap *idmap,
 			       struct dentry *dentry, const char *name,
 			       const void *value, size_t size, int flags)
 {
+	int retn = 0;
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep = NULL;
+	struct tsem_inode_getxattr_args args;
+	struct tsem_event_parameters params;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -1682,7 +1686,27 @@ static int tsem_inode_setxattr(struct mnt_idmap *idmap,
 		return trapped_task(TSEM_INODE_SETXATTR, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_INODE_SETXATTR, NOLOCK);
+	if (bypass_filesystem(dentry->d_inode))
+		return 0;
+
+	args.in.dentry = dentry;
+	args.in.name = name;
+	args.in.value = value;
+	args.in.size = size;
+	args.in.flags = flags;
+	params.u.inode_getxattr = &args;
+
+	ep = tsem_map_event(TSEM_INODE_SETXATTR, &params);
+	if (IS_ERR(ep)) {
+		retn = PTR_ERR(ep);
+		goto done;
+	}
+
+	retn = model_event(ep);
+	tsem_event_put(ep);
+
+ done:
+	return retn;
 }
 
 static int tsem_inode_getxattr(struct dentry *dentry, const char *name)
