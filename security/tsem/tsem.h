@@ -1140,54 +1140,39 @@ struct tsem_task_kill_args {
 };
 
 /**
- * struct tsem_inode_getattr_args - TSEM inode_getattr arguments.
- * @u.path_arg: A pointer to the structure passed to the security
- *		event handler that describes the object of the
- *		event.
- * @u.path: A description of the path to the object retained for the
- *	    life of the security event description.
- *
- * This structure is used to encapsulate information on the arguments
- * passed to the inode_getattr LSM hook.
- */
-struct tsem_inode_getattr_args {
-	union {
-		const struct path *path_arg;
-		struct {
-			struct tsem_path path;
-			struct tsem_inode_cell inode;
-		} out;
-	};
-};
-
-/**
- * struct tsem_inode_setattr_args - TSEM inode_setattr arguments.
- * @in.inode: A pointer to the backing inode for the dentry that was
- *	      passed to the LSM hook.  The relevant values from the inode
- *	      will be copied into the tsem_file structure.
+ * struct tsem_inode_attr_args - TSEM inode manipulation arguments.
+ * @in.path: In the case of the inode_getattr call the path to the
+ *	     inode being referenced.
+ * @in.dentry: In the case of the inode_setattr call the dentry that
+ *	       whose characteristics will be set.
  * @in.iattr: A pointer to the iattr structure that was passed to the
- *	      LSM hook.  The relevant values from this structure will
- *	      be copied into the structure members below.
+ *	      inode_setattr handler.
+ * @out.path: The structure defining the path to the object that was
+ *	      subject of either of the two calls.
+ * @out.inode: The structure defining the inode that was the subject
+ *	       of either of the two calls.
  * @out.valid: The ia_valid member from the iattr structure passed to the
- *	       LSM hook.
+ *	       inode_setattr handler
  * @out.mode: The ia_mode member from the iattr structure passed to the
- *	      LSM hook.
- * @out.uid: The ia_uid member from the iattr structure passed to the LSM
+ *	      inode_setattr handler.
+ * @out.uid: The ia_uid member from the iattr structure passed to the
+ *	     inode_setattr handler.
+ * @out.gid: The ia_gid member from the iattr structure passed to the
+ *	     inode_setattr handler.
  *	     hook.
- * @out.gid: The ia_gid member from the iattr structure passed to the LSM
- *	     hook.
- * @out.size: The ia_size member from the iattr structure passed to the LSM
- *	      hook.
+ * @out.size: The ia_size member from the iattr structure passed to the
+ *	      inode_setattr handler.
  *
  * This structure is used to encapsulate information on the arguments
- * passed to the inode_setattr LSM hook.  The in structure is used to
- * hold the pointers to the arguments passed to the LSM hook.  Argument
- * information that is to be held for the life of the event are held
- * in the out structure.
+ * passed to the inode_getattr and inode_setattr LSM handler.  The in
+ * structure is used to hold the arguments passed that were passed to
+ * the handlers.  Argument information that is to be held for the life
+ * of the event description are in the out structure.
  */
-struct tsem_inode_setattr_args {
+struct tsem_inode_attr_args {
 	union {
 		struct {
+			const struct path *path;
 			struct dentry *dentry;
 			struct iattr *iattr;
 		} in;
@@ -1336,10 +1321,13 @@ struct tsem_sb_pivotroot_args {
  *			of a socket accept security event.
  * @CELL.task_kill: The structure describing the characteristics of a
  *		    task_kill security event.
- * @CEll.inode_getattr: The structure describing the characteristics of
+ * @CELL.inode_attr: The structure describing the characteristics for
+ *		     the inode_getattr and inode_setattr handlers.
  *			a tsem_inode_getattr event.
- * @CEll.inode_setattr: The structure describing the characteristics of
- *			a tsem_inode_setattr event.
+ * @CELL.inode_xattr: The structure describing the characteristics of
+ *		      the security events that are handling security
+ *		      decisions for the manipulation of extended
+ *		      attributes.
  *
  * This structure is the primary data structure for describing
  * security events that are registered in a security modeling
@@ -1423,8 +1411,7 @@ struct tsem_event {
 		struct tsem_socket_connect_args socket_connect;
 		struct tsem_socket_accept_args socket_accept;
 		struct tsem_task_kill_args task_kill;
-		struct tsem_inode_getattr_args inode_getattr;
-		struct tsem_inode_setattr_args inode_setattr;
+		struct tsem_inode_attr_args inode_attr;
 		struct tsem_inode_xattr_args inode_xattr;
 		struct tsem_sb_pivotroot_args sb_pivotroot;
 	} CELL;
@@ -1450,9 +1437,12 @@ struct tsem_event {
  *		     event.
  * @u.task_kill: This member will point to a structure that describes
  *		 the characteristics of a task_kill function.
- * @u.inode_settr: The member will point to a structure that describes
- *		   the characteristics of the inode_setattr security
- *		   event.
+ * @u.inode_attr: The member will point to a structure that describes
+ *		  the characteristics of the inode_setattr and
+ *		  inode_getattr events.
+ * @u.inode_xattr: The member will point to a structure that describes
+ *		   the characteristics of the events that are handling
+ *		   security events for extended attribute manipulation.
  *
  * The purpose of this structure is to provide a common encapsulation
  * method for passing the CELL characteristics of a security event
@@ -1476,8 +1466,7 @@ struct tsem_event_parameters {
 		struct tsem_socket_connect_args *socket_connect;
 		struct tsem_socket_accept_args *socket_accept;
 		struct tsem_task_kill_args *task_kill;
-		struct tsem_inode_getattr_args *inode_getattr;
-		struct tsem_inode_setattr_args *inode_setattr;
+		struct tsem_inode_attr_args *inode_attr;
 		struct tsem_inode_xattr_args *inode_xattr;
 		struct tsem_sb_pivotroot_args *sb_pivotroot;
 	} u;

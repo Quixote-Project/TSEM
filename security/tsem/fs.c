@@ -494,18 +494,18 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 
 static void show_inode_getattr(struct seq_file *c, struct tsem_event *ep)
 {
+	struct tsem_inode_attr_args *args = &ep->CELL.inode_attr;
+
 	show_event(c, ep);
 
-	show_path(c, "path", &ep->CELL.inode_getattr.out.path);
+	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
-	show_inode(c, "}", &ep->CELL.inode_getattr.out.inode);
-
-	seq_putc(c, '}');
+	show_inode(c, "}}", &args->out.inode);
 }
 
 static void show_inode_setattr(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_inode_setattr_args *args = &ep->CELL.inode_setattr;
+	struct tsem_inode_attr_args *args = &ep->CELL.inode_attr;
 
 	show_event(c, ep);
 

@@ -516,26 +516,26 @@ static int get_socket_cell(struct tsem_event *ep)
 	return retn;
 }
 
-static int get_inode_getattr(struct tsem_inode_getattr_args *args,
+static int get_inode_getattr(struct tsem_inode_attr_args *args,
 			     struct tsem_event *ep)
 {
-	const struct path *path = args->path_arg;
+	const struct path *path = args->in.path;
 	struct inode *inode = d_backing_inode(path->dentry);
 
-	fill_inode(inode, &ep->CELL.inode_getattr.out.inode);
-	return fill_path(path, &ep->CELL.inode_getattr.out.path);
+	fill_inode(inode, &ep->CELL.inode_attr.out.inode);
+	return fill_path(path, &ep->CELL.inode_attr.out.path);
 }
 
-static int get_inode_setattr(struct tsem_inode_setattr_args *args,
+static int get_inode_setattr(struct tsem_inode_attr_args *args,
 			     struct tsem_event *ep)
 {
 	int retn;
 	struct user_namespace *ns;
-	struct tsem_inode_setattr_args *sp;
+	struct tsem_inode_attr_args *sp;
 	struct dentry *dentry = args->in.dentry;
 	struct iattr *iattr = args->in.iattr;
 
-	sp = &ep->CELL.inode_setattr;
+	sp = &ep->CELL.inode_attr;
 	memset(sp, '\0', sizeof(*sp));
 
 	retn = fill_path_dentry(dentry, &sp->out.path);
@@ -733,10 +733,10 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 		ep->CELL.task_kill = *params->u.task_kill;
 		break;
 	case TSEM_INODE_GETATTR:
-		retn = get_inode_getattr(params->u.inode_getattr, ep);
+		retn = get_inode_getattr(params->u.inode_attr, ep);
 		break;
 	case TSEM_INODE_SETATTR:
-		retn = get_inode_setattr(params->u.inode_setattr, ep);
+		retn = get_inode_setattr(params->u.inode_attr, ep);
 		break;
 	case TSEM_INODE_SETXATTR:
 		retn = get_inode_setxattr(params->u.inode_xattr, ep);
@@ -772,12 +772,9 @@ static void free_cell(struct tsem_event *ep)
 
 	switch (ep->event) {
 	case TSEM_INODE_GETATTR:
-		kfree(ep->CELL.inode_getattr.out.path.fstype);
-		kfree(ep->CELL.inode_getattr.out.path.pathname);
-		break;
 	case TSEM_INODE_SETATTR:
-		kfree(ep->CELL.inode_setattr.out.path.fstype);
-		kfree(ep->CELL.inode_getattr.out.path.pathname);
+		kfree(ep->CELL.inode_attr.out.path.fstype);
+		kfree(ep->CELL.inode_attr.out.path.pathname);
 		break;
 	case TSEM_INODE_SETXATTR:
 	case TSEM_INODE_GETXATTR:

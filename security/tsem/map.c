@@ -444,11 +444,11 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_GETATTR:
-		retn = add_path(shash, &ep->CELL.inode_getattr.out.path);
+		retn = add_path(shash, &ep->CELL.inode_attr.out.path);
 		if (retn)
 			goto done;
 
-		retn = add_inode(shash, &ep->CELL.inode_getattr.out.inode);
+		retn = add_inode(shash, &ep->CELL.inode_attr.out.inode);
 		if (retn)
 			goto done;
 
@@ -456,31 +456,31 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_SETATTR:
-		retn = add_path(shash, &ep->CELL.inode_setattr.out.path);
+		retn = add_path(shash, &ep->CELL.inode_attr.out.path);
 		if (retn)
 			goto done;
 
-		retn = add_inode(shash, &ep->CELL.inode_setattr.out.inode);
+		retn = add_inode(shash, &ep->CELL.inode_attr.out.inode);
 		if (retn)
 			goto done;
 
-		retn = add_u32(shash, ep->CELL.inode_setattr.out.valid);
+		retn = add_u32(shash, ep->CELL.inode_attr.out.valid);
 		if (retn)
 			goto done;
 
-		retn = add_u32(shash, ep->CELL.inode_setattr.out.mode);
+		retn = add_u32(shash, ep->CELL.inode_attr.out.mode);
 		if (retn)
 			goto done;
 
-		retn = add_u32(shash, ep->CELL.inode_setattr.out.uid);
+		retn = add_u32(shash, ep->CELL.inode_attr.out.uid);
 		if (retn)
 			goto done;
 
-		retn = add_u32(shash, ep->CELL.inode_setattr.out.gid);
+		retn = add_u32(shash, ep->CELL.inode_attr.out.gid);
 		if (retn)
 			goto done;
 
-		retn = add_u64(shash, ep->CELL.inode_setattr.out.size);
+		retn = add_u64(shash, ep->CELL.inode_attr.out.size);
 		if (retn)
 			goto done;
 
