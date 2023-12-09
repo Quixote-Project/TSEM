@@ -1216,6 +1216,15 @@ struct tsem_inode_setattr_args {
  * @out.inode: The characteristics of the inode backing the dentry
  *	       argument.
  * @out.name: A pointer to the name of the attribute being queried.
+ * @out.value: The binary value of the extended attribute that was
+ *	       passed to the inode_setxattr handler.  For an
+ *	       internally modeled namespace this value will be freed
+ *	       after the coefficient for the event is mapped.
+ * @out.encoded_value: The Base64 encoding of the extended attribute
+ *		       value that is used for either the export of
+ *		       the event or the trajectory history.
+ * @out.flags: The flags value that was passed to the inode_setxattr
+ *	       handler.
  *
  * This structure is used to encapsulate information on the arguments
  * passed to the inode_setgetxattr LSM hook.  The in structure is used to
@@ -1226,8 +1235,8 @@ struct tsem_inode_setattr_args {
 struct tsem_inode_getxattr_args {
 	union {
 		struct {
-			const char *name;
 			struct dentry *dentry;
+			const char *name;
 			const void *value;
 			size_t size;
 			int flags;
@@ -1238,6 +1247,8 @@ struct tsem_inode_getxattr_args {
 			struct tsem_inode_cell inode;
 			char *name;
 			char *value;
+			char *encoded_value;
+			size_t size;
 			int flags;
 		} out;
 	};

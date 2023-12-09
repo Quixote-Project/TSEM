@@ -9,6 +9,7 @@
 
 #include <linux/iversion.h>
 #include <linux/user_namespace.h>
+#include <linux/base64.h>
 
 #include "tsem.h"
 #include "../integrity/integrity.h"
@@ -573,6 +574,7 @@ static int get_inode_setxattr(struct tsem_inode_getxattr_args *args,
 	int flags = args->in.flags;
 	struct tsem_inode_getxattr_args *ap = &ep->CELL.inode_getxattr;
 
+	ap->out.size = size;
 	ap->out.flags = flags;
 
 	retn = fill_path_dentry(dentry, &ap->out.path);
@@ -592,10 +594,18 @@ static int get_inode_setxattr(struct tsem_inode_getxattr_args *args,
 		retn = -ENOMEM;
 	memcpy(ap->out.value, value, size);
 
+	ap->out.encoded_value = kzalloc(BASE64_CHARS(size) + 1, GFP_KERNEL);
+	if (!ap->out.encoded_value) {
+		retn = -ENOMEM;
+		goto done;
+	}
+	base64_encode(ap->out.value, size, ap->out.encoded_value);
+
  done:
 	if (retn) {
 		kfree(ap->out.name);
 		kfree(ap->out.value);
+		kfree(ap->out.encoded_value);
 	}
 	return retn;
 }
@@ -772,7 +782,7 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.inode_getxattr.out.path.fstype);
 		kfree(ep->CELL.inode_getxattr.out.path.pathname);
 		kfree(ep->CELL.inode_getxattr.out.name);
-		kfree(ep->CELL.inode_getxattr.out.value);
+		kfree(ep->CELL.inode_getxattr.out.encoded_value);
 		break;
 	case TSEM_INODE_GETXATTR:
 	case TSEM_INODE_REMOVEXATTR:

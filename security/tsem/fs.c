@@ -531,7 +531,7 @@ static void show_inode_setxattr(struct seq_file *c, struct tsem_event *ep)
 	show_inode(c, "}, ", &args->out.inode);
 
 	tsem_fs_show_key(c, ",", "name", "%s", args->out.name);
-	tsem_fs_show_key(c, ",", "value", "%s", args->out.value);
+	tsem_fs_show_key(c, ",", "value", "%s", args->out.encoded_value);
 	tsem_fs_show_key(c, "}", "flags", "%d", args->out.flags);
 }
 
