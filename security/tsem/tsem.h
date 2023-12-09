@@ -1205,7 +1205,7 @@ struct tsem_inode_setattr_args {
 };
 
 /**
- * struct tsem_inode_getxattr_args - TSEM inode_setxattr arguments.
+ * struct tsem_inode_xattr_args - TSEM extended attribute arguments.
  * @in.dentry: A pointer to the backing inode for the dentry that was
  *	       passed to the LSM hook.  The relevant values from the inode
  *	       will be copied into the tsem_file structure.
@@ -1227,12 +1227,14 @@ struct tsem_inode_setattr_args {
  *	       handler.
  *
  * This structure is used to encapsulate information on the arguments
- * passed to the inode_setgetxattr LSM hook.  The in structure is used to
- * hold the pointers to the arguments passed to the LSM hook.  Argument
- * information that is to be held for the life of the event are held
- * in the out structure.
+ * passed to the LSM hooks that manipulate extended attributes.  The
+ * in structure is used to hold the pointers to the arguments passed
+ * to the LSM hook while the out structure holds the arguments in
+ * converted form that will be held for the lifetime of the modeling
+ * namespace.
  */
-struct tsem_inode_getxattr_args {
+
+struct tsem_inode_xattr_args {
 	union {
 		struct {
 			struct dentry *dentry;
@@ -1423,7 +1425,7 @@ struct tsem_event {
 		struct tsem_task_kill_args task_kill;
 		struct tsem_inode_getattr_args inode_getattr;
 		struct tsem_inode_setattr_args inode_setattr;
-		struct tsem_inode_getxattr_args inode_getxattr;
+		struct tsem_inode_xattr_args inode_xattr;
 		struct tsem_sb_pivotroot_args sb_pivotroot;
 	} CELL;
 };
@@ -1476,7 +1478,7 @@ struct tsem_event_parameters {
 		struct tsem_task_kill_args *task_kill;
 		struct tsem_inode_getattr_args *inode_getattr;
 		struct tsem_inode_setattr_args *inode_setattr;
-		struct tsem_inode_getxattr_args *inode_getxattr;
+		struct tsem_inode_xattr_args *inode_xattr;
 		struct tsem_sb_pivotroot_args *sb_pivotroot;
 	} u;
 };

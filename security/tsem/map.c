@@ -465,44 +465,44 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 			goto done;
 
 		retn = add_u32(shash, ep->CELL.inode_setattr.out.valid);
-		if ( retn)
+		if (retn)
 			goto done;
 
 		retn = add_u32(shash, ep->CELL.inode_setattr.out.mode);
-		if ( retn)
+		if (retn)
 			goto done;
 
 		retn = add_u32(shash, ep->CELL.inode_setattr.out.uid);
-		if ( retn)
+		if (retn)
 			goto done;
 
 		retn = add_u32(shash, ep->CELL.inode_setattr.out.gid);
-		if ( retn)
+		if (retn)
 			goto done;
 
 		retn = add_u64(shash, ep->CELL.inode_setattr.out.size);
-		if ( retn)
+		if (retn)
 			goto done;
 
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_INODE_SETXATTR:
-		retn = add_path(shash, &ep->CELL.inode_getxattr.out.path);
+		retn = add_path(shash, &ep->CELL.inode_xattr.out.path);
 		if (retn)
 			goto done;
 
-		retn = add_str(shash, ep->CELL.inode_getxattr.out.name);
+		retn = add_str(shash, ep->CELL.inode_xattr.out.name);
 		if (retn)
 			goto done;
 
 		retn = crypto_shash_update(shash,
-					   ep->CELL.inode_getxattr.out.value,
-					   ep->CELL.inode_getxattr.out.size);
+					   ep->CELL.inode_xattr.out.value,
+					   ep->CELL.inode_xattr.out.size);
 		if (retn)
 			goto done;
 
-		retn = add_u32(shash, ep->CELL.inode_getxattr.out.flags);
+		retn = add_u32(shash, ep->CELL.inode_xattr.out.flags);
 		if (retn)
 			goto done;
 
@@ -510,15 +510,15 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_GETXATTR:
-		retn = add_path(shash, &ep->CELL.inode_getxattr.out.path);
+		retn = add_path(shash, &ep->CELL.inode_xattr.out.path);
 		if (retn)
 			goto done;
 
-		retn = add_inode(shash, &ep->CELL.inode_getxattr.out.inode);
+		retn = add_inode(shash, &ep->CELL.inode_xattr.out.inode);
 		if (retn)
 			goto done;
 
-		retn = add_str(shash, ep->CELL.inode_getxattr.out.name);
+		retn = add_str(shash, ep->CELL.inode_xattr.out.name);
 		if (retn)
 			goto done;
 
@@ -553,8 +553,10 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 	}
 
  done:
-	if (ep->event == TSEM_INODE_SETXATTR)
-		kfree(ep->CELL.inode_getxattr.out.value);
+	if (ep->event == TSEM_INODE_SETXATTR) {
+		kfree(ep->CELL.inode_xattr.out.value);
+		ep->CELL.inode_xattr.out.value = NULL;
+	}
 
 	return retn;
 }

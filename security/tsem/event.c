@@ -563,7 +563,7 @@ static int get_inode_setattr(struct tsem_inode_setattr_args *args,
 	return retn;
 }
 
-static int get_inode_setxattr(struct tsem_inode_getxattr_args *args,
+static int get_inode_setxattr(struct tsem_inode_xattr_args *args,
 			      struct tsem_event *ep)
 {
 	int retn;
@@ -572,7 +572,7 @@ static int get_inode_setxattr(struct tsem_inode_getxattr_args *args,
 	const void *value = args->in.value;
 	size_t size = args->in.size;
 	int flags = args->in.flags;
-	struct tsem_inode_getxattr_args *ap = &ep->CELL.inode_getxattr;
+	struct tsem_inode_xattr_args *ap = &ep->CELL.inode_xattr;
 
 	ap->out.size = size;
 	ap->out.flags = flags;
@@ -610,17 +610,17 @@ static int get_inode_setxattr(struct tsem_inode_getxattr_args *args,
 	return retn;
 }
 
-static int get_inode_getxattr(struct tsem_inode_getxattr_args *args,
+static int get_inode_getxattr(struct tsem_inode_xattr_args *args,
 			      struct tsem_event *ep)
 {
-	int retn = 0;
+	int retn;
 	const char *name = args->in.name;
 	struct dentry *dentry = args->in.dentry;
-	struct tsem_inode_getxattr_args *ap = &ep->CELL.inode_getxattr;
+	struct tsem_inode_xattr_args *ap = &ep->CELL.inode_xattr;
 
 	retn = fill_path_dentry(dentry, &ap->out.path);
 	if (retn)
-		goto done;
+		return retn;
 
 	fill_inode(dentry->d_inode, &ap->out.inode);
 
@@ -628,16 +628,17 @@ static int get_inode_getxattr(struct tsem_inode_getxattr_args *args,
 	if (!ap->out.name)
 		retn = -ENOMEM;
 
- done:
+	if (retn)
+		kfree(ap->out.name);
 	return retn;
 }
 
-static int get_inode_listxattr(struct tsem_inode_getxattr_args *args,
+static int get_inode_listxattr(struct tsem_inode_xattr_args *args,
 			       struct tsem_event *ep)
 {
 	int retn;
 	struct dentry *dentry = args->in.dentry;
-	struct tsem_inode_getxattr_args *ap = &ep->CELL.inode_getxattr;
+	struct tsem_inode_xattr_args *ap = &ep->CELL.inode_xattr;
 
 	retn = fill_path_dentry(dentry, &ap->out.path);
 	if (retn)
@@ -738,14 +739,14 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 		retn = get_inode_setattr(params->u.inode_setattr, ep);
 		break;
 	case TSEM_INODE_SETXATTR:
-		retn = get_inode_setxattr(params->u.inode_getxattr, ep);
+		retn = get_inode_setxattr(params->u.inode_xattr, ep);
 		break;
 	case TSEM_INODE_GETXATTR:
 	case TSEM_INODE_REMOVEXATTR:
-		retn = get_inode_getxattr(params->u.inode_getxattr, ep);
+		retn = get_inode_getxattr(params->u.inode_xattr, ep);
 		break;
 	case TSEM_INODE_LISTXATTR:
-		retn = get_inode_listxattr(params->u.inode_getxattr, ep);
+		retn = get_inode_listxattr(params->u.inode_xattr, ep);
 		break;
 	case TSEM_SB_PIVOTROOT:
 		retn = get_sb_pivotroot(params->u.sb_pivotroot, ep);
@@ -779,20 +780,14 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.inode_getattr.out.path.pathname);
 		break;
 	case TSEM_INODE_SETXATTR:
-		kfree(ep->CELL.inode_getxattr.out.path.fstype);
-		kfree(ep->CELL.inode_getxattr.out.path.pathname);
-		kfree(ep->CELL.inode_getxattr.out.name);
-		kfree(ep->CELL.inode_getxattr.out.encoded_value);
-		break;
 	case TSEM_INODE_GETXATTR:
 	case TSEM_INODE_REMOVEXATTR:
-		kfree(ep->CELL.inode_getxattr.out.path.fstype);
-		kfree(ep->CELL.inode_getxattr.out.path.pathname);
-		kfree(ep->CELL.inode_getxattr.out.name);
-		break;
 	case TSEM_INODE_LISTXATTR:
-		kfree(ep->CELL.inode_getxattr.out.path.fstype);
-		kfree(ep->CELL.inode_getxattr.out.path.pathname);
+		kfree(ep->CELL.inode_xattr.out.path.fstype);
+		kfree(ep->CELL.inode_xattr.out.path.pathname);
+		kfree(ep->CELL.inode_xattr.out.name);
+		kfree(ep->CELL.inode_xattr.out.value);
+		kfree(ep->CELL.inode_xattr.out.encoded_value);
 		break;
 	case TSEM_SB_PIVOTROOT:
 		kfree(ep->CELL.sb_pivotroot.out.old_path.fstype);

@@ -522,7 +522,7 @@ static void show_inode_setattr(struct seq_file *c, struct tsem_event *ep)
 
 static void show_inode_setxattr(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_inode_getxattr_args *args = &ep->CELL.inode_getxattr;
+	struct tsem_inode_xattr_args *args = &ep->CELL.inode_xattr;
 
 	show_event(c, ep);
 
@@ -537,7 +537,7 @@ static void show_inode_setxattr(struct seq_file *c, struct tsem_event *ep)
 
 static void show_inode_getxattr(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_inode_getxattr_args *args = &ep->CELL.inode_getxattr;
+	struct tsem_inode_xattr_args *args = &ep->CELL.inode_xattr;
 
 	show_event(c, ep);
 
@@ -550,7 +550,7 @@ static void show_inode_getxattr(struct seq_file *c, struct tsem_event *ep)
 
 static void show_inode_listxattr(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_inode_getxattr_args *args = &ep->CELL.inode_getxattr;
+	struct tsem_inode_xattr_args *args = &ep->CELL.inode_xattr;
 
 	show_event(c, ep);
 
