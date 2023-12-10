@@ -344,14 +344,13 @@ static void show_event(struct seq_file *c, struct tsem_event *ep)
 static void show_path(struct seq_file *c, char *key, struct tsem_path *path)
 {
 	tsem_fs_show_field(c, key);
-	if (path->fstype)
-		tsem_fs_show_key(c, "fstype", "%s", path->fstype);
-	else {
+
+	if (path->dev) {
 		tsem_fs_show_field(c, "dev");
 		tsem_fs_show_key(c, ",", "major", "%u", MAJOR(path->dev));
 		tsem_fs_show_key(c, "}, ", "minor", "%u", MINOR(path->dev));
 	}
-	tsem_fs_show_key(c, "}", "path", "%s", path->pathname);
+	tsem_fs_show_key(c, "}", "pathname", "%s", path->pathname);
 }
 
 static void show_inode(struct seq_file *c, char *term,

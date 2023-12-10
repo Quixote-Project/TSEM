@@ -112,11 +112,7 @@ static int add_path(struct shash_desc *shash, struct tsem_path *path)
 {
 	int retn;
 
-	if (path->fstype) {
-		retn = add_str(shash, path->fstype);
-		if (retn)
-			goto done;
-	} else {
+	if (path->dev) {
 		retn = add_u32(shash, MAJOR(path->dev));
 		if (retn)
 			goto done;

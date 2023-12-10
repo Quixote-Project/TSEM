@@ -947,7 +947,7 @@ struct tsem_inode_cell {
 /**
  * struct tsem_path - TSEM path information.
  * @dev: The device number that the filesystem is mounted on.
- * @fstype: The name of the filesystem if it is not device based.
+ * @devname: The name of the device if it is not device based.
  * @pathname: The pathname from the root.
  *
  * The tsem_path structure is used to carry information about the
@@ -956,7 +956,6 @@ struct tsem_inode_cell {
  */
 struct tsem_path {
 	dev_t dev;
-	char *fstype;
 	char *pathname;
 };
 

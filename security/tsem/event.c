@@ -74,17 +74,39 @@ static void get_COE(struct tsem_COE *COE)
 static int get_root(struct dentry *dentry, struct tsem_path *path)
 {
 	int retn = 0;
+	char *p, *p1, *pathbuffer = NULL;
 	struct super_block *sb = dentry->d_sb;
 	struct inode *inode = d_backing_inode(sb->s_root);
 
 	if (MAJOR(sb->s_dev) || inode->i_op->rename)
 		path->dev = sb->s_dev;
 	else {
-		path->fstype = kstrdup(sb->s_type->name, GFP_KERNEL);
-		if (IS_ERR(path->fstype))
-			retn = PTR_ERR(path->fstype);
+		if (dentry->d_op && dentry->d_op->d_dname) {
+			pathbuffer = __getname();
+			p = dentry->d_op->d_dname(dentry, pathbuffer, 4096);
+			p1 = strchr(p, ':');
+			if (p1)
+				*p1 = '\0';
+			path->pathname = kmalloc(strlen(p) + 3, GFP_KERNEL);
+			if (IS_ERR(path->pathname)) {
+				retn = PTR_ERR(path->pathname);
+				goto done;
+			}
+			strcpy(path->pathname, p);
+			strcat(path->pathname, ":/");
+			__putname(pathbuffer);
+		} else {
+			p = "nodev:/";
+			path->pathname = kmalloc(strlen(p) + 1, GFP_KERNEL);
+			if (IS_ERR(path->pathname)) {
+				retn = PTR_ERR(path->pathname);
+				goto done;
+			}
+			strcpy(path->pathname, p);
+		}
 	}
 
+ done:
 	return retn;
 }
 
@@ -156,10 +178,10 @@ static int fill_path(const struct path *in, struct tsem_path *path)
 	if (retn)
 		goto done;
 
-	path->pathname = get_path(in);
-	if (IS_ERR(path->pathname)) {
-		kfree(path->fstype);
-		retn = PTR_ERR(path->pathname);
+	if (path->dev) {
+		path->pathname = get_path(in);
+		if (IS_ERR(path->pathname))
+			retn = PTR_ERR(path->pathname);
 	}
 
  done:
@@ -175,10 +197,8 @@ static int fill_path_dentry(struct dentry *dentry, struct tsem_path *path)
 		goto done;
 
 	path->pathname = get_path_dentry(dentry);
-	if (IS_ERR(path->pathname)) {
-		kfree(path->fstype);
+	if (IS_ERR(path->pathname))
 		retn = PTR_ERR(path->pathname);
-	}
 
  done:
 	return retn;
@@ -773,23 +793,19 @@ static void free_cell(struct tsem_event *ep)
 	switch (ep->event) {
 	case TSEM_INODE_GETATTR:
 	case TSEM_INODE_SETATTR:
-		kfree(ep->CELL.inode_attr.out.path.fstype);
 		kfree(ep->CELL.inode_attr.out.path.pathname);
 		break;
 	case TSEM_INODE_SETXATTR:
 	case TSEM_INODE_GETXATTR:
 	case TSEM_INODE_REMOVEXATTR:
 	case TSEM_INODE_LISTXATTR:
-		kfree(ep->CELL.inode_xattr.out.path.fstype);
 		kfree(ep->CELL.inode_xattr.out.path.pathname);
 		kfree(ep->CELL.inode_xattr.out.name);
 		kfree(ep->CELL.inode_xattr.out.value);
 		kfree(ep->CELL.inode_xattr.out.encoded_value);
 		break;
 	case TSEM_SB_PIVOTROOT:
-		kfree(ep->CELL.sb_pivotroot.out.old_path.fstype);
 		kfree(ep->CELL.sb_pivotroot.out.old_path.pathname);
-		kfree(ep->CELL.sb_pivotroot.out.new_path.fstype);
 		kfree(ep->CELL.sb_pivotroot.out.new_path.pathname);
 		break;
 	default:
