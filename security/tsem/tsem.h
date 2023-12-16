@@ -1384,7 +1384,6 @@ struct tsem_event {
 	u64 instance;
 	u64 p_instance;
 	u64 timestamp;
-	char *pathname;
 	char comm[TASK_COMM_LEN];
 
 	unsigned int digestsize;

@@ -382,6 +382,7 @@ static int tsem_mmap_file(struct file *file, unsigned long reqprot,
 			goto done;
 	}
 
+	memset(&args, '\0', sizeof(args));
 	args.file.in.file = file;
 	args.anonymous = file == NULL ? 1 : 0;
 	args.reqprot = reqprot;
