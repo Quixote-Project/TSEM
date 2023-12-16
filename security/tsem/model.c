@@ -122,9 +122,10 @@ static int magazine_allocate(struct tsem_model *model, size_t size)
 	return retn;
 }
 
-static int generate_pseudonym(struct tsem_file *ep, u8 *pseudonym)
+static int generate_pseudonym(char *pathname, u8 *pseudonym)
 {
 	int retn = 0;
+	u32 size;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
 	shash->tfm = tsem_digest();
@@ -132,12 +133,12 @@ static int generate_pseudonym(struct tsem_file *ep, u8 *pseudonym)
 	if (retn)
 		goto done;
 
-	retn = crypto_shash_update(shash, (u8 *) &ep->name_length,
-				   sizeof(ep->name_length));
+	size = strlen(pathname);
+	retn = crypto_shash_update(shash, (u8 *) &size, sizeof(size));
 	if (retn)
 		goto done;
 
-	retn = crypto_shash_finup(shash, ep->name, tsem_digestsize(),
+	retn = crypto_shash_finup(shash, pathname, tsem_digestsize(),
 				  pseudonym);
  done:
 	return retn;
@@ -368,7 +369,8 @@ void tsem_model_compute_state(void)
 /**
  * tsem_model_has_pseudonym() - Test for a model pseudonym.
  * @tsip: A pointer to the TSEM inode security structure.
- * @ep: A pointer to the TSEM event description structure.
+ * @file: A pointer to the tsem_file_args structure characterizing the
+ *	  file whose pseudonym is to be checked.
  *
  * This function is used to test whether a pseudonym has been
  * declared for a modeling domain.  It is up to the caller to
@@ -380,14 +382,14 @@ void tsem_model_compute_state(void)
  *	   a pseudonym was not present.  A value of one indicates that a
  *	   pseudonym has been defined.
  */
-int tsem_model_has_pseudonym(struct tsem_inode *tsip, struct tsem_file *ep)
+int tsem_model_has_pseudonym(struct tsem_inode *tsip, char *pathname)
 {
 	int retn = 0;
 	u8 pseudo_mapping[HASH_MAX_DIGESTSIZE];
 	struct tsem_model *model = tsem_model(current);
 	struct pseudonym *entry;
 
-	retn = generate_pseudonym(ep, pseudo_mapping);
+	retn = generate_pseudonym(pathname, pseudo_mapping);
 	if (retn)
 		goto done;
 

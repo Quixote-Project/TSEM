@@ -314,6 +314,7 @@ static int tsem_file_open(struct file *file)
 	char msg[TRAPPED_MSG_LENGTH];
 	struct inode *inode = file_inode(file);
 	struct tsem_event *ep = NULL;
+	struct tsem_file_args args;
 	struct tsem_event_parameters params;
 
 	if (unlikely(!tsem_ready))
@@ -332,7 +333,8 @@ static int tsem_file_open(struct file *file)
 	if (tsem_inode(inode)->status == TSEM_INODE_COLLECTING)
 		goto done;
 
-	params.u.file = file;
+	args.in.file = file;
+	params.u.file_arg = &args;
 	ep = tsem_map_event(TSEM_FILE_OPEN, &params);
 	if (IS_ERR(ep)) {
 		retn = PTR_ERR(ep);
@@ -380,7 +382,7 @@ static int tsem_mmap_file(struct file *file, unsigned long reqprot,
 			goto done;
 	}
 
-	args.file = file;
+	args.file.in.file = file;
 	args.anonymous = file == NULL ? 1 : 0;
 	args.reqprot = reqprot;
 	args.prot = prot;

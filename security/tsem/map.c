@@ -168,13 +168,34 @@ static int add_inode(struct shash_desc *shash, struct tsem_inode_cell *inode)
 	return retn;
 }
 
+static int add_file(struct shash_desc *shash, struct tsem_file_args *args)
+{
+	int retn;
+
+	retn = add_u32(shash, args->out.flags);
+	if (retn)
+		goto done;
+
+	retn = add_inode(shash, &args->out.inode);
+	if (retn)
+		goto done;
+
+	retn = add_path(shash, &args->out.path);
+	if (retn)
+		goto done;
+
+	retn = crypto_shash_update(shash, args->out.digest, tsem_digestsize());
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
 	u8 *p;
 	struct sockaddr_in *ipv4;
 	struct sockaddr_in6 *ipv6;
-	struct tsem_mmap_file_args *mm_args = &ep->CELL.mmap_file;
 	struct tsem_socket_connect_args *scp = &ep->CELL.socket_connect;
 	struct tsem_socket_accept_args *sap = &ep->CELL.socket_accept;
 	SHASH_DESC_ON_STACK(shash, tfm);
@@ -184,92 +205,38 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 	if (retn)
 		goto done;
 
-	if (ep->event == TSEM_MMAP_FILE) {
-		p = (u8 *) &mm_args->reqprot;
-		size = sizeof(mm_args->reqprot);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &mm_args->prot;
-		size = sizeof(mm_args->prot);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &mm_args->flags;
-		size = sizeof(mm_args->flags);
-		if (!mm_args->file) {
-			retn = crypto_shash_finup(shash, p, size, mapping);
-			goto done;
-		}
-
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-	}
-
 	switch (ep->event) {
 	case TSEM_FILE_OPEN:
-	case TSEM_MMAP_FILE:
 	case TSEM_BPRM_COMMITTING_CREDS:
-		p = (u8 *) &ep->file.flags;
-		size = sizeof(ep->file.flags);
-		retn = crypto_shash_update(shash, p, size);
+		retn = add_file(shash, &ep->CELL.file);
 		if (retn)
 			goto done;
 
-		p = (u8 *) &ep->file.uid;
-		size = sizeof(ep->file.uid);
-		retn = crypto_shash_update(shash, p, size);
+		retn = crypto_shash_final(shash, mapping);
+		if (retn)
+			goto done;
+		break;
+
+	case TSEM_MMAP_FILE:
+		retn = add_u32(shash, ep->CELL.mmap_file.reqprot);
 		if (retn)
 			goto done;
 
-		p = (u8 *) &ep->file.gid;
-		size = sizeof(ep->file.gid);
-		retn = crypto_shash_update(shash, p, size);
+		retn = add_u32(shash, ep->CELL.mmap_file.prot);
 		if (retn)
 			goto done;
 
-		p = (u8 *) &ep->file.mode;
-		size = sizeof(ep->file.mode);
-		retn = crypto_shash_update(shash, p, size);
+		retn = add_u32(shash, ep->CELL.mmap_file.flags);
 		if (retn)
 			goto done;
 
-		p = (u8 *) &ep->file.name_length;
-		size = sizeof(ep->file.name_length);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
+		if (!ep->CELL.mmap_file.anonymous) {
+			retn = add_file(shash, &ep->CELL.mmap_file.file);
+			if (retn)
+				goto done;
+		}
 
-		p = (u8 *) &ep->file.name;
-		size = tsem_digestsize();
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &ep->file.s_magic;
-		size = sizeof(ep->file.s_magic);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &ep->file.s_id;
-		size = sizeof(ep->file.s_id);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &ep->file.s_uuid;
-		size = sizeof(ep->file.s_uuid);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &ep->file.digest;
-		size = tsem_digestsize();
-		retn = crypto_shash_finup(shash, p, size, mapping);
+		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_SOCKET_CREATE:
@@ -630,9 +597,11 @@ int tsem_map_task(struct file *file, u8 *task_id)
 	int retn = 0;
 	u8 null_taskid[HASH_MAX_DIGESTSIZE];
 	struct tsem_event *ep;
+	struct tsem_file_args args;
 	struct tsem_event_parameters params;
 
-	params.u.file = file;
+	args.in.file = file;
+	params.u.file_arg = &args;
 	ep = tsem_event_init(TSEM_BPRM_COMMITTING_CREDS, &params, false);
 	if (IS_ERR(ep)) {
 		retn = PTR_ERR(ep);

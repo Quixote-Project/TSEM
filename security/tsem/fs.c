@@ -362,28 +362,27 @@ static void show_inode(struct seq_file *c, char *term,
 	tsem_fs_show_key(c, ",", "mode", "0%o", inode->mode);
 	tsem_fs_show_key(c, ",", "s_magic", "0x%0x", inode->s_magic);
 	tsem_fs_show_key(c, ",", "s_id", "%s", inode->s_id);
-	tsem_fs_show_key(c, term, "s_uuid", "%*phN", sizeof(inode->s_uuid),
+	tsem_fs_show_key(c, "}", "s_uuid", "%*phN", sizeof(inode->s_uuid),
 			 inode->s_uuid);
+	seq_puts(c, term);
 }
 
-static void show_file(struct seq_file *c, struct tsem_event *ep)
+static void show_file(struct seq_file *c, struct tsem_file_args *args)
 {
-	if (ep->event == TSEM_FILE_OPEN)
-		tsem_fs_show_field(c, "file_open");
-	else
-		tsem_fs_show_field(c, "file");
-
-	tsem_fs_show_key(c, ",", "flags", "%u", ep->file.flags);
-	tsem_fs_show_key(c, ",", "uid", "%u", ep->file.uid);
-	tsem_fs_show_key(c, ",", "gid", "%u", ep->file.gid);
-	tsem_fs_show_key(c, ",", "mode", "0%o", ep->file.mode);
-	tsem_fs_show_key(c, ",", "path", "%s", ep->pathname);
-	tsem_fs_show_key(c, ",", "s_magic", "0x%0x", ep->file.s_magic);
-	tsem_fs_show_key(c, ",", "s_id", "%s", ep->file.s_id);
-	tsem_fs_show_key(c, ",", "s_uuid", "%*phN", sizeof(ep->file.s_uuid),
-		 ep->file.s_uuid);
+	tsem_fs_show_field(c, "file");
+	tsem_fs_show_key(c, ",", "flags", "%u", args->out.flags);
+	show_inode(c, ", ", &args->out.inode);
+	show_path(c, "path", &args->out.path);
+	seq_puts(c, ", ");
 	tsem_fs_show_key(c, "}", "digest", "%*phN", tsem_digestsize(),
-			 ep->file.digest);
+			 args->out.digest);
+}
+
+static void show_file_open(struct seq_file *c, struct tsem_event *ep)
+{
+	show_event(c, ep);
+	show_file(c, &ep->CELL.file);
+	seq_putc(c, '}');
 }
 
 static void show_mmap(struct seq_file *c, struct tsem_event *ep)
@@ -392,13 +391,12 @@ static void show_mmap(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "type", "%u", args->file == NULL);
+	tsem_fs_show_key(c, ",", "type", "%u", args->anonymous);
 	tsem_fs_show_key(c, ",", "reqprot", "%u", args->reqprot);
 	tsem_fs_show_key(c, ",", "prot", "%u", args->prot);
 
-	if (args->file) {
-		tsem_fs_show_key(c, ",", "flags", "%u", args->flags);
-		show_file(c, ep);
+	if (!args->anonymous) {
+		show_file(c, &args->file);
 		seq_putc(c, '}');
 	} else
 		tsem_fs_show_key(c, "}", "flags", "%u", args->flags);
@@ -499,7 +497,7 @@ static void show_inode_getattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
-	show_inode(c, "}}", &args->out.inode);
+	show_inode(c, "}", &args->out.inode);
 }
 
 static void show_inode_setattr(struct seq_file *c, struct tsem_event *ep)
@@ -510,7 +508,7 @@ static void show_inode_setattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
-	show_inode(c, "}, ", &args->out.inode);
+	show_inode(c, ", ", &args->out.inode);
 
 	tsem_fs_show_key(c, ",", "valid", "%u", args->out.valid);
 	tsem_fs_show_key(c, ",", "mode", "0%o", args->out.mode);
@@ -527,7 +525,7 @@ static void show_inode_setxattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
-	show_inode(c, "}, ", &args->out.inode);
+	show_inode(c, ", ", &args->out.inode);
 
 	tsem_fs_show_key(c, ",", "name", "%s", args->out.name);
 	tsem_fs_show_key(c, ",", "value", "%s", args->out.encoded_value);
@@ -542,7 +540,7 @@ static void show_inode_getxattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
-	show_inode(c, "}, ", &args->out.inode);
+	show_inode(c, ", ", &args->out.inode);
 
 	tsem_fs_show_key(c, "}", "name", "%s", args->out.name);
 }
@@ -555,7 +553,7 @@ static void show_inode_listxattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
-	show_inode(c, "}}", &args->out.inode);
+	show_inode(c, "}", &args->out.inode);
 }
 
 static void show_sb_pivotroot(struct seq_file *c, struct tsem_event *ep)
@@ -1245,8 +1243,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 
 	switch (ep->event) {
 	case TSEM_FILE_OPEN:
-		show_event(c, ep);
-		show_file(c, ep);
+		show_file_open(c, ep);
 		break;
 	case TSEM_MMAP_FILE:
 		show_mmap(c, ep);

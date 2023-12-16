@@ -960,43 +960,33 @@ struct tsem_path {
 };
 
 /**
- * struct tsem_COE - TSEM file description.
- * @uid: The numeric user identity of the file.
- * @gid: The numeric group identity of the file.
- * @mode: The discretionary access mode for the file.
- * @flags: The file control flags.
- * @name_length: The length of the pathname of the file.
- * @name: The digest value of the pathname of the file using the
- *	  hash function defined for the security modeling namespace.
- * @s_magic: The magic number of the filesystem that the file resides
- *	     in.
- * @s_id: The name of the block device supporting the filesystem.
- * @s_uuid: The uuid of the filesystem that the file resides in.
- * @digest: The digest value of the contents of the file using the
- *	    hash function defined for the security modeling namespace.
+ * struct tsem_file_args - TSEM file argument description.
+ * @in.file: A structure to the file that will be modeled.
+ * @out.path: A description of the pathname of the file.
+ * @out.inode: A description of the inode that represents the file.
+ * @out.flags: The flags value from the file structure.
+ * @out.digest: The cryptographic checksum of the contents of the file.
  *
- * The tsem_file structure is used to encapsulate the characteristics
- * of a file that is used as an entity in the CELL definition of an
- * event.
- *
- * Since a pathname can be up to PATH_MAX (4096 bytes) in length the
- * cryptographic digest value is used rather than the pathname of the
- * file itself.
+ * The tsem_file_args structure is used to carry the input file
+ * description for security hooks that manipulate a file.  The
+ * retained security event description arguments are in the out
+ * structure.
  */
-struct tsem_file {
-	uid_t uid;
-	gid_t gid;
-	umode_t mode;
-	u32 flags;
+struct tsem_file_args {
+	union {
+		struct {
+			struct file *file;
 
-	u32 name_length;
-	u8 name[HASH_MAX_DIGESTSIZE];
+		} in;
 
-	u32 s_magic;
-	u8 s_id[32];
-	u8 s_uuid[16];
+		struct {
+			struct tsem_path path;
+			struct tsem_inode_cell inode;
+			unsigned int flags;
+			u8 digest[HASH_MAX_DIGESTSIZE];
+		} out;
 
-	u8 digest[HASH_MAX_DIGESTSIZE];
+	};
 };
 
 /**
@@ -1015,7 +1005,7 @@ struct tsem_file {
  * tsem_mmap_file security event handler.
  */
 struct tsem_mmap_file_args {
-	struct file *file;
+	struct tsem_file_args file;
 	u32 anonymous;
 	u32 reqprot;
 	u32 prot;
@@ -1310,6 +1300,8 @@ struct tsem_sb_pivotroot_args {
  *	       have no characterizing parameters.
  * @CELL: The CELL union is used to hold the data structures that
  *	  characterize the CELL identity of the event.
+ * @CELL.file_args: The structure descriving the charactertics of a
+ *		    security event having a struct file argument.
  * @CELL.mmap_file: The structure describing the characteristics of
  *		    a mmap_file security event.
  * @CELL.socket_create: The structure describing the characteristics
@@ -1401,10 +1393,10 @@ struct tsem_event {
 	u8 mapping[HASH_MAX_DIGESTSIZE];
 
 	struct tsem_COE COE;
-	struct tsem_file file;
 
 	bool no_params;
 	union {
+		struct tsem_file_args file;
 		struct tsem_mmap_file_args mmap_file;
 		struct tsem_socket_create_args socket_create;
 		struct tsem_socket_connect_args socket_connect;
@@ -1460,6 +1452,7 @@ struct tsem_event_parameters {
 	union {
 		struct file *file;
 		const struct path *path;
+		struct tsem_file_args *file_arg;
 		struct tsem_mmap_file_args *mmap_file;
 		struct tsem_socket_create_args *socket_create;
 		struct tsem_socket_connect_args *socket_connect;
@@ -1631,8 +1624,7 @@ extern void tsem_model_free(struct tsem_context *ctx);
 extern int tsem_model_event(struct tsem_event *ep);
 extern int tsem_model_load_point(u8 *point);
 extern int tsem_model_load_pseudonym(u8 *mapping);
-extern int tsem_model_has_pseudonym(struct tsem_inode *tsip,
-				    struct tsem_file *ep);
+extern int tsem_model_has_pseudonym(struct tsem_inode *tsip, char *);
 extern void tsem_model_load_base(u8 *mapping);
 extern int tsem_model_add_aggregate(void);
 extern void tsem_model_compute_state(void);

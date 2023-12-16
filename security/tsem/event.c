@@ -204,24 +204,6 @@ static int fill_path_dentry(struct dentry *dentry, struct tsem_path *path)
 	return retn;
 }
 
-static int add_file_name(struct tsem_event *ep)
-{
-	int retn;
-	SHASH_DESC_ON_STACK(shash, tfm);
-
-	shash->tfm = tsem_digest();
-	retn = crypto_shash_init(shash);
-	if (retn)
-		goto done;
-
-	ep->file.name_length = strlen(ep->pathname);
-	retn = crypto_shash_finup(shash, ep->pathname, ep->file.name_length,
-				  ep->file.name);
-
- done:
-	return retn;
-}
-
 static struct tsem_inode_digest *find_digest(struct tsem_inode *tsip)
 {
 	struct tsem_inode_digest *digest;
@@ -335,7 +317,7 @@ static int get_file_digest(struct file *file, struct inode *inode,
 	return retn;
 }
 
-static int add_file_digest(struct file *file, struct tsem_file *tfp)
+static int add_file_digest(struct file *file, struct tsem_file_args *args)
 {
 	int retn = 0;
 	u8 measurement[HASH_MAX_DIGESTSIZE];
@@ -350,11 +332,11 @@ static int add_file_digest(struct file *file, struct tsem_file *tfp)
 
 	mutex_lock(&tsip->mutex);
 	if (!ctx->external) {
-		retn = tsem_model_has_pseudonym(tsip, tfp);
+		retn = tsem_model_has_pseudonym(tsip, args->out.path.pathname);
 		if (retn < 0)
 			goto done;
 		if (retn) {
-			memcpy(tfp->digest, ctx->zero_digest,
+			memcpy(args->out.digest, ctx->zero_digest,
 			       tsem_digestsize());
 			retn = 0;
 			goto done;
@@ -363,7 +345,7 @@ static int add_file_digest(struct file *file, struct tsem_file *tfp)
 
 	size = i_size_read(inode);
 	if (!size) {
-		memcpy(tfp->digest, ctx->zero_digest, tsem_digestsize());
+		memcpy(args->out.digest, ctx->zero_digest, tsem_digestsize());
 		goto done;
 	}
 
@@ -371,7 +353,7 @@ static int add_file_digest(struct file *file, struct tsem_file *tfp)
 
 	if (digest && inode_eq_iversion(inode, digest->version) &&
 	    tsip->status == TSEM_INODE_COLLECTED) {
-		memcpy(tfp->digest, digest->value, tsem_digestsize());
+		memcpy(args->out.digest, digest->value, tsem_digestsize());
 		goto done;
 	}
 
@@ -390,7 +372,7 @@ static int add_file_digest(struct file *file, struct tsem_file *tfp)
 		}
 	}
 
-	memcpy(tfp->digest, measurement, tsem_digestsize());
+	memcpy(args->out.digest, measurement, tsem_digestsize());
 	memcpy(digest->value, measurement, tsem_digestsize());
 	digest->version = inode_query_iversion(inode);
 	tsip->status = TSEM_INODE_COLLECTED;
@@ -398,24 +380,6 @@ static int add_file_digest(struct file *file, struct tsem_file *tfp)
  done:
 	mutex_unlock(&tsip->mutex);
 	return retn;
-}
-
-static void get_inode_cell(struct inode *inode, struct tsem_event *ep)
-{
-	struct user_namespace *ns;
-
-	if (tsem_context(current)->use_current_ns)
-		ns = current_user_ns();
-	else
-		ns = &init_user_ns;
-
-	ep->file.uid = from_kuid(ns, inode->i_uid);
-	ep->file.gid = from_kgid(ns, inode->i_gid);
-	ep->file.mode = inode->i_mode;
-	ep->file.s_magic = inode->i_sb->s_magic;
-	memcpy(ep->file.s_id, inode->i_sb->s_id, sizeof(ep->file.s_id));
-	memcpy(ep->file.s_uuid, inode->i_sb->s_uuid.b,
-	       sizeof(ep->file.s_uuid));
 }
 
 static void fill_inode(struct inode *inode, struct tsem_inode_cell *ip)
@@ -435,29 +399,24 @@ static void fill_inode(struct inode *inode, struct tsem_inode_cell *ip)
 	memcpy(ip->s_uuid, inode->i_sb->s_uuid.b, sizeof(ip->s_uuid));
 }
 
-static int get_file_cell(struct file *file, struct tsem_event *ep)
+static int get_file_cell(struct tsem_file_args *args, struct tsem_event *ep)
 {
 	int retn = 1;
+	struct file *file = args->in.file;
 	struct inode *inode = file_inode(file);
 
 	inode_lock(inode);
 
-	ep->pathname = get_path(&file->f_path);
-	if (IS_ERR(ep->pathname)) {
-		retn = PTR_ERR(ep->pathname);
-		goto done;
-	}
-
-	retn = add_file_name(ep);
+	retn = fill_path(&file->f_path, &ep->CELL.file.out.path);
 	if (retn)
 		goto done;
 
-	retn = add_file_digest(file, &ep->file);
-	if (retn)
-		goto done;
+	ep->CELL.file.out.flags = file->f_flags;
+	fill_inode(inode, &ep->CELL.file.out.inode);
 
-	get_inode_cell(inode, ep);
-	retn = 0;
+	retn = add_file_digest(file, &ep->CELL.file);
+	if (retn)
+		kfree(ep->CELL.file.out.path.pathname);
 
  done:
 	inode_unlock(inode);
@@ -730,12 +689,13 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 	switch (event) {
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
-		retn = get_file_cell(params->u.file, ep);
+		ep->CELL.file = *params->u.file_arg;
+		retn = get_file_cell(params->u.file_arg, ep);
 		break;
 	case TSEM_MMAP_FILE:
 		ep->CELL.mmap_file = *params->u.mmap_file;
 		if (!ep->CELL.mmap_file.anonymous)
-			retn = get_file_cell(ep->CELL.mmap_file.file, ep);
+			retn = get_file_cell(&params->u.mmap_file->file, ep);
 		break;
 	case TSEM_SOCKET_CREATE:
 		ep->CELL.socket_create = *params->u.socket_create;
