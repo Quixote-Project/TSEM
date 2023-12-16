@@ -1380,10 +1380,10 @@ struct tsem_event {
 
 	enum tsem_event_type event;
 	bool locked;
-	pid_t pid;
 	u64 instance;
 	u64 p_instance;
 	u64 timestamp;
+	pid_t pid;
 	char comm[TASK_COMM_LEN];
 
 	unsigned int digestsize;
