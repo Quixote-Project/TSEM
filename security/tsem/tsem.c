@@ -267,7 +267,7 @@ static int trapped_inode(enum tsem_event_type event, struct inode *inode,
 	return trapped_task(event, msg, locked);
 }
 
-static int model_event(struct tsem_event *ep)
+static int dispatch_event(struct tsem_event *ep)
 {
 	int retn;
 	struct tsem_context *ctx = tsem_context(current);
@@ -287,7 +287,7 @@ static int model_event(struct tsem_event *ep)
 	return retn;
 }
 
-static int model_generic_event(enum tsem_event_type event, bool locked)
+static int dispatch_generic_event(enum tsem_event_type event, bool locked)
 {
 	int retn;
 	struct tsem_event *ep;
@@ -302,7 +302,7 @@ static int model_generic_event(enum tsem_event_type event, bool locked)
 	if (IS_ERR(ep))
 		return PTR_ERR(ep);
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 
 	tsem_event_put(ep);
 	return retn;
@@ -341,7 +341,7 @@ static int tsem_file_open(struct file *file)
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -395,7 +395,7 @@ static int tsem_mmap_file(struct file *file, unsigned long reqprot,
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -416,7 +416,7 @@ static int tsem_file_ioctl(struct file *file, unsigned int cmd,
 	if (bypass_filesystem(file_inode(file)))
 		return 0;
 
-	return model_generic_event(TSEM_FILE_IOCTL, NOLOCK);
+	return dispatch_generic_event(TSEM_FILE_IOCTL, NOLOCK);
 }
 
 static int tsem_file_lock(struct file *file, unsigned int cmd)
@@ -429,7 +429,7 @@ static int tsem_file_lock(struct file *file, unsigned int cmd)
 		return trapped_task(TSEM_FILE_LOCK, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_FILE_LOCK, NOLOCK);
+	return dispatch_generic_event(TSEM_FILE_LOCK, NOLOCK);
 }
 
 static int tsem_file_fcntl(struct file *file, unsigned int cmd,
@@ -449,7 +449,7 @@ static int tsem_file_fcntl(struct file *file, unsigned int cmd,
 	if (bypass_filesystem(file_inode(file)))
 		return 0;
 
-	return model_generic_event(TSEM_FILE_FCNTL, NOLOCK);
+	return dispatch_generic_event(TSEM_FILE_FCNTL, NOLOCK);
 }
 
 static int tsem_file_receive(struct file *file)
@@ -462,7 +462,7 @@ static int tsem_file_receive(struct file *file)
 		return trapped_task(TSEM_FILE_RECEIVE, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_FILE_RECEIVE, NOLOCK);
+	return dispatch_generic_event(TSEM_FILE_RECEIVE, NOLOCK);
 }
 
 static int tsem_task_alloc(struct task_struct *new, unsigned long flags)
@@ -536,7 +536,7 @@ static int tsem_task_kill(struct task_struct *target,
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -552,7 +552,7 @@ static int tsem_ptrace_traceme(struct task_struct *parent)
 		return trapped_task(TSEM_PTRACE_TRACEME, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_PTRACE_TRACEME, LOCKED);
+	return dispatch_generic_event(TSEM_PTRACE_TRACEME, LOCKED);
 }
 
 static int tsem_task_setpgid(struct task_struct *p, pid_t pgid)
@@ -568,7 +568,7 @@ static int tsem_task_setpgid(struct task_struct *p, pid_t pgid)
 		return event_action(ctx, TSEM_TASK_SETPGID);
 	}
 
-	return model_generic_event(TSEM_TASK_SETPGID, true);
+	return dispatch_generic_event(TSEM_TASK_SETPGID, true);
 }
 
 static int tsem_task_getpgid(struct task_struct *p)
@@ -580,7 +580,7 @@ static int tsem_task_getpgid(struct task_struct *p)
 		return trapped_task(TSEM_TASK_GETPGID, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_TASK_GETPGID, LOCKED);
+	return dispatch_generic_event(TSEM_TASK_GETPGID, LOCKED);
 }
 
 static int tsem_task_getsid(struct task_struct *p)
@@ -592,7 +592,7 @@ static int tsem_task_getsid(struct task_struct *p)
 		return trapped_task(TSEM_TASK_GETSID, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_TASK_GETSID, LOCKED);
+	return dispatch_generic_event(TSEM_TASK_GETSID, LOCKED);
 }
 
 static int tsem_task_setnice(struct task_struct *p, int nice)
@@ -605,7 +605,7 @@ static int tsem_task_setnice(struct task_struct *p, int nice)
 		return trapped_task(TSEM_TASK_SETNICE, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_TASK_SETNICE, LOCKED);
+	return dispatch_generic_event(TSEM_TASK_SETNICE, LOCKED);
 }
 
 static int tsem_task_setioprio(struct task_struct *p, int ioprio)
@@ -618,7 +618,7 @@ static int tsem_task_setioprio(struct task_struct *p, int ioprio)
 		return trapped_task(TSEM_TASK_SETIOPRIO, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_TASK_SETIOPRIO, NOLOCK);
+	return dispatch_generic_event(TSEM_TASK_SETIOPRIO, NOLOCK);
 }
 
 static int tsem_task_getioprio(struct task_struct *p)
@@ -630,7 +630,7 @@ static int tsem_task_getioprio(struct task_struct *p)
 		return trapped_task(TSEM_TASK_GETIOPRIO, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_TASK_GETIOPRIO, NOLOCK);
+	return dispatch_generic_event(TSEM_TASK_GETIOPRIO, NOLOCK);
 }
 
 static int tsem_task_prlimit(const struct cred *cred, const struct cred *tcred,
@@ -648,7 +648,7 @@ static int tsem_task_prlimit(const struct cred *cred, const struct cred *tcred,
 		return trapped_task(TSEM_TASK_PRLIMIT, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_TASK_PRLIMIT, LOCKED);
+	return dispatch_generic_event(TSEM_TASK_PRLIMIT, LOCKED);
 }
 
 static int tsem_task_setrlimit(struct task_struct *p, unsigned int resource,
@@ -664,7 +664,7 @@ static int tsem_task_setrlimit(struct task_struct *p, unsigned int resource,
 		return trapped_task(TSEM_TASK_SETRLIMIT, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_TASK_SETRLIMIT, LOCKED);
+	return dispatch_generic_event(TSEM_TASK_SETRLIMIT, LOCKED);
 }
 
 static int tsem_task_setscheduler(struct task_struct *p)
@@ -677,7 +677,7 @@ static int tsem_task_setscheduler(struct task_struct *p)
 					   LOCKED);
 	}
 
-	return model_generic_event(TSEM_TASK_SETSCHEDULER, LOCKED);
+	return dispatch_generic_event(TSEM_TASK_SETSCHEDULER, LOCKED);
 }
 
 static int tsem_task_getscheduler(struct task_struct *p)
@@ -690,7 +690,7 @@ static int tsem_task_getscheduler(struct task_struct *p)
 					   LOCKED);
 	}
 
-	return model_generic_event(TSEM_TASK_GETSCHEDULER, LOCKED);
+	return dispatch_generic_event(TSEM_TASK_GETSCHEDULER, LOCKED);
 }
 
 static int tsem_task_prctl(int option, unsigned long arg2, unsigned long arg3,
@@ -703,7 +703,7 @@ static int tsem_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 		return trapped_task(TSEM_TASK_PRCTL, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_TASK_PRCTL, LOCKED);
+	return dispatch_generic_event(TSEM_TASK_PRCTL, LOCKED);
 }
 
 static void tsem_bprm_committing_creds(struct linux_binprm *bprm)
@@ -757,7 +757,7 @@ static int tsem_unix_stream_connect(struct sock *sock, struct sock *other,
 					   LOCKED);
 	}
 
-	return model_generic_event(TSEM_UNIX_STREAM_CONNECT, LOCKED);
+	return dispatch_generic_event(TSEM_UNIX_STREAM_CONNECT, LOCKED);
 }
 
 static int tsem_unix_may_send(struct socket *sock, struct socket *other)
@@ -771,7 +771,7 @@ static int tsem_unix_may_send(struct socket *sock, struct socket *other)
 		return trapped_task(TSEM_UNIX_MAY_SEND, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_UNIX_MAY_SEND, LOCKED);
+	return dispatch_generic_event(TSEM_UNIX_MAY_SEND, LOCKED);
 }
 
 static int tsem_socket_create(int family, int type, int protocol, int kern)
@@ -804,7 +804,7 @@ static int tsem_socket_create(int family, int type, int protocol, int kern)
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -837,7 +837,7 @@ static int tsem_socket_connect(struct socket *sock, struct sockaddr *addr,
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -871,7 +871,7 @@ static int tsem_socket_bind(struct socket *sock, struct sockaddr *addr,
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -912,7 +912,7 @@ static int tsem_socket_accept(struct socket *sock, struct socket *newsock)
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -931,7 +931,7 @@ static int tsem_socket_listen(struct socket *sock, int backlog)
 		return trapped_task(TSEM_SOCKET_LISTEN, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SOCKET_LISTEN, NOLOCK);
+	return dispatch_generic_event(TSEM_SOCKET_LISTEN, NOLOCK);
 }
 
 static int tsem_socket_socketpair(struct socket *socka, struct socket *sockb)
@@ -946,7 +946,7 @@ static int tsem_socket_socketpair(struct socket *socka, struct socket *sockb)
 					   NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SOCKET_SOCKETPAIR, NOLOCK);
+	return dispatch_generic_event(TSEM_SOCKET_SOCKETPAIR, NOLOCK);
 }
 
 static int tsem_socket_sendmsg(struct socket *sock, struct msghdr *msgmsg,
@@ -961,7 +961,7 @@ static int tsem_socket_sendmsg(struct socket *sock, struct msghdr *msgmsg,
 		return trapped_task(TSEM_SOCKET_SENDMSG, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SOCKET_SENDMSG, NOLOCK);
+	return dispatch_generic_event(TSEM_SOCKET_SENDMSG, NOLOCK);
 }
 
 static int tsem_socket_recvmsg(struct socket *sock, struct msghdr *msgmsg,
@@ -976,7 +976,7 @@ static int tsem_socket_recvmsg(struct socket *sock, struct msghdr *msgmsg,
 		return trapped_task(TSEM_SOCKET_RECVMSG, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SOCKET_RECVMSG, NOLOCK);
+	return dispatch_generic_event(TSEM_SOCKET_RECVMSG, NOLOCK);
 }
 
 static int tsem_socket_getsockname(struct socket *sock)
@@ -990,7 +990,7 @@ static int tsem_socket_getsockname(struct socket *sock)
 					   NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SOCKET_GETSOCKNAME, NOLOCK);
+	return dispatch_generic_event(TSEM_SOCKET_GETSOCKNAME, NOLOCK);
 }
 
 static int tsem_socket_getpeername(struct socket *sock)
@@ -1004,7 +1004,7 @@ static int tsem_socket_getpeername(struct socket *sock)
 					   NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SOCKET_GETPEERNAME, NOLOCK);
+	return dispatch_generic_event(TSEM_SOCKET_GETPEERNAME, NOLOCK);
 }
 
 static int tsem_socket_setsockopt(struct socket *sock, int level, int optname)
@@ -1019,7 +1019,7 @@ static int tsem_socket_setsockopt(struct socket *sock, int level, int optname)
 					   NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SOCKET_SETSOCKOPT, NOLOCK);
+	return dispatch_generic_event(TSEM_SOCKET_SETSOCKOPT, NOLOCK);
 }
 
 static int tsem_socket_shutdown(struct socket *sock, int how)
@@ -1033,7 +1033,7 @@ static int tsem_socket_shutdown(struct socket *sock, int how)
 		return trapped_task(TSEM_SOCKET_SHUTDOWN, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SOCKET_SHUTDOWN, NOLOCK);
+	return dispatch_generic_event(TSEM_SOCKET_SHUTDOWN, NOLOCK);
 }
 
 static int tsem_kernel_module_request(char *kmod_name)
@@ -1049,7 +1049,7 @@ static int tsem_kernel_module_request(char *kmod_name)
 					   NOLOCK);
 	}
 
-	return model_generic_event(TSEM_KERNEL_MODULE_REQUEST, NOLOCK);
+	return dispatch_generic_event(TSEM_KERNEL_MODULE_REQUEST, NOLOCK);
 }
 
 static int tsem_kernel_load_data(enum kernel_load_data_id id, bool contents)
@@ -1062,7 +1062,7 @@ static int tsem_kernel_load_data(enum kernel_load_data_id id, bool contents)
 		return trapped_task(TSEM_KERNEL_LOAD_DATA, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_KERNEL_LOAD_DATA, NOLOCK);
+	return dispatch_generic_event(TSEM_KERNEL_LOAD_DATA, NOLOCK);
 }
 
 static int tsem_kernel_read_file(struct file *file,
@@ -1078,7 +1078,7 @@ static int tsem_kernel_read_file(struct file *file,
 		return trapped_task(TSEM_KERNEL_READ_FILE, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_KERNEL_READ_FILE, NOLOCK);
+	return dispatch_generic_event(TSEM_KERNEL_READ_FILE, NOLOCK);
 }
 
 static int tsem_sb_mount(const char *dev_name, const struct path *path,
@@ -1095,7 +1095,7 @@ static int tsem_sb_mount(const char *dev_name, const struct path *path,
 		return trapped_task(TSEM_SB_MOUNT, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SB_MOUNT, NOLOCK);
+	return dispatch_generic_event(TSEM_SB_MOUNT, NOLOCK);
 }
 
 static	int tsem_sb_umount(struct vfsmount *mnt, int flags)
@@ -1108,7 +1108,7 @@ static	int tsem_sb_umount(struct vfsmount *mnt, int flags)
 		return trapped_task(TSEM_SB_UMOUNT, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SB_UMOUNT, NOLOCK);
+	return dispatch_generic_event(TSEM_SB_UMOUNT, NOLOCK);
 }
 
 static int tsem_sb_remount(struct super_block *sb, void *mnt_opts)
@@ -1124,7 +1124,7 @@ static int tsem_sb_remount(struct super_block *sb, void *mnt_opts)
 		return trapped_task(TSEM_SB_REMOUNT, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SB_REMOUNT, NOLOCK);
+	return dispatch_generic_event(TSEM_SB_REMOUNT, NOLOCK);
 }
 
 static int tsem_sb_pivotroot(const struct path *old_path,
@@ -1153,7 +1153,7 @@ static int tsem_sb_pivotroot(const struct path *old_path,
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -1169,7 +1169,7 @@ static int tsem_sb_statfs(struct dentry *dentry)
 		return trapped_task(TSEM_SB_STATFS, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SB_STATFS, NOLOCK);
+	return dispatch_generic_event(TSEM_SB_STATFS, NOLOCK);
 }
 
 static int tsem_move_mount(const struct path *from_path,
@@ -1184,7 +1184,7 @@ static int tsem_move_mount(const struct path *from_path,
 		return trapped_task(TSEM_MOVE_MOUNT, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_MOVE_MOUNT, NOLOCK);
+	return dispatch_generic_event(TSEM_MOVE_MOUNT, NOLOCK);
 }
 
 static int tsem_shm_associate(struct kern_ipc_perm *perm, int shmflg)
@@ -1197,7 +1197,7 @@ static int tsem_shm_associate(struct kern_ipc_perm *perm, int shmflg)
 		return trapped_task(TSEM_SHM_ASSOCIATE, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_SHM_ASSOCIATE, LOCKED);
+	return dispatch_generic_event(TSEM_SHM_ASSOCIATE, LOCKED);
 }
 
 static int tsem_shm_shmctl(struct kern_ipc_perm *perm, int cmd)
@@ -1210,7 +1210,7 @@ static int tsem_shm_shmctl(struct kern_ipc_perm *perm, int cmd)
 		return trapped_task(TSEM_SHM_SHMCTL, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_SHM_SHMCTL, LOCKED);
+	return dispatch_generic_event(TSEM_SHM_SHMCTL, LOCKED);
 }
 
 static int tsem_shm_shmat(struct kern_ipc_perm *perm, char __user *shmaddr,
@@ -1224,7 +1224,7 @@ static int tsem_shm_shmat(struct kern_ipc_perm *perm, char __user *shmaddr,
 		return trapped_task(TSEM_SHM_SHMAT, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_SHM_SHMAT, LOCKED);
+	return dispatch_generic_event(TSEM_SHM_SHMAT, LOCKED);
 }
 
 static int tsem_sem_associate(struct kern_ipc_perm *perm, int semflg)
@@ -1237,7 +1237,7 @@ static int tsem_sem_associate(struct kern_ipc_perm *perm, int semflg)
 		return trapped_task(TSEM_SEM_ASSOCIATE, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_SEM_ASSOCIATE, LOCKED);
+	return dispatch_generic_event(TSEM_SEM_ASSOCIATE, LOCKED);
 }
 
 static int tsem_sem_semctl(struct kern_ipc_perm *perm, int cmd)
@@ -1250,7 +1250,7 @@ static int tsem_sem_semctl(struct kern_ipc_perm *perm, int cmd)
 		return trapped_task(TSEM_SEM_SEMCTL, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_SEM_SEMCTL, LOCKED);
+	return dispatch_generic_event(TSEM_SEM_SEMCTL, LOCKED);
 }
 
 static int tsem_sem_semop(struct kern_ipc_perm *perm, struct sembuf *sops,
@@ -1265,7 +1265,7 @@ static int tsem_sem_semop(struct kern_ipc_perm *perm, struct sembuf *sops,
 		return trapped_task(TSEM_SEM_SEMOP, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_SEM_SEMOP, LOCKED);
+	return dispatch_generic_event(TSEM_SEM_SEMOP, LOCKED);
 }
 
 static int tsem_syslog(int type)
@@ -1277,7 +1277,7 @@ static int tsem_syslog(int type)
 		return trapped_task(TSEM_SYSLOG, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SYSLOG, NOLOCK);
+	return dispatch_generic_event(TSEM_SYSLOG, NOLOCK);
 }
 
 static int tsem_settime(const struct timespec64 *ts, const struct timezone *tz)
@@ -1292,7 +1292,7 @@ static int tsem_settime(const struct timespec64 *ts, const struct timezone *tz)
 		return trapped_task(TSEM_SETTIME, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_SETTIME, NOLOCK);
+	return dispatch_generic_event(TSEM_SETTIME, NOLOCK);
 }
 
 static int tsem_quotactl(int cmds, int type, int id, struct super_block *sb)
@@ -1306,7 +1306,7 @@ static int tsem_quotactl(int cmds, int type, int id, struct super_block *sb)
 		return trapped_task(TSEM_QUOTACTL, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_QUOTACTL, NOLOCK);
+	return dispatch_generic_event(TSEM_QUOTACTL, NOLOCK);
 }
 
 static int tsem_quota_on(struct dentry *dentry)
@@ -1318,7 +1318,7 @@ static int tsem_quota_on(struct dentry *dentry)
 		return trapped_task(TSEM_QUOTA_ON, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_QUOTA_ON, NOLOCK);
+	return dispatch_generic_event(TSEM_QUOTA_ON, NOLOCK);
 }
 
 static int tsem_msg_queue_associate(struct kern_ipc_perm *perm, int msqflg)
@@ -1333,7 +1333,7 @@ static int tsem_msg_queue_associate(struct kern_ipc_perm *perm, int msqflg)
 					   LOCKED);
 	}
 
-	return model_generic_event(TSEM_MSG_QUEUE_ASSOCIATE, LOCKED);
+	return dispatch_generic_event(TSEM_MSG_QUEUE_ASSOCIATE, LOCKED);
 }
 
 static int tsem_msg_queue_msgsnd(struct kern_ipc_perm *perm,
@@ -1349,7 +1349,7 @@ static int tsem_msg_queue_msgsnd(struct kern_ipc_perm *perm,
 		return trapped_task(TSEM_MSG_QUEUE_MSGSND, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_MSG_QUEUE_MSGSND, LOCKED);
+	return dispatch_generic_event(TSEM_MSG_QUEUE_MSGSND, LOCKED);
 }
 
 static int tsem_msg_queue_msgctl(struct kern_ipc_perm *perm, int cmd)
@@ -1363,7 +1363,7 @@ static int tsem_msg_queue_msgctl(struct kern_ipc_perm *perm, int cmd)
 		return trapped_task(TSEM_MSG_QUEUE_MSGCTL, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_MSG_QUEUE_MSGCTL, LOCKED);
+	return dispatch_generic_event(TSEM_MSG_QUEUE_MSGCTL, LOCKED);
 }
 
 static int tsem_msg_queue_msgrcv(struct kern_ipc_perm *perm,
@@ -1380,7 +1380,7 @@ static int tsem_msg_queue_msgrcv(struct kern_ipc_perm *perm,
 		return trapped_task(TSEM_MSG_QUEUE_MSGRCV, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_MSG_QUEUE_MSGRCV, LOCKED);
+	return dispatch_generic_event(TSEM_MSG_QUEUE_MSGRCV, LOCKED);
 }
 
 static int tsem_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
@@ -1396,7 +1396,7 @@ static int tsem_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 		return trapped_task(TSEM_IPC_PERMISSION, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_IPC_PERMISSION, LOCKED);
+	return dispatch_generic_event(TSEM_IPC_PERMISSION, LOCKED);
 }
 
 #ifdef CONFIG_KEYS
@@ -1418,7 +1418,7 @@ static int tsem_key_alloc(struct key *key, const struct cred *cred,
 		return trapped_task(TSEM_KEY_ALLOC, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_KEY_ALLOC, NOLOCK);
+	return dispatch_generic_event(TSEM_KEY_ALLOC, NOLOCK);
 }
 
 static int tsem_key_permission(key_ref_t key_ref, const struct cred *cred,
@@ -1439,7 +1439,7 @@ static int tsem_key_permission(key_ref_t key_ref, const struct cred *cred,
 		return trapped_task(TSEM_KEY_PERMISSION, msg, LOCKED);
 	}
 
-	return model_generic_event(TSEM_KEY_PERMISSION, LOCKED);
+	return dispatch_generic_event(TSEM_KEY_PERMISSION, LOCKED);
 }
 #endif
 
@@ -1457,7 +1457,7 @@ static int tsem_netlink_send(struct sock *sk, struct sk_buff *skb)
 		return trapped_task(TSEM_NETLINK_SEND, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_NETLINK_SEND, NOLOCK);
+	return dispatch_generic_event(TSEM_NETLINK_SEND, NOLOCK);
 }
 
 static int tsem_inode_create(struct inode *dir,
@@ -1476,7 +1476,7 @@ static int tsem_inode_create(struct inode *dir,
 
 	if (bypass_filesystem(dir))
 		return 0;
-	return model_generic_event(TSEM_INODE_CREATE, NOLOCK);
+	return dispatch_generic_event(TSEM_INODE_CREATE, NOLOCK);
 }
 
 static int tsem_inode_link(struct dentry *old_dentry, struct inode *dir,
@@ -1495,7 +1495,7 @@ static int tsem_inode_link(struct dentry *old_dentry, struct inode *dir,
 
 	if (bypass_filesystem(dir))
 		return 0;
-	return model_generic_event(TSEM_INODE_LINK, NOLOCK);
+	return dispatch_generic_event(TSEM_INODE_LINK, NOLOCK);
 }
 
 static int tsem_inode_unlink(struct inode *dir, struct dentry *dentry)
@@ -1509,7 +1509,7 @@ static int tsem_inode_unlink(struct inode *dir, struct dentry *dentry)
 
 	if (bypass_filesystem(dir))
 		return 0;
-	return model_generic_event(TSEM_INODE_UNLINK, NOLOCK);
+	return dispatch_generic_event(TSEM_INODE_UNLINK, NOLOCK);
 }
 
 static int tsem_inode_symlink(struct inode *dir, struct dentry *dentry,
@@ -1527,7 +1527,7 @@ static int tsem_inode_symlink(struct inode *dir, struct dentry *dentry,
 
 	if (bypass_filesystem(dir))
 		return 0;
-	return model_generic_event(TSEM_INODE_SYMLINK, NOLOCK);
+	return dispatch_generic_event(TSEM_INODE_SYMLINK, NOLOCK);
 }
 
 static int tsem_inode_mkdir(struct inode *dir, struct dentry *dentry,
@@ -1546,7 +1546,7 @@ static int tsem_inode_mkdir(struct inode *dir, struct dentry *dentry,
 
 	if (bypass_filesystem(dir))
 		return 0;
-	return model_generic_event(TSEM_INODE_MKDIR, NOLOCK);
+	return dispatch_generic_event(TSEM_INODE_MKDIR, NOLOCK);
 }
 
 static int tsem_inode_rmdir(struct inode *dir, struct dentry *dentry)
@@ -1560,7 +1560,7 @@ static int tsem_inode_rmdir(struct inode *dir, struct dentry *dentry)
 
 	if (bypass_filesystem(dir))
 		return 0;
-	return model_generic_event(TSEM_INODE_RMDIR, NOLOCK);
+	return dispatch_generic_event(TSEM_INODE_RMDIR, NOLOCK);
 }
 
 static int tsem_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
@@ -1576,7 +1576,7 @@ static int tsem_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
 
 	if (bypass_filesystem(old_dir))
 		return 0;
-	return model_generic_event(TSEM_INODE_RENAME, NOLOCK);
+	return dispatch_generic_event(TSEM_INODE_RENAME, NOLOCK);
 }
 
 static int tsem_inode_mknod(struct inode *dir, struct dentry *dentry,
@@ -1593,7 +1593,7 @@ static int tsem_inode_mknod(struct inode *dir, struct dentry *dentry,
 		return trapped_task(TSEM_INODE_MKNOD, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_INODE_MKNOD, NOLOCK);
+	return dispatch_generic_event(TSEM_INODE_MKNOD, NOLOCK);
 }
 
 static int tsem_inode_setattr(struct dentry *dentry, struct iattr *attr)
@@ -1630,7 +1630,7 @@ static int tsem_inode_setattr(struct dentry *dentry, struct iattr *attr)
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -1665,7 +1665,7 @@ static int tsem_inode_getattr(const struct path *path)
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -1705,7 +1705,7 @@ static int tsem_inode_setxattr(struct mnt_idmap *idmap,
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -1742,7 +1742,7 @@ static int tsem_inode_getxattr(struct dentry *dentry, const char *name)
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -1777,7 +1777,7 @@ static int tsem_inode_listxattr(struct dentry *dentry)
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
@@ -1812,13 +1812,13 @@ static int tsem_inode_removexattr(struct mnt_idmap *idmap,
 		goto done;
 	}
 
-	retn = model_event(ep);
+	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
  done:
 	return retn;
 
-	return model_generic_event(TSEM_INODE_REMOVEXATTR, NOLOCK);
+	return dispatch_generic_event(TSEM_INODE_REMOVEXATTR, NOLOCK);
 }
 
 static int tsem_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry)
@@ -1830,7 +1830,7 @@ static int tsem_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry)
 		return trapped_task(TSEM_INODE_KILLPRIV, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_INODE_KILLPRIV, NOLOCK);
+	return dispatch_generic_event(TSEM_INODE_KILLPRIV, NOLOCK);
 }
 
 static int tsem_tun_dev_create(void)
@@ -1839,7 +1839,7 @@ static int tsem_tun_dev_create(void)
 		return trapped_task(TSEM_TUN_DEV_CREATE, "none",
 					   NOLOCK);
 
-	return model_generic_event(TSEM_TUN_DEV_CREATE, NOLOCK);
+	return dispatch_generic_event(TSEM_TUN_DEV_CREATE, NOLOCK);
 }
 
 static int tsem_tun_dev_attach_queue(void *security)
@@ -1848,7 +1848,7 @@ static int tsem_tun_dev_attach_queue(void *security)
 		return trapped_task(TSEM_TUN_DEV_ATTACH_QUEUE, "none",
 					   NOLOCK);
 
-	return model_generic_event(TSEM_TUN_DEV_ATTACH_QUEUE, NOLOCK);
+	return dispatch_generic_event(TSEM_TUN_DEV_ATTACH_QUEUE, NOLOCK);
 }
 
 static int tsem_tun_dev_attach(struct sock *sk, void *security)
@@ -1860,7 +1860,7 @@ static int tsem_tun_dev_attach(struct sock *sk, void *security)
 		return trapped_task(TSEM_TUN_DEV_ATTACH, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_TUN_DEV_ATTACH, NOLOCK);
+	return dispatch_generic_event(TSEM_TUN_DEV_ATTACH, NOLOCK);
 }
 
 static int tsem_tun_dev_open(void *security)
@@ -1868,7 +1868,7 @@ static int tsem_tun_dev_open(void *security)
 	if (tsem_task_untrusted(current))
 		return trapped_task(TSEM_TUN_DEV_OPEN, "none", NOLOCK);
 
-	return model_generic_event(TSEM_TUN_DEV_OPEN, NOLOCK);
+	return dispatch_generic_event(TSEM_TUN_DEV_OPEN, NOLOCK);
 }
 
 #ifdef CONFIG_BPF_SYSCALL
@@ -1881,7 +1881,7 @@ static int tsem_bpf(int cmd, union bpf_attr *attr, unsigned int size)
 		return trapped_task(TSEM_BPF, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_BPF, NOLOCK);
+	return dispatch_generic_event(TSEM_BPF, NOLOCK);
 }
 
 static int tsem_bpf_map(struct bpf_map *map, fmode_t fmode)
@@ -1894,7 +1894,7 @@ static int tsem_bpf_map(struct bpf_map *map, fmode_t fmode)
 		return trapped_task(TSEM_BPF_MAP, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_BPF_MAP, NOLOCK);
+	return dispatch_generic_event(TSEM_BPF_MAP, NOLOCK);
 }
 
 static int tsem_bpf_prog(struct bpf_prog *prog)
@@ -1906,7 +1906,7 @@ static int tsem_bpf_prog(struct bpf_prog *prog)
 		return trapped_task(TSEM_BPF_PROG, msg, NOLOCK);
 	}
 
-	return model_generic_event(TSEM_BPF_PROG, NOLOCK);
+	return dispatch_generic_event(TSEM_BPF_PROG, NOLOCK);
 }
 #endif
 
