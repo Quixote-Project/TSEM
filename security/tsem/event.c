@@ -399,6 +399,22 @@ static void fill_inode(struct inode *inode, struct tsem_inode_cell *ip)
 	memcpy(ip->s_uuid, inode->i_sb->s_uuid.b, sizeof(ip->s_uuid));
 }
 
+static int get_inode_create(struct tsem_inode_create_args *args)
+{
+	int retn;
+	struct inode *dir = args->in.dir;
+	struct dentry *dentry = args->in.dentry;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	retn = fill_path_dentry(dentry, &args->out.path);
+	if (retn)
+		return retn;
+
+	fill_inode(dir, &args->out.dir);
+	return 0;
+}
+
 static int get_file_cell(struct tsem_file_args *args)
 {
 	int retn = 1;
@@ -668,6 +684,9 @@ int tsem_event_init(struct tsem_event *ep)
 		goto done;
 
 	switch (ep->event) {
+	case TSEM_INODE_CREATE:
+		retn = get_inode_create(&ep->CELL.inode_create);
+		break;
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
 		retn = get_file_cell(&ep->CELL.file);
@@ -718,6 +737,9 @@ int tsem_event_init(struct tsem_event *ep)
 static void free_cell(struct tsem_event *ep)
 {
 	switch (ep->event) {
+	case TSEM_INODE_CREATE:
+		kfree(ep->CELL.inode_create.out.path.pathname);
+		break;
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
 	case TSEM_MMAP_FILE:

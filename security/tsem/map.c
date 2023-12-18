@@ -76,6 +76,11 @@ static int get_COE_mapping(struct tsem_event *ep, u8 *mapping)
 	return retn;
 }
 
+static int add_u16(struct shash_desc *shash, u16 value)
+{
+	return crypto_shash_update(shash, (char *) &value, sizeof(value));
+}
+
 static int add_u32(struct shash_desc *shash, u32 value)
 {
 	return crypto_shash_update(shash, (char *) &value, sizeof(value));
@@ -206,6 +211,22 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		goto done;
 
 	switch (ep->event) {
+	case TSEM_INODE_CREATE:
+		retn = add_inode(shash, &ep->CELL.inode_create.out.dir);
+		if (retn)
+			goto done;
+
+		retn = add_path(shash, &ep->CELL.inode_create.out.path);
+		if (retn)
+			goto done;
+
+		retn = add_u16(shash, ep->CELL.inode_create.mode);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
 		retn = add_file(shash, &ep->CELL.file);

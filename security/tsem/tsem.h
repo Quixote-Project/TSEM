@@ -960,6 +960,36 @@ struct tsem_path {
 };
 
 /**
+ * struct tsem_inode_create_args - Arguments for tsem_inode_create.
+ * @mode: The access mode requested for the inode being created.
+ * @in.dir: The inode of the parent directory for which the inode is being
+ *	    created.
+ * @in.dentry: The description of the inode being created.
+ * @out.inode: The TSEM representation of the parent directory.
+ * @out.dentry: The TSEM representation of the inode represented by
+ *		the input dentry.
+ * @out.path: The path description for the dentry.
+ *
+ * The tsem_inode_create_args structure is used to carry the input
+ * parameters and their retained and translated TSEM equivalents
+ * for the creation of an inode.
+ */
+struct tsem_inode_create_args {
+	umode_t mode;
+	union {
+		struct {
+			struct inode *dir;
+			struct dentry *dentry;
+		} in;
+
+		struct {
+			struct tsem_inode_cell dir;
+			struct tsem_path path;
+		} out;
+	};
+};
+
+/**
  * struct tsem_file_args - TSEM file argument description.
  * @in.file: A structure to the file that will be modeled.
  * @out.path: A description of the pathname of the file.
@@ -1319,6 +1349,9 @@ struct tsem_sb_pivotroot_args {
  *		      the security events that are handling security
  *		      decisions for the manipulation of extended
  *		      attributes.
+ * @CELL.inode_create: The structure describing the input and
+ *		       TSEM translated values of the arguments for
+ *		       the inode_create event.
  *
  * This structure is the primary data structure for describing
  * security events that are registered in a security modeling
@@ -1395,6 +1428,7 @@ struct tsem_event {
 
 	bool no_params;
 	union {
+		struct tsem_inode_create_args inode_create;
 		struct tsem_file_args file;
 		struct tsem_mmap_file_args mmap_file;
 		struct tsem_socket_create_args socket_create;
