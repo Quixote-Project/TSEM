@@ -559,8 +559,8 @@ static int get_event_mapping(int event, u8 *p_task_id, u8 *task_id,
 	return retn;
 }
 
-static int map_event(enum tsem_event_type event, struct tsem_event *ep,
-		     u8 *p_task_id, u8 *task_id, u8 *event_mapping)
+static int map_event(struct tsem_event *ep, u8 *p_task_id, u8 *task_id,
+		     u8 *event_mapping)
 {
 	int retn;
 	u8 COE_mapping[HASH_MAX_DIGESTSIZE];
@@ -574,7 +574,7 @@ static int map_event(enum tsem_event_type event, struct tsem_event *ep,
 	if (retn)
 		goto done;
 
-	retn = get_event_mapping(event, p_task_id, task_id, COE_mapping,
+	retn = get_event_mapping(ep->event, p_task_id, task_id, COE_mapping,
 				 cell_mapping, event_mapping);
  done:
 	return retn;
@@ -594,28 +594,25 @@ static int map_event(enum tsem_event_type event, struct tsem_event *ep,
  */
 int tsem_map_task(struct file *file, u8 *task_id)
 {
-	int retn = 0;
+	int retn;
 	u8 null_taskid[HASH_MAX_DIGESTSIZE];
 	struct tsem_event *ep;
-	struct tsem_file_args args;
-	struct tsem_event_parameters params;
 
-	args.in.file = file;
-	params.u.file_arg = &args;
-	ep = tsem_event_init(TSEM_BPRM_COMMITTING_CREDS, &params, false);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		ep = NULL;
-		goto done;
-	}
+	ep = tsem_event_allocate(TSEM_BPRM_COMMITTING_CREDS, false);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.file.in.file = file;
+	retn = tsem_event_init(ep);
+	if (retn)
+		return retn;
 
 	memset(null_taskid, '\0', tsem_digestsize());
-	retn = map_event(TSEM_BPRM_COMMITTING_CREDS, ep,
-			 tsem_task(current)->p_task_id, null_taskid, task_id);
+	retn = map_event(ep, tsem_task(current)->p_task_id, null_taskid,
+			 task_id);
 	tsem_event_put(ep);
 
- done:
-	return retn;
+	return 0;
 }
 
 /**
@@ -627,70 +624,12 @@ int tsem_map_task(struct file *file, u8 *task_id)
  * This function creates a structure to describe a security event
  * and maps the event into a security state coefficient.
  *
- * Return: On success the function returns a pointer to the tsem_event
- *	   structure that describes the event.  If an error is encountered
- *	   an error return value is encoded in the pointer.
+ * Return: This function returns a value of zero on success and a negative
+ *	   error code on failure.
  */
-struct tsem_event *tsem_map_event(enum tsem_event_type event,
-				  struct tsem_event_parameters *params)
+int tsem_map_event(struct tsem_event *ep)
 {
-	int retn = 0;
-	struct tsem_event *ep;
 	struct tsem_task *task = tsem_task(current);
 
-	ep = tsem_event_init(event, params, false);
-	if (IS_ERR(ep))
-		goto done;
-
-	if (task->context->external)
-		goto done;
-
-	retn = map_event(event, ep, task->p_task_id, task->task_id,
-			 ep->mapping);
-	if (retn) {
-		tsem_event_put(ep);
-		ep = ERR_PTR(retn);
-	}
-
- done:
-	return ep;
-}
-
-
-/**
- * tsem_map_event_locked() - Create a security event mapping while atomic.
- * @event: The number of the event to be mapped.
- * @params: A pointer to the structure containing the event description
- *	    parameters.
- *
- * This function creates a structure to describe a security event
- * and maps the event into a security state coefficient.
- *
- * Return: On success the function returns a pointer to the tsem_event
- *	   structure that describes the event.  If an error is encountered
- *	   an error return value is encoded in the pointer.
- */
-struct tsem_event *tsem_map_event_locked(enum tsem_event_type event,
-					 struct tsem_event_parameters *params)
-{
-	int retn = 0;
-	struct tsem_event *ep;
-	struct tsem_task *task = tsem_task(current);
-
-	ep = tsem_event_init(event, params, true);
-	if (IS_ERR(ep))
-		goto done;
-
-	if (task->context->external)
-		goto done;
-
-	retn = map_event(event, ep, task->p_task_id, task->task_id,
-			 ep->mapping);
-	if (retn) {
-		tsem_event_put(ep);
-		ep = ERR_PTR(retn);
-	}
-
- done:
-	return ep;
+	return map_event(ep, task->p_task_id, task->task_id, ep->mapping);
 }

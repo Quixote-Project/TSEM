@@ -399,35 +399,35 @@ static void fill_inode(struct inode *inode, struct tsem_inode_cell *ip)
 	memcpy(ip->s_uuid, inode->i_sb->s_uuid.b, sizeof(ip->s_uuid));
 }
 
-static int get_file_cell(struct tsem_file_args *args, struct tsem_event *ep)
+static int get_file_cell(struct tsem_file_args *args)
 {
 	int retn = 1;
 	struct file *file = args->in.file;
 	struct inode *inode = file_inode(file);
 
+	memset(args, '\0', sizeof(*args));
 	inode_lock(inode);
 
-	retn = fill_path(&file->f_path, &ep->CELL.file.out.path);
+	retn = fill_path(&file->f_path, &args->out.path);
 	if (retn)
 		goto done;
 
-	ep->CELL.file.out.flags = file->f_flags;
-	fill_inode(inode, &ep->CELL.file.out.inode);
+	args->out.flags = file->f_flags;
+	fill_inode(inode, &args->out.inode);
 
-	retn = add_file_digest(file, &ep->CELL.file);
+	retn = add_file_digest(file, args);
 	if (retn)
-		kfree(ep->CELL.file.out.path.pathname);
+		kfree(args->out.path.pathname);
 
  done:
 	inode_unlock(inode);
 	return retn;
 }
 
-static int get_socket_accept(struct tsem_event *ep)
+static int get_socket_accept(struct tsem_socket_accept_args *sap)
 {
 	char *p, path[UNIX_PATH_MAX + 1];
 	int size, retn = 0;
-	struct tsem_socket_accept_args *sap = &ep->CELL.socket_accept;
 
 	if (sap->family == AF_INET || sap->family == AF_INET6)
 		return retn;
@@ -467,11 +467,10 @@ static int get_socket_connect(struct tsem_socket_connect_args *scp)
 	return retn;
 }
 
-static int get_socket_cell(struct tsem_event *ep)
+static int get_socket_cell(struct tsem_socket_connect_args *scp)
 
 {
 	int size, retn = 0;
-	struct tsem_socket_connect_args *scp = &ep->CELL.socket_connect;
 
 	scp->family = scp->addr->sa_family;
 
@@ -495,29 +494,26 @@ static int get_socket_cell(struct tsem_event *ep)
 	return retn;
 }
 
-static int get_inode_getattr(struct tsem_inode_attr_args *args,
-			     struct tsem_event *ep)
+static int get_inode_getattr(struct tsem_inode_attr_args *args)
 {
 	const struct path *path = args->in.path;
 	struct inode *inode = d_backing_inode(path->dentry);
 
-	fill_inode(inode, &ep->CELL.inode_attr.out.inode);
-	return fill_path(path, &ep->CELL.inode_attr.out.path);
+	memset(args, '\0', sizeof(*args));
+	fill_inode(inode, &args->out.inode);
+	return fill_path(path, &args->out.path);
 }
 
-static int get_inode_setattr(struct tsem_inode_attr_args *args,
-			     struct tsem_event *ep)
+static int get_inode_setattr(struct tsem_inode_attr_args *args)
 {
 	int retn;
 	struct user_namespace *ns;
-	struct tsem_inode_attr_args *sp;
 	struct dentry *dentry = args->in.dentry;
 	struct iattr *iattr = args->in.iattr;
 
-	sp = &ep->CELL.inode_attr;
-	memset(sp, '\0', sizeof(*sp));
+	memset(args, '\0', sizeof(*args));
 
-	retn = fill_path_dentry(dentry, &sp->out.path);
+	retn = fill_path_dentry(dentry, &args->out.path);
 	if (retn)
 		goto done;
 
@@ -526,24 +522,23 @@ static int get_inode_setattr(struct tsem_inode_attr_args *args,
 	else
 		ns = &init_user_ns;
 
-	fill_inode(d_backing_inode(dentry), &sp->out.inode);
+	fill_inode(d_backing_inode(dentry), &args->out.inode);
 
-	sp->out.valid = iattr->ia_valid;
-	if (sp->out.valid & ATTR_MODE)
-		sp->out.mode = iattr->ia_mode;
-	if (sp->out.valid & ATTR_UID)
-		sp->out.uid = from_kuid(ns, iattr->ia_uid);
-	if (sp->out.valid & ATTR_GID)
-		sp->out.gid = from_kgid(ns, iattr->ia_gid);
-	if (sp->out.valid & ATTR_SIZE)
-		sp->out.size = iattr->ia_size;
+	args->out.valid = iattr->ia_valid;
+	if (args->out.valid & ATTR_MODE)
+		args->out.mode = iattr->ia_mode;
+	if (args->out.valid & ATTR_UID)
+		args->out.uid = from_kuid(ns, iattr->ia_uid);
+	if (args->out.valid & ATTR_GID)
+		args->out.gid = from_kgid(ns, iattr->ia_gid);
+	if (args->out.valid & ATTR_SIZE)
+		args->out.size = iattr->ia_size;
 
  done:
 	return retn;
 }
 
-static int get_inode_setxattr(struct tsem_inode_xattr_args *args,
-			      struct tsem_event *ep)
+static int get_inode_setxattr(struct tsem_inode_xattr_args *args)
 {
 	int retn;
 	const char *name = args->in.name;
@@ -551,126 +546,114 @@ static int get_inode_setxattr(struct tsem_inode_xattr_args *args,
 	const void *value = args->in.value;
 	size_t size = args->in.size;
 	int flags = args->in.flags;
-	struct tsem_inode_xattr_args *ap = &ep->CELL.inode_xattr;
 
-	ap->out.size = size;
-	ap->out.flags = flags;
+	memset(args, '\0', sizeof(*args));
 
-	retn = fill_path_dentry(dentry, &ap->out.path);
+	args->out.size = size;
+	args->out.flags = flags;
+
+	retn = fill_path_dentry(dentry, &args->out.path);
 	if (retn)
 		return retn;
 
-	fill_inode(dentry->d_inode, &ap->out.inode);
+	fill_inode(dentry->d_inode, &args->out.inode);
 
-	ap->out.name = kstrdup(name, GFP_KERNEL);
-	if (!ap->out.name) {
+	args->out.name = kstrdup(name, GFP_KERNEL);
+	if (!args->out.name) {
 		retn = -ENOMEM;
 		goto done;
 	}
 
-	ap->out.value = kmalloc(size, GFP_KERNEL);
-	if (!ap->out.value)
+	args->out.value = kmalloc(size, GFP_KERNEL);
+	if (!args->out.value)
 		retn = -ENOMEM;
-	memcpy(ap->out.value, value, size);
+	memcpy(args->out.value, value, size);
 
-	ap->out.encoded_value = kzalloc(BASE64_CHARS(size) + 1, GFP_KERNEL);
-	if (!ap->out.encoded_value) {
+	args->out.encoded_value = kzalloc(BASE64_CHARS(size) + 1, GFP_KERNEL);
+	if (!args->out.encoded_value) {
 		retn = -ENOMEM;
 		goto done;
 	}
-	base64_encode(ap->out.value, size, ap->out.encoded_value);
+	base64_encode(args->out.value, size, args->out.encoded_value);
 
  done:
 	if (retn) {
-		kfree(ap->out.name);
-		kfree(ap->out.value);
-		kfree(ap->out.encoded_value);
+		kfree(args->out.name);
+		kfree(args->out.value);
+		kfree(args->out.encoded_value);
 	}
 	return retn;
 }
 
-static int get_inode_getxattr(struct tsem_inode_xattr_args *args,
-			      struct tsem_event *ep)
+static int get_inode_getxattr(struct tsem_inode_xattr_args *args)
 {
 	int retn;
 	const char *name = args->in.name;
 	struct dentry *dentry = args->in.dentry;
-	struct tsem_inode_xattr_args *ap = &ep->CELL.inode_xattr;
 
-	retn = fill_path_dentry(dentry, &ap->out.path);
+	memset(args, '\0', sizeof(*args));
+
+	retn = fill_path_dentry(dentry, &args->out.path);
 	if (retn)
 		return retn;
 
-	fill_inode(dentry->d_inode, &ap->out.inode);
+	fill_inode(dentry->d_inode, &args->out.inode);
 
-	ap->out.name = kstrdup(name, GFP_KERNEL);
-	if (!ap->out.name)
+	args->out.name = kstrdup(name, GFP_KERNEL);
+	if (!args->out.name)
 		retn = -ENOMEM;
 
 	if (retn)
-		kfree(ap->out.name);
+		kfree(args->out.name);
 	return retn;
 }
 
-static int get_inode_listxattr(struct tsem_inode_xattr_args *args,
-			       struct tsem_event *ep)
+static int get_inode_listxattr(struct tsem_inode_xattr_args *args)
 {
 	int retn;
 	struct dentry *dentry = args->in.dentry;
-	struct tsem_inode_xattr_args *ap = &ep->CELL.inode_xattr;
 
-	retn = fill_path_dentry(dentry, &ap->out.path);
+	memset(args, '\0', sizeof(*args));
+
+	retn = fill_path_dentry(dentry, &args->out.path);
 	if (retn)
 		return retn;
 
-	fill_inode(dentry->d_inode, &ap->out.inode);
+	fill_inode(dentry->d_inode, &args->out.inode);
 	return 0;
 }
 
-static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args,
-			    struct tsem_event *ep)
+static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args)
 {
 	int retn;
 	const struct path *old_path = args->in.old_path;
 	const struct path *new_path = args->in.new_path;
-	struct tsem_sb_pivotroot_args *ap = &ep->CELL.sb_pivotroot;
 
-	retn = fill_path(old_path, &ap->out.old_path);
+	memset(args, '\0', sizeof(*args));
+
+	retn = fill_path(old_path, &args->out.old_path);
 	if (!retn)
-		retn = fill_path(new_path, &ap->out.new_path);
+		retn = fill_path(new_path, &args->out.new_path);
 
 	return retn;
 }
 
 /**
  * tsem_event_init() - Initialize a security event description structure.
- * @event: The security event number for which the structure is being
- *	   initialized.
- * @params: A pointer to the aggregation structure used to hold the
- *	    parameters that describe the function.
- * @locked: A boolean flag used to indicate if the event to be
- *	    initialized is running in atomic context.
+ * @ep: A pointer to the tsem_event structure that describes the
+ *	security event.
  *
- * This function is responsible for allocating and initializing the
- * primary tsem_event structure and populating it based on the event type.
+ * This function is responsible for initializing the tsem_event structure
+ * and populating it based on the event type.
  *
- * Return: This function returns a pointer to the allocated structure which
- *	   on failure will have an error return code embedded in it.
+ * Return: This function returns a value of zero on success and a negative
+ *	   error code on failure.
  */
-struct tsem_event *tsem_event_init(enum tsem_event_type event,
-				   struct tsem_event_parameters *params,
-				   bool locked)
+int tsem_event_init(struct tsem_event *ep)
 {
 	int retn = 0;
-	struct tsem_event *ep = NULL;
 	struct tsem_task *task = tsem_task(current);
 
-	ep = tsem_event_allocate(locked);
-	if (!ep)
-		return ERR_PTR(-ENOMEM);
-
-	ep->event = event;
-	ep->locked = locked;
 	ep->pid = task_pid_nr(current);
 	ep->instance = task->instance;
 	ep->p_instance = task->p_instance;
@@ -681,69 +664,55 @@ struct tsem_event *tsem_event_init(enum tsem_event_type event,
 
 	get_COE(&ep->COE);
 
-	if (!params) {
-		ep->no_params = true;
+	if (ep->no_params)
 		goto done;
-	}
 
-	switch (event) {
+	switch (ep->event) {
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
-		ep->CELL.file = *params->u.file_arg;
-		retn = get_file_cell(params->u.file_arg, ep);
+		retn = get_file_cell(&ep->CELL.file);
 		break;
 	case TSEM_MMAP_FILE:
-		ep->CELL.mmap_file = *params->u.mmap_file;
 		if (!ep->CELL.mmap_file.anonymous)
-			retn = get_file_cell(&params->u.mmap_file->file, ep);
-		break;
-	case TSEM_SOCKET_CREATE:
-		ep->CELL.socket_create = *params->u.socket_create;
+			retn = get_file_cell(&ep->CELL.mmap_file.file);
 		break;
 	case TSEM_SOCKET_CONNECT:
 	case TSEM_SOCKET_BIND:
-		ep->CELL.socket_connect = *params->u.socket_connect;
-		retn = get_socket_cell(ep);
+		retn = get_socket_cell(&ep->CELL.socket_connect);
 		break;
 	case TSEM_SOCKET_ACCEPT:
-		ep->CELL.socket_accept = *params->u.socket_accept;
-		retn = get_socket_accept(ep);
-		break;
-	case TSEM_TASK_KILL:
-		ep->CELL.task_kill = *params->u.task_kill;
+		retn = get_socket_accept(&ep->CELL.socket_accept);
 		break;
 	case TSEM_INODE_GETATTR:
-		retn = get_inode_getattr(params->u.inode_attr, ep);
+		retn = get_inode_getattr(&ep->CELL.inode_attr);
 		break;
 	case TSEM_INODE_SETATTR:
-		retn = get_inode_setattr(params->u.inode_attr, ep);
+		retn = get_inode_setattr(&ep->CELL.inode_attr);
 		break;
 	case TSEM_INODE_SETXATTR:
-		retn = get_inode_setxattr(params->u.inode_xattr, ep);
+		retn = get_inode_setxattr(&ep->CELL.inode_xattr);
 		break;
 	case TSEM_INODE_GETXATTR:
 	case TSEM_INODE_REMOVEXATTR:
-		retn = get_inode_getxattr(params->u.inode_xattr, ep);
+		retn = get_inode_getxattr(&ep->CELL.inode_xattr);
 		break;
 	case TSEM_INODE_LISTXATTR:
-		retn = get_inode_listxattr(params->u.inode_xattr, ep);
+		retn = get_inode_listxattr(&ep->CELL.inode_xattr);
 		break;
 	case TSEM_SB_PIVOTROOT:
-		retn = get_sb_pivotroot(params->u.sb_pivotroot, ep);
+		retn = get_sb_pivotroot(&ep->CELL.sb_pivotroot);
 		break;
 	default:
-		WARN_ONCE(true, "Unhandled event type: %d\n", event);
 		break;
 	}
 
  done:
-	if (retn) {
+	if (retn)
 		kmem_cache_free(event_cachep, ep);
-		ep = ERR_PTR(retn);
-	} else
+	else
 		kref_init(&ep->kref);
 
-	return ep;
+	return retn;
 }
 
 static void free_cell(struct tsem_event *ep)
@@ -825,14 +794,18 @@ void tsem_event_get(struct tsem_event *ep)
  * Return: This function returns a pointer to the allocated structure or
  *	   a NULL pointer in the event of an allocation failure.
  */
-struct tsem_event *tsem_event_allocate(bool locked)
+struct tsem_event *tsem_event_allocate(enum tsem_event_type event, bool locked)
 {
 	unsigned int index;
 	struct tsem_event *ep = NULL;
 	struct tsem_context *ctx = tsem_context(current);
 
-	if (!locked)
-		return kmem_cache_zalloc(event_cachep, GFP_KERNEL);
+	if (!locked) {
+		ep = kmem_cache_zalloc(event_cachep, GFP_KERNEL);
+		if (ep)
+			ep->event = event;
+		return ep;
+	}
 
 	spin_lock(&ctx->magazine_lock);
 	index = find_first_zero_bit(ctx->magazine_index, ctx->magazine_size);
@@ -856,6 +829,8 @@ struct tsem_event *tsem_event_allocate(bool locked)
 	if (ep) {
 		INIT_WORK(&ctx->ws[index].work, refill_event_magazine);
 		queue_work(system_wq, &ctx->ws[index].work);
+		ep->event = event;
+		ep->locked = true;
 		return ep;
 	}
 

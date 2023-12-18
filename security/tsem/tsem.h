@@ -1408,62 +1408,6 @@ struct tsem_event {
 };
 
 /**
- * struct tsem_event_parameters - Security event argument descriptions
- * @u: A union that encapsulates all of the different structures that
- *     are used to characterize the argument so the TSEM security
- *     event handlers.
- * @u.file: If the security event references a VFS file this member
- *	    hold a pointer to the description of the file.
- * @u.path: A pointer to a path structure that was supplied as
- *	    the argument to the tsem_inode_getattr security event.
- * @u.socket_create: This member will point to a structure that
- *		     describes the characteristics of a socket_create
- *		     event.
- * @u.socket_connect: This member will point to a structure that
- *		      describes the characteristics of a socket_connect
- *		      event.
- * @u.socket_accept: This member will point to a structure that
- *		     describes the characteristics of a socket_accept
- *		     event.
- * @u.task_kill: This member will point to a structure that describes
- *		 the characteristics of a task_kill function.
- * @u.inode_attr: The member will point to a structure that describes
- *		  the characteristics of the inode_setattr and
- *		  inode_getattr events.
- * @u.inode_xattr: The member will point to a structure that describes
- *		   the characteristics of the events that are handling
- *		   security events for extended attribute manipulation.
- *
- * The purpose of this structure is to provide a common encapsulation
- * method for passing the CELL characteristics of a security event
- * into the tsem_event_init() function.  The characteristics passed in
- * this event will be used to create and populate the struct
- * tsem_event structure that will go on to be used to characterize
- * the event either an internal or external modeling agent.
- *
- * The strategy followed is to allocate one of these structures on the
- * stack for a security event call along with a call specific
- * characteristics description structure, both of which will no longer
- * be needed after completion of the call since the requisite
- * information has been transferred to a struct tsem_event structure.
- */
-struct tsem_event_parameters {
-	union {
-		struct file *file;
-		const struct path *path;
-		struct tsem_file_args *file_arg;
-		struct tsem_mmap_file_args *mmap_file;
-		struct tsem_socket_create_args *socket_create;
-		struct tsem_socket_connect_args *socket_connect;
-		struct tsem_socket_accept_args *socket_accept;
-		struct tsem_task_kill_args *task_kill;
-		struct tsem_inode_attr_args *inode_attr;
-		struct tsem_inode_xattr_args *inode_xattr;
-		struct tsem_sb_pivotroot_args *sb_pivotroot;
-	} u;
-};
-
-/**
  * struct tsem_event_point - TSEM security coefficient characteristics.
  * @list: The list structure used to link together all of the security
  *	  state coefficients for a modeling namespace.
@@ -1647,15 +1591,11 @@ extern void tsem_export_magazine_free(struct tsem_external *ext);
 extern int tsem_export_cache_init(void);
 
 extern int tsem_map_task(struct file *file, u8 *mapping);
-struct tsem_event *tsem_map_event(enum tsem_event_type event,
-				  struct tsem_event_parameters *param);
-struct tsem_event *tsem_map_event_locked(enum tsem_event_type event,
-					 struct tsem_event_parameters *param);
+int tsem_map_event(struct tsem_event *ep);
 
-extern struct tsem_event *tsem_event_allocate(bool locked);
-extern struct tsem_event *tsem_event_init(enum tsem_event_type event,
-					  struct tsem_event_parameters *params,
-					  bool locked);
+extern struct tsem_event *tsem_event_allocate(enum tsem_event_type event,
+					      bool locked);
+extern int tsem_event_init(struct tsem_event *ep);
 extern void tsem_event_put(struct tsem_event *ep);
 extern void tsem_event_get(struct tsem_event *ep);
 extern int tsem_event_magazine_allocate(struct tsem_context *ctx, size_t size);

@@ -277,6 +277,10 @@ static int dispatch_event(struct tsem_event *ep)
 	if (unlikely(tsem_mode == EXPORT_ONLY && !ctx->id && !ctx->external))
 		return 0;
 
+	retn = tsem_event_init(ep);
+	if (retn)
+		return retn;
+
 	if (!ctx->external)
 		retn = tsem_model_event(ep);
 	else
@@ -295,27 +299,23 @@ static int dispatch_generic_event(enum tsem_event_type event, bool locked)
 	if (!tsem_context(current)->id && tsem_mode == NO_ROOT_MODELING)
 		return 0;
 
-	if (locked)
-		ep = tsem_map_event_locked(event, NULL);
-	else
-		ep = tsem_map_event(event, NULL);
-	if (IS_ERR(ep))
-		return PTR_ERR(ep);
+	ep = tsem_event_allocate(event, locked);
+	if (!ep)
+		return -ENOMEM;
+	ep->no_params = true;
 
 	retn = dispatch_event(ep);
-
 	tsem_event_put(ep);
+
 	return retn;
 }
 
 static int tsem_file_open(struct file *file)
 {
-	int retn = 0;
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct inode *inode = file_inode(file);
-	struct tsem_event *ep = NULL;
-	struct tsem_file_args args;
-	struct tsem_event_parameters params;
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -327,37 +327,32 @@ static int tsem_file_open(struct file *file)
 	}
 
 	if (!S_ISREG(inode->i_mode))
-		goto done;
+		return 0;
 	if (bypass_filesystem(inode))
-		goto done;
+		return 0;
 	if (tsem_inode(inode)->status == TSEM_INODE_COLLECTING)
-		goto done;
+		return 0;
 
-	args.in.file = file;
-	params.u.file_arg = &args;
-	ep = tsem_map_event(TSEM_FILE_OPEN, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep = tsem_event_allocate(TSEM_FILE_OPEN, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.file.in.file = file;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 }
 
 static int tsem_mmap_file(struct file *file, unsigned long reqprot,
 			  unsigned long prot, unsigned long flags)
 {
-	int retn = 0;
+	int retn;
 	const char *p;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct inode *inode = NULL;
-	struct tsem_event *ep = NULL;
-	struct tsem_event_parameters params;
-	struct tsem_mmap_file_args args;
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -373,32 +368,28 @@ static int tsem_mmap_file(struct file *file, unsigned long reqprot,
 	}
 
 	if (!file && !(prot & PROT_EXEC))
-		goto done;
+		return 0;
 	if (file) {
 		inode = file_inode(file);
 		if (!S_ISREG(inode->i_mode))
-			goto done;
+			return 0;
 		if (bypass_filesystem(inode))
-			goto done;
+			return 0;
 	}
 
-	memset(&args, '\0', sizeof(args));
-	args.file.in.file = file;
-	args.anonymous = file == NULL ? 1 : 0;
-	args.reqprot = reqprot;
-	args.prot = prot;
-	args.flags = flags;
-	params.u.mmap_file = &args;
-	ep = tsem_map_event(TSEM_MMAP_FILE, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep = tsem_event_allocate(TSEM_MMAP_FILE, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.mmap_file.file.in.file = file;
+	ep->CELL.mmap_file.anonymous = file == NULL ? 1 : 0;
+	ep->CELL.mmap_file.reqprot = reqprot;
+	ep->CELL.mmap_file.prot = prot;
+	ep->CELL.mmap_file.flags = flags;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 }
 
@@ -499,11 +490,10 @@ static int tsem_task_kill(struct task_struct *target,
 			  struct kernel_siginfo *info, int sig,
 			  const struct cred *cred)
 {
+	bool cross_model;
 	char msg[TRAPPED_MSG_LENGTH];
-	int retn = 0;
+	int retn;
 	struct tsem_event *ep;
-	struct tsem_event_parameters params;
-	struct tsem_task_kill_args args;
 	struct tsem_context *src_ctx = tsem_context(current);
 	struct tsem_context *tgt_ctx = tsem_context(target);
 
@@ -514,7 +504,7 @@ static int tsem_task_kill(struct task_struct *target,
 		return trapped_task(TSEM_TASK_KILL, msg, true);
 	}
 
-	args.cross_model = src_ctx->id != tgt_ctx->id;
+	cross_model = src_ctx->id != tgt_ctx->id;
 
 	if (info != SEND_SIG_NOINFO && SI_FROMKERNEL(info))
 		return retn;
@@ -523,23 +513,21 @@ static int tsem_task_kill(struct task_struct *target,
 	if (!capable(TSEM_CONTROL_CAPABILITY) &&
 	    has_capability_noaudit(target, TSEM_CONTROL_CAPABILITY))
 		return -EPERM;
-	if (!capable(TSEM_CONTROL_CAPABILITY) && args.cross_model)
+	if (!capable(TSEM_CONTROL_CAPABILITY) && cross_model)
 		return -EPERM;
 
-	args.signal = sig;
-	memcpy(args.target, tsem_task(target)->task_id, tsem_digestsize());
-	params.u.task_kill = &args;
+	ep = tsem_event_allocate(TSEM_TASK_KILL, LOCKED);
+	if (!ep)
+		return -ENOMEM;
 
-	ep = tsem_map_event_locked(TSEM_TASK_KILL, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep->CELL.task_kill.signal = sig;
+	ep->CELL.task_kill.cross_model = cross_model;
+	memcpy(ep->CELL.task_kill.target, tsem_task(target)->task_id,
+	       tsem_digestsize());
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 }
 
@@ -779,8 +767,6 @@ static int tsem_socket_create(int family, int type, int protocol, int kern)
 	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
-	struct tsem_event_parameters params;
-	struct tsem_socket_create_args args;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -792,57 +778,45 @@ static int tsem_socket_create(int family, int type, int protocol, int kern)
 		return trapped_task(TSEM_SOCKET_CREATE, msg, NOLOCK);
 	}
 
-	args.family = family;
-	args.type = type;
-	args.protocol = protocol;
-	args.kern = kern;
-	params.u.socket_create = &args;
+	ep = tsem_event_allocate(TSEM_SOCKET_CREATE, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
 
-	ep = tsem_map_event(TSEM_SOCKET_CREATE, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep->CELL.socket_create.family = family;
+	ep->CELL.socket_create.type = type;
+	ep->CELL.socket_create.protocol = protocol;
+	ep->CELL.socket_create.kern = kern;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 }
 
 static int tsem_socket_connect(struct socket *sock, struct sockaddr *addr,
 			     int addr_len)
-
 {
 	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
-	struct tsem_event_parameters params;
-	struct tsem_socket_connect_args args;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "family=%u", addr->sa_family);
 		return trapped_task(TSEM_SOCKET_CONNECT, msg, NOLOCK);
 	}
 
-	args.tsip = tsem_inode(SOCK_INODE(sock));
-	args.addr = addr;
-	args.addr_len = addr_len;
-	params.u.socket_connect = &args;
+	ep = tsem_event_allocate(TSEM_SOCKET_CONNECT, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
 
-	ep = tsem_map_event(TSEM_SOCKET_CONNECT, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep->CELL.socket_connect.tsip = tsem_inode(SOCK_INODE(sock));
+	ep->CELL.socket_connect.addr = addr;
+	ep->CELL.socket_connect.addr_len = addr_len;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
-
 }
 
 static int tsem_socket_bind(struct socket *sock, struct sockaddr *addr,
@@ -852,29 +826,23 @@ static int tsem_socket_bind(struct socket *sock, struct sockaddr *addr,
 	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
-	struct tsem_event_parameters params;
-	struct tsem_socket_connect_args args;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "family=%u", addr->sa_family);
 		return trapped_task(TSEM_SOCKET_BIND, msg, NOLOCK);
 	}
 
-	args.tsip = tsem_inode(SOCK_INODE(sock));
-	args.addr = addr;
-	args.addr_len = addr_len;
-	params.u.socket_connect = &args;
+	ep = tsem_event_allocate(TSEM_SOCKET_BIND, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
 
-	ep = tsem_map_event(TSEM_SOCKET_BIND, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep->CELL.socket_connect.tsip = tsem_inode(SOCK_INODE(sock));
+	ep->CELL.socket_connect.addr = addr;
+	ep->CELL.socket_connect.addr_len = addr_len;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 
 }
@@ -886,36 +854,29 @@ static int tsem_socket_accept(struct socket *sock, struct socket *newsock)
 	struct sock *sk = sock->sk;
 	const struct in6_addr *ipv6;
 	struct tsem_event *ep;
-	struct tsem_event_parameters params;
-	struct tsem_socket_accept_args args;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "family=%u", sk->sk_family);
 		return trapped_task(TSEM_SOCKET_ACCEPT, msg, NOLOCK);
 	}
 
-	args.family = sk->sk_family;
-	args.type = sock->type;
-	args.port = sk->sk_num;
-	args.u.ipv4 = sk->sk_rcv_saddr;
-	if (args.family == AF_UNIX)
-		args.u.af_unix = unix_sk(sk);
+	ep = tsem_event_allocate(TSEM_SOCKET_ACCEPT, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.socket_accept.family = sk->sk_family;
+	ep->CELL.socket_accept.type = sock->type;
+	ep->CELL.socket_accept.port = sk->sk_num;
+	ep->CELL.socket_accept.u.ipv4 = sk->sk_rcv_saddr;
+	if (sk->sk_family == AF_UNIX)
+		ep->CELL.socket_accept.u.af_unix = unix_sk(sk);
 	ipv6 = inet6_rcv_saddr(sk);
 	if (ipv6)
-		args.u.ipv6 = *ipv6;
-
-	params.u.socket_accept = &args;
-
-	ep = tsem_map_event(TSEM_SOCKET_ACCEPT, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+		ep->CELL.socket_accept.u.ipv6 = *ipv6;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 }
 
@@ -1130,11 +1091,9 @@ static int tsem_sb_remount(struct super_block *sb, void *mnt_opts)
 static int tsem_sb_pivotroot(const struct path *old_path,
 			     const struct path *new_path)
 {
-	int retn = 0;
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
-	struct tsem_event *ep = NULL;
-	struct tsem_sb_pivotroot_args args;
-	struct tsem_event_parameters params;
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "%s -> %s",
@@ -1143,20 +1102,16 @@ static int tsem_sb_pivotroot(const struct path *old_path,
 		return trapped_task(TSEM_SB_PIVOTROOT, msg, NOLOCK);
 	}
 
-	args.in.old_path = old_path;
-	args.in.new_path = new_path;
-	params.u.sb_pivotroot = &args;
+	ep = tsem_event_allocate(TSEM_SB_PIVOTROOT, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
 
-	ep = tsem_map_event(TSEM_SB_PIVOTROOT, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep->CELL.sb_pivotroot.in.old_path = old_path;
+	ep->CELL.sb_pivotroot.in.new_path = new_path;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 }
 
@@ -1598,11 +1553,9 @@ static int tsem_inode_mknod(struct inode *dir, struct dentry *dentry,
 
 static int tsem_inode_setattr(struct dentry *dentry, struct iattr *attr)
 {
-	int retn = 0;
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
-	struct tsem_event *ep = NULL;
-	struct tsem_inode_attr_args args;
-	struct tsem_event_parameters params;
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -1620,30 +1573,24 @@ static int tsem_inode_setattr(struct dentry *dentry, struct iattr *attr)
 	if (bypass_filesystem(dentry->d_inode))
 		return 0;
 
-	args.in.dentry = dentry;
-	args.in.iattr = attr;
-	params.u.inode_attr = &args;
+	ep = tsem_event_allocate(TSEM_INODE_SETATTR, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
 
-	ep = tsem_map_event(TSEM_INODE_SETATTR, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep->CELL.inode_attr.in.dentry = dentry;
+	ep->CELL.inode_attr.in.iattr = attr;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 }
 
 static int tsem_inode_getattr(const struct path *path)
 {
-	int retn = 0;
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
-	struct tsem_event *ep = NULL;
-	struct tsem_inode_attr_args args;
-	struct tsem_event_parameters params;
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -1657,18 +1604,15 @@ static int tsem_inode_getattr(const struct path *path)
 	if (bypass_filesystem(path->dentry->d_inode))
 		return 0;
 
-	args.in.path = path;
-	params.u.inode_attr = &args;
-	ep = tsem_map_event(TSEM_INODE_GETATTR, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep = tsem_event_allocate(TSEM_INODE_GETATTR, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.inode_attr.in.path = path;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 }
 
@@ -1676,11 +1620,9 @@ static int tsem_inode_setxattr(struct mnt_idmap *idmap,
 			       struct dentry *dentry, const char *name,
 			       const void *value, size_t size, int flags)
 {
-	int retn = 0;
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
-	struct tsem_event *ep = NULL;
-	struct tsem_inode_xattr_args args;
-	struct tsem_event_parameters params;
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -1692,33 +1634,27 @@ static int tsem_inode_setxattr(struct mnt_idmap *idmap,
 	if (bypass_filesystem(dentry->d_inode))
 		return 0;
 
-	args.in.dentry = dentry;
-	args.in.name = name;
-	args.in.value = value;
-	args.in.size = size;
-	args.in.flags = flags;
-	params.u.inode_xattr = &args;
+	ep = tsem_event_allocate(TSEM_INODE_SETXATTR, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
 
-	ep = tsem_map_event(TSEM_INODE_SETXATTR, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep->CELL.inode_xattr.in.dentry = dentry;
+	ep->CELL.inode_xattr.in.name = name;
+	ep->CELL.inode_xattr.in.value = value;
+	ep->CELL.inode_xattr.in.size = size;
+	ep->CELL.inode_xattr.in.flags = flags;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 }
 
 static int tsem_inode_getxattr(struct dentry *dentry, const char *name)
 {
-	int retn = 0;
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep = NULL;
-	struct tsem_inode_xattr_args args;
-	struct tsem_event_parameters params;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -1732,30 +1668,24 @@ static int tsem_inode_getxattr(struct dentry *dentry, const char *name)
 	if (bypass_filesystem(dentry->d_inode))
 		return 0;
 
-	args.in.dentry = dentry;
-	args.in.name = name;
-	params.u.inode_xattr = &args;
+	ep = tsem_event_allocate(TSEM_INODE_GETXATTR, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
 
-	ep = tsem_map_event(TSEM_INODE_GETXATTR, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep->CELL.inode_xattr.in.dentry = dentry;
+	ep->CELL.inode_xattr.in.name = name;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 }
 
 static int tsem_inode_listxattr(struct dentry *dentry)
 {
-	int retn = 0;
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
-	struct tsem_event *ep = NULL;
-	struct tsem_inode_xattr_args args;
-	struct tsem_event_parameters params;
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -1768,30 +1698,24 @@ static int tsem_inode_listxattr(struct dentry *dentry)
 	if (bypass_filesystem(dentry->d_inode))
 		return 0;
 
-	args.in.dentry = dentry;
-	params.u.inode_xattr = &args;
+	ep = tsem_event_allocate(TSEM_INODE_LISTXATTR, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
 
-	ep = tsem_map_event(TSEM_INODE_LISTXATTR, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep->CELL.inode_xattr.in.dentry = dentry;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
 }
 
 static int tsem_inode_removexattr(struct mnt_idmap *idmap,
 				  struct dentry *dentry, const char *name)
 {
-	int retn = 0;
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
-	struct tsem_event *ep = NULL;
-	struct tsem_inode_xattr_args args;
-	struct tsem_event_parameters params;
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "fname=%s, name=%s",
@@ -1802,23 +1726,17 @@ static int tsem_inode_removexattr(struct mnt_idmap *idmap,
 	if (bypass_filesystem(dentry->d_inode))
 		return 0;
 
-	args.in.dentry = dentry;
-	args.in.name = name;
-	params.u.inode_xattr = &args;
+	ep = tsem_event_allocate(TSEM_INODE_REMOVEXATTR, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
 
-	ep = tsem_map_event(TSEM_INODE_REMOVEXATTR, &params);
-	if (IS_ERR(ep)) {
-		retn = PTR_ERR(ep);
-		goto done;
-	}
+	ep->CELL.inode_xattr.in.dentry = dentry;
+	ep->CELL.inode_xattr.in.name = name;
 
 	retn = dispatch_event(ep);
 	tsem_event_put(ep);
 
- done:
 	return retn;
-
-	return dispatch_generic_event(TSEM_INODE_REMOVEXATTR, NOLOCK);
 }
 
 static int tsem_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry)
