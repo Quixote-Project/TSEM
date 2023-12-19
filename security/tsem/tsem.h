@@ -960,7 +960,7 @@ struct tsem_path {
 };
 
 /**
- * struct tsem_inode_create_args - Arguments for tsem_inode_create.
+ * struct tsem_inode_create_args - Arguments for inode creation.
  * @mode: The access mode requested for the inode being created.
  * @in.dir: The inode of the parent directory for which the inode is being
  *	    created.
@@ -972,7 +972,10 @@ struct tsem_path {
  *
  * The tsem_inode_create_args structure is used to carry the input
  * parameters and their retained and translated TSEM equivalents
- * for the creation of an inode.
+ * for the creation of an inode.  This structure is used to document
+ * arguments for both the inode_create and inode_mkdir handlers since
+ * the inode_mkdir handler is operationally equivalent, from the
+ * perspective of security event modeling to the inode_create event.
  */
 struct tsem_inode_create_args {
 	umode_t mode;

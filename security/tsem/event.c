@@ -685,6 +685,7 @@ int tsem_event_init(struct tsem_event *ep)
 
 	switch (ep->event) {
 	case TSEM_INODE_CREATE:
+	case TSEM_INODE_MKDIR:
 		retn = get_inode_create(&ep->CELL.inode_create);
 		break;
 	case TSEM_FILE_OPEN:
@@ -738,6 +739,7 @@ static void free_cell(struct tsem_event *ep)
 {
 	switch (ep->event) {
 	case TSEM_INODE_CREATE:
+	case TSEM_INODE_MKDIR:
 		kfree(ep->CELL.inode_create.out.path.pathname);
 		break;
 	case TSEM_FILE_OPEN:
