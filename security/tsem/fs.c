@@ -427,6 +427,19 @@ static void show_inode_symlink(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "old_name", "%s", args->out.old_name);
 }
 
+static void show_inode_mknod(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_inode_create_args *args = &ep->CELL.inode_create;
+
+	show_event(c, ep);
+	show_inode(c, ", ", &args->out.dir);
+	show_path(c, "path", &args->out.path);
+	seq_puts(c, ", ");
+	tsem_fs_show_key(c, ",", "mode", "0%o", args->mode);
+	tsem_fs_show_key(c, ",", "major", "%u", MAJOR(args->dev));
+	tsem_fs_show_key(c, "}", "minor", "%u", MINOR(args->dev));
+}
+
 static void show_file_open(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
@@ -1304,6 +1317,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_INODE_SYMLINK:
 		show_inode_symlink(c, ep);
+		break;
+	case TSEM_INODE_MKNOD:
+		show_inode_mknod(c, ep);
 		break;
 	case TSEM_FILE_OPEN:
 		show_file_open(c, ep);

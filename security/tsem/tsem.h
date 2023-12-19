@@ -962,6 +962,9 @@ struct tsem_path {
 /**
  * struct tsem_inode_create_args - Arguments for inode creation.
  * @mode: The access mode requested for the inode being created.
+ * @dev: The device major/minor number in the case of where this
+ *	 structure is being used to represent the arguments passed
+ *	 to the inode_mknod LSM hook.
  * @in.dir: The inode of the parent directory for which the inode is being
  *	    created.
  * @in.old_name: In the case of the tsem_inode_symlink handler, this
@@ -993,6 +996,7 @@ struct tsem_path {
  */
 struct tsem_inode_create_args {
 	umode_t mode;
+	dev_t dev;
 
 	union {
 		struct {

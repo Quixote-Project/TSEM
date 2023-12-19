@@ -1622,7 +1622,9 @@ static int tsem_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
 static int tsem_inode_mknod(struct inode *dir, struct dentry *dentry,
 			    umode_t mode, dev_t dev)
 {
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -1632,6 +1634,20 @@ static int tsem_inode_mknod(struct inode *dir, struct dentry *dentry,
 			  dentry->d_name.name, mode, dev);
 		return trapped_task(TSEM_INODE_MKNOD, msg, NOLOCK);
 	}
+
+	ep = tsem_event_allocate(TSEM_INODE_MKNOD, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.inode_create.in.dir = dir;
+	ep->CELL.inode_create.in.dentry = dentry;
+	ep->CELL.inode_create.mode = mode;
+	ep->CELL.inode_create.dev = dev;
+
+	retn = dispatch_event(ep);
+	tsem_event_put(ep);
+
+	return retn;
 
 	return dispatch_generic_event(TSEM_INODE_MKNOD, NOLOCK);
 }

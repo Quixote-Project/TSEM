@@ -468,6 +468,33 @@ static int get_inode_symlink(struct tsem_inode_create_args *args)
 	return retn;
 }
 
+static int get_inode_mknod(struct tsem_inode_create_args *args)
+{
+	int retn;
+	struct inode *dir = args->in.dir;
+	struct dentry *dentry = args->in.dentry;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	retn = fill_path_dentry(dentry, &args->out.path);
+	if (retn)
+		return retn;
+
+	fill_inode(dir, &args->out.dir);
+
+	/*
+	 * Set the UUID type of a RAMFS based filesystem to a common
+	 * value in order to prevent the random generation of a UUID
+	 * from perturbing the generaion of deterministic security
+	 * state values.
+	 */
+	if (!strcmp(dir->i_sb->s_type->name, "tmpfs"))
+		memset(args->out.dir.s_uuid, 0xff,
+		       sizeof(args->out.dir.s_uuid));
+
+	return 0;
+}
+
 static int get_file_cell(struct tsem_file_args *args)
 {
 	int retn = 1;
@@ -749,6 +776,9 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_INODE_SYMLINK:
 		retn = get_inode_symlink(&ep->CELL.inode_create);
 		break;
+	case TSEM_INODE_MKNOD:
+		retn = get_inode_mknod(&ep->CELL.inode_create);
+		break;
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
 		retn = get_file_cell(&ep->CELL.file);
@@ -803,6 +833,7 @@ static void free_cell(struct tsem_event *ep)
 	case TSEM_INODE_MKDIR:
 	case TSEM_INODE_RMDIR:
 	case TSEM_INODE_UNLINK:
+	case TSEM_INODE_MKNOD:
 		kfree(ep->CELL.inode_create.out.path.pathname);
 		break;
 	case TSEM_INODE_LINK:
