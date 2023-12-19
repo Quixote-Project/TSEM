@@ -964,11 +964,25 @@ struct tsem_path {
  * @mode: The access mode requested for the inode being created.
  * @in.dir: The inode of the parent directory for which the inode is being
  *	    created.
+ * @in.old_name: In the case of the tsem_inode_symlink handler, this
+ *		 member contains a pointer to the filename of the target
+ *		 of the symbolic link.
  * @in.dentry: The description of the inode being created.
+ * @in.new_dentry: In the case of the tsem_inode_link handler this
+ *		   member contains a pointer to the dentry describing
+ *		   the location of the link being created.
+ * @out.old_name: In the case of the tsem_inode_symlink handler this
+ *		  member contains a pointer to a copy of the name of
+ *		  the target of symbolic link.  This second
+ *		  representation is use to avoid warnings about the
+ *		  use of a constant character pointer in the arguments
+ *		  to the handler.
  * @out.inode: The TSEM representation of the parent directory.
  * @out.dentry: The TSEM representation of the inode represented by
  *		the input dentry.
  * @out.path: The path description for the dentry.
+ * @out.new_path: In the case of the inode_link directory the
+ *		  representation of the path to the link.
  *
  * The tsem_inode_create_args structure is used to carry the input
  * parameters and their retained and translated TSEM equivalents
@@ -979,14 +993,17 @@ struct tsem_path {
  */
 struct tsem_inode_create_args {
 	umode_t mode;
+
 	union {
 		struct {
+			const char *old_name;
 			struct inode *dir;
 			struct dentry *dentry;
 			struct dentry *new_dentry;
 		} in;
 
 		struct {
+			char *old_name;
 			struct tsem_inode_cell dir;
 			struct tsem_inode_cell inode;
 			struct tsem_path path;
