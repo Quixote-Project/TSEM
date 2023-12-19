@@ -229,6 +229,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_RMDIR:
+	case TSEM_INODE_UNLINK:
 		retn = add_inode(shash, &ep->CELL.inode_create.out.dir);
 		if (retn)
 			goto done;

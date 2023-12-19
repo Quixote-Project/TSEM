@@ -1269,6 +1269,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		show_inode_create(c, ep);
 		break;
 	case TSEM_INODE_RMDIR:
+	case TSEM_INODE_UNLINK:
 		show_inode_remove(c, ep);
 		break;
 	case TSEM_FILE_OPEN:
