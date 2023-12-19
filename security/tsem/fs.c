@@ -399,6 +399,20 @@ static void show_inode_remove(struct seq_file *c, struct tsem_event *ep)
 	seq_putc(c, '}');
 }
 
+static void show_inode_link(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_inode_create_args *args = &ep->CELL.inode_create;
+
+	show_event(c, ep);
+	show_inode(c, ", ", &args->out.dir);
+
+	tsem_fs_show_field(c, "old_direntry");
+	show_inode(c, ", ", &args->out.inode);
+	show_path(c, "path", &args->out.path);
+	seq_puts(c, "}, ");
+	show_path(c, "new_path", &args->out.new_path);
+	seq_putc(c, '}');
+}
 
 static void show_file_open(struct seq_file *c, struct tsem_event *ep)
 {
@@ -1271,6 +1285,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 	case TSEM_INODE_RMDIR:
 	case TSEM_INODE_UNLINK:
 		show_inode_remove(c, ep);
+		break;
+	case TSEM_INODE_LINK:
+		show_inode_link(c, ep);
 		break;
 	case TSEM_FILE_OPEN:
 		show_file_open(c, ep);

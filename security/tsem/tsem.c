@@ -1451,7 +1451,9 @@ static int tsem_inode_create(struct inode *dir, struct dentry *dentry,
 static int tsem_inode_link(struct dentry *old_dentry, struct inode *dir,
 			   struct dentry *new_dentry)
 {
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -1464,7 +1466,20 @@ static int tsem_inode_link(struct dentry *old_dentry, struct inode *dir,
 
 	if (bypass_filesystem(dir))
 		return 0;
-	return dispatch_generic_event(TSEM_INODE_LINK, NOLOCK);
+
+	ep = tsem_event_allocate(TSEM_INODE_LINK, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.inode_create.in.dir = dir;
+	ep->CELL.inode_create.in.dentry = old_dentry;
+	ep->CELL.inode_create.in.new_dentry = new_dentry;
+	ep->CELL.inode_create.mode = 0;
+
+	retn = dispatch_event(ep);
+	tsem_event_put(ep);
+
+	return retn;
 }
 
 static int tsem_inode_unlink(struct inode *dir, struct dentry *dentry)

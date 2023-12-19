@@ -983,11 +983,14 @@ struct tsem_inode_create_args {
 		struct {
 			struct inode *dir;
 			struct dentry *dentry;
+			struct dentry *new_dentry;
 		} in;
 
 		struct {
 			struct tsem_inode_cell dir;
+			struct tsem_inode_cell inode;
 			struct tsem_path path;
+			struct tsem_path new_path;
 		} out;
 	};
 };

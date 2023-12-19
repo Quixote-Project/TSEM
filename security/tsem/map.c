@@ -241,6 +241,26 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_INODE_LINK:
+		retn = add_inode(shash, &ep->CELL.inode_create.out.dir);
+		if (retn)
+			goto done;
+
+		retn = add_inode(shash, &ep->CELL.inode_create.out.inode);
+		if (retn)
+			goto done;
+
+		retn = add_path(shash, &ep->CELL.inode_create.out.path);
+		if (retn)
+			goto done;
+
+		retn = add_path(shash, &ep->CELL.inode_create.out.new_path);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
 		retn = add_file(shash, &ep->CELL.file);
