@@ -1857,14 +1857,25 @@ static int tsem_inode_removexattr(struct mnt_idmap *idmap,
 
 static int tsem_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry)
 {
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "fname=%s", dentry->d_name.name);
 		return trapped_task(TSEM_INODE_KILLPRIV, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_INODE_KILLPRIV, NOLOCK);
+	ep = tsem_event_allocate(TSEM_INODE_KILLPRIV, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.inode_create.in.dentry = dentry;
+
+	retn = dispatch_event(ep);
+	tsem_event_put(ep);
+
+	return retn;
 }
 
 static int tsem_tun_dev_create(void)

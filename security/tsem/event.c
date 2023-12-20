@@ -522,6 +522,22 @@ static int get_inode_rename(struct tsem_inode_rename_args *args)
 	return 0;
 }
 
+static int get_inode_killpriv(struct tsem_inode_create_args *args)
+{
+	int retn;
+	struct dentry *dentry = args->in.dentry;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	retn = fill_path_dentry(dentry, &args->out.path);
+	if (retn)
+		return retn;
+
+	fill_inode(d_backing_inode(dentry), &args->out.inode);
+	return 0;
+
+}
+
 static int get_file_cell(struct tsem_file_args *args)
 {
 	int retn = 1;
@@ -809,6 +825,9 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_INODE_RENAME:
 		retn = get_inode_rename(&ep->CELL.inode_rename);
 		break;
+	case TSEM_INODE_KILLPRIV:
+		retn = get_inode_killpriv(&ep->CELL.inode_create);
+		break;
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
 		retn = get_file_cell(&ep->CELL.file);
@@ -864,6 +883,7 @@ static void free_cell(struct tsem_event *ep)
 	case TSEM_INODE_RMDIR:
 	case TSEM_INODE_UNLINK:
 	case TSEM_INODE_MKNOD:
+	case TSEM_INODE_KILLPRIV:
 		kfree(ep->CELL.inode_create.out.path.pathname);
 		break;
 	case TSEM_INODE_LINK:

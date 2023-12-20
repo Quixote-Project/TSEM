@@ -458,6 +458,17 @@ static void show_inode_rename(struct seq_file *c, struct tsem_event *ep)
 	seq_puts(c, "}}");
 }
 
+static void show_inode_killpriv(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_inode_create_args *args = &ep->CELL.inode_create;
+
+	show_event(c, ep);
+	show_inode(c, ", ", &args->out.inode);
+
+	show_path(c, "path", &args->out.path);
+	seq_putc(c, '}');
+}
+
 static void show_file_open(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
@@ -1341,6 +1352,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_INODE_RENAME:
 		show_inode_rename(c, ep);
+		break;
+	case TSEM_INODE_KILLPRIV:
+		show_inode_killpriv(c, ep);
 		break;
 	case TSEM_FILE_OPEN:
 		show_file_open(c, ep);
