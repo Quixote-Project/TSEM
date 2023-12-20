@@ -544,7 +544,7 @@ static int get_file_cell(struct tsem_file_args *args)
 	struct file *file = args->in.file;
 	struct inode *inode = file_inode(file);
 
-	memset(args, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(*args));
 	inode_lock(inode);
 
 	retn = fill_path(&file->f_path, &args->out.path);
@@ -638,7 +638,7 @@ static int get_inode_getattr(struct tsem_inode_attr_args *args)
 	const struct path *path = args->in.path;
 	struct inode *inode = d_backing_inode(path->dentry);
 
-	memset(args, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(*args));
 	fill_inode(inode, &args->out.inode);
 	return fill_path(path, &args->out.path);
 }
@@ -650,7 +650,7 @@ static int get_inode_setattr(struct tsem_inode_attr_args *args)
 	struct dentry *dentry = args->in.dentry;
 	struct iattr *iattr = args->in.iattr;
 
-	memset(args, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(*args));
 
 	retn = fill_path_dentry(dentry, &args->out.path);
 	if (retn)
@@ -686,7 +686,7 @@ static int get_inode_setxattr(struct tsem_inode_xattr_args *args)
 	size_t size = args->in.size;
 	int flags = args->in.flags;
 
-	memset(args, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(*args));
 
 	args->out.size = size;
 	args->out.flags = flags;
@@ -730,7 +730,7 @@ static int get_inode_getxattr(struct tsem_inode_xattr_args *args)
 	const char *name = args->in.name;
 	struct dentry *dentry = args->in.dentry;
 
-	memset(args, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(*args));
 
 	retn = fill_path_dentry(dentry, &args->out.path);
 	if (retn)
@@ -752,7 +752,7 @@ static int get_inode_listxattr(struct tsem_inode_xattr_args *args)
 	int retn;
 	struct dentry *dentry = args->in.dentry;
 
-	memset(args, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(*args));
 
 	retn = fill_path_dentry(dentry, &args->out.path);
 	if (retn)
@@ -768,7 +768,7 @@ static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args)
 	const struct path *old_path = args->in.old_path;
 	const struct path *new_path = args->in.new_path;
 
-	memset(args, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(*args));
 
 	retn = fill_path(old_path, &args->out.old_path);
 	if (!retn)
