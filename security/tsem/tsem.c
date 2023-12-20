@@ -1606,7 +1606,9 @@ static int tsem_inode_rmdir(struct inode *dir, struct dentry *dentry)
 static int tsem_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
 			     struct inode *new_dir, struct dentry *new_dentry)
 {
+	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "old=%s, new=%s",
@@ -1616,7 +1618,20 @@ static int tsem_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
 
 	if (bypass_filesystem(old_dir))
 		return 0;
-	return dispatch_generic_event(TSEM_INODE_RENAME, NOLOCK);
+
+	ep = tsem_event_allocate(TSEM_INODE_RENAME, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.inode_rename.in.old_dir = old_dir;
+	ep->CELL.inode_rename.in.new_dir = new_dir;
+	ep->CELL.inode_rename.in.old_dentry = old_dentry;
+	ep->CELL.inode_rename.in.new_dentry = new_dentry;
+
+	retn = dispatch_event(ep);
+	tsem_event_put(ep);
+
+	return retn;
 }
 
 static int tsem_inode_mknod(struct inode *dir, struct dentry *dentry,

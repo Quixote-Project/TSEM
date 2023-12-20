@@ -1017,6 +1017,42 @@ struct tsem_inode_create_args {
 };
 
 /**
+ * struct tsem_inode_rename_args - Arguments for inode_rename.
+ * @in.old_dir: The parent directory argument of the old file.
+ * @in.new_dir: The parent directory argument of the new file.
+ * @in.old_dentry: The old filename argument.
+ * @in.new_dentry: The new filename argument.
+ * @out.old_dir: The TSEM description of the old parent directory.
+ * @out.new_dir: The TSEM description of the new parent directory.
+ * @out.old_inode: The TSEM description of the old filename.
+ * @out.new_inode: The TSEM description of the new filename.
+ * @out.old_path: The TSEM path description of the old file.
+ * @out.new_path: The TSEM path description of the new file.
+ *
+ * The tsem_inode_rename_args structure is used to carry the input
+ * parameters and their retained and translated TSEM equivalents
+ * for the renaming of a file.
+ */
+struct tsem_inode_rename_args {
+	union {
+		struct {
+			struct inode *old_dir;
+			struct inode *new_dir;
+			struct dentry *old_dentry;
+			struct dentry *new_dentry;
+		} in;
+
+		struct {
+			struct tsem_inode_cell old_dir;
+			struct tsem_inode_cell new_dir;
+			struct tsem_inode_cell inode;
+			struct tsem_path old_path;
+			struct tsem_path new_path;
+		} out;
+	};
+};
+
+/**
  * struct tsem_file_args - TSEM file argument description.
  * @in.file: A structure to the file that will be modeled.
  * @out.path: A description of the pathname of the file.
@@ -1456,6 +1492,7 @@ struct tsem_event {
 	bool no_params;
 	union {
 		struct tsem_inode_create_args inode_create;
+		struct tsem_inode_rename_args inode_rename;
 		struct tsem_file_args file;
 		struct tsem_mmap_file_args mmap_file;
 		struct tsem_socket_create_args socket_create;
