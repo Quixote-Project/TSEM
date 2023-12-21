@@ -1368,6 +1368,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		show_inode_killpriv(c, ep);
 		break;
 	case TSEM_FILE_OPEN:
+	case TSEM_FILE_RECEIVE:
 		show_file_open(c, ep);
 		break;
 	case TSEM_MMAP_FILE:

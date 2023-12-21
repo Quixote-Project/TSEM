@@ -836,6 +836,7 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_FILE_IOCTL:
 	case TSEM_FILE_LOCK:
 	case TSEM_FILE_FCNTL:
+	case TSEM_FILE_RECEIVE:
 		retn = get_file_cell(&ep->CELL.file);
 		break;
 	case TSEM_MMAP_FILE:
@@ -910,6 +911,7 @@ static void free_cell(struct tsem_event *ep)
 	case TSEM_FILE_IOCTL:
 	case TSEM_FILE_LOCK:
 	case TSEM_FILE_FCNTL:
+	case TSEM_FILE_RECEIVE:
 		kfree(ep->CELL.file.out.path.pathname);
 		break;
 	case TSEM_INODE_GETATTR:
