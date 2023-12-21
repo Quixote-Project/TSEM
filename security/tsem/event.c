@@ -901,7 +901,7 @@ static void free_cell(struct tsem_event *ep)
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
 	case TSEM_MMAP_FILE:
-		kfree(ep->CELL.inode_attr.out.path.pathname);
+		kfree(ep->CELL.file.out.path.pathname);
 		break;
 	case TSEM_INODE_GETATTR:
 	case TSEM_INODE_SETATTR:
