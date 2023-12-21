@@ -344,6 +344,18 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 			goto done;
 		break;
 
+	case TSEM_FILE_IOCTL:
+		retn = add_file(shash, &ep->CELL.file);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.file.cmd);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_MMAP_FILE:
 		retn = add_u32(shash, ep->CELL.mmap_file.reqprot);
 		if (retn)

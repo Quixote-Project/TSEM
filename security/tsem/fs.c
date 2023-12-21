@@ -493,6 +493,17 @@ static void show_mmap(struct seq_file *c, struct tsem_event *ep)
 		tsem_fs_show_key(c, "}", "flags", "%u", args->flags);
 }
 
+static void show_file_ioctl(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_file_args *args = &ep->CELL.file;
+
+	show_event(c, ep);
+
+	show_file(c, args);
+	seq_puts(c, ", ");
+	tsem_fs_show_key(c, "}", "cmd", "%u", args->cmd);
+}
+
 static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_socket_create_args *args = &ep->CELL.socket_create;
@@ -1361,6 +1372,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_MMAP_FILE:
 		show_mmap(c, ep);
+		break;
+	case TSEM_FILE_IOCTL:
+		show_file_ioctl(c, ep);
 		break;
 	case TSEM_SOCKET_CREATE:
 		show_socket_create(c, ep);

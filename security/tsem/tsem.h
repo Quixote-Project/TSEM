@@ -1052,6 +1052,8 @@ struct tsem_inode_rename_args {
 
 /**
  * struct tsem_file_args - TSEM file argument description.
+ * @cmd: The command argument for security handlers that take a
+ *       command type arguement, ie. file_ioctl, file_fcntl, file_lock
  * @in.file: A structure to the file that will be modeled.
  * @out.path: A description of the pathname of the file.
  * @out.inode: A description of the inode that represents the file.
@@ -1064,6 +1066,8 @@ struct tsem_inode_rename_args {
  * structure.
  */
 struct tsem_file_args {
+	unsigned int cmd;
+
 	union {
 		struct {
 			struct file *file;
