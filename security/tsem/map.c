@@ -213,15 +213,15 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 	switch (ep->event) {
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:
-		retn = add_inode(shash, &ep->CELL.inode_create.out.dir);
+		retn = add_inode(shash, &ep->CELL.inode.out.dir);
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode_create.out.path);
+		retn = add_path(shash, &ep->CELL.inode.out.path);
 		if (retn)
 			goto done;
 
-		retn = add_u16(shash, ep->CELL.inode_create.mode);
+		retn = add_u16(shash, ep->CELL.inode.mode);
 		if (retn)
 			goto done;
 
@@ -230,11 +230,11 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 	case TSEM_INODE_RMDIR:
 	case TSEM_INODE_UNLINK:
-		retn = add_inode(shash, &ep->CELL.inode_create.out.dir);
+		retn = add_inode(shash, &ep->CELL.inode.out.dir);
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode_create.out.path);
+		retn = add_path(shash, &ep->CELL.inode.out.path);
 		if (retn)
 			goto done;
 
@@ -242,19 +242,19 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_LINK:
-		retn = add_inode(shash, &ep->CELL.inode_create.out.dir);
+		retn = add_inode(shash, &ep->CELL.inode.out.dir);
 		if (retn)
 			goto done;
 
-		retn = add_inode(shash, &ep->CELL.inode_create.out.inode);
+		retn = add_inode(shash, &ep->CELL.inode.out.inode);
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode_create.out.path);
+		retn = add_path(shash, &ep->CELL.inode.out.path);
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode_create.out.new_path);
+		retn = add_path(shash, &ep->CELL.inode.out.new_path);
 		if (retn)
 			goto done;
 
@@ -262,15 +262,15 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_SYMLINK:
-		retn = add_inode(shash, &ep->CELL.inode_create.out.dir);
+		retn = add_inode(shash, &ep->CELL.inode.out.dir);
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode_create.out.path);
+		retn = add_path(shash, &ep->CELL.inode.out.path);
 		if (retn)
 			goto done;
 
-		retn = add_str(shash, ep->CELL.inode_create.out.old_name);
+		retn = add_str(shash, ep->CELL.inode.out.old_name);
 		if (retn)
 			goto done;
 
@@ -278,19 +278,19 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_MKNOD:
-		retn = add_inode(shash, &ep->CELL.inode_create.out.dir);
+		retn = add_inode(shash, &ep->CELL.inode.out.dir);
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode_create.out.path);
+		retn = add_path(shash, &ep->CELL.inode.out.path);
 		if (retn)
 			goto done;
 
-		retn = add_u16(shash, ep->CELL.inode_create.mode);
+		retn = add_u16(shash, ep->CELL.inode.mode);
 		if (retn)
 			goto done;
 
-		retn = add_u32(shash, ep->CELL.inode_create.dev);
+		retn = add_u32(shash, ep->CELL.inode.dev);
 		if (retn)
 			goto done;
 
@@ -322,11 +322,11 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_KILLPRIV:
-		retn = add_inode(shash, &ep->CELL.inode_create.out.inode);
+		retn = add_inode(shash, &ep->CELL.inode.out.inode);
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode_create.out.path);
+		retn = add_path(shash, &ep->CELL.inode.out.path);
 		if (retn)
 			goto done;
 

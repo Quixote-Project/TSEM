@@ -380,7 +380,7 @@ static void show_file(struct seq_file *c, struct tsem_file_args *args)
 
 static void show_inode_create(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_inode_create_args *args = &ep->CELL.inode_create;
+	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
 	show_inode(c, ", ", &args->out.dir);
@@ -391,7 +391,7 @@ static void show_inode_create(struct seq_file *c, struct tsem_event *ep)
 
 static void show_inode_remove(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_inode_create_args *args = &ep->CELL.inode_create;
+	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
 	show_inode(c, ", ", &args->out.dir);
@@ -401,7 +401,7 @@ static void show_inode_remove(struct seq_file *c, struct tsem_event *ep)
 
 static void show_inode_link(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_inode_create_args *args = &ep->CELL.inode_create;
+	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
 	show_inode(c, ", ", &args->out.dir);
@@ -416,7 +416,7 @@ static void show_inode_link(struct seq_file *c, struct tsem_event *ep)
 
 static void show_inode_symlink(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_inode_create_args *args = &ep->CELL.inode_create;
+	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
 	show_inode(c, ", ", &args->out.dir);
@@ -429,7 +429,7 @@ static void show_inode_symlink(struct seq_file *c, struct tsem_event *ep)
 
 static void show_inode_mknod(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_inode_create_args *args = &ep->CELL.inode_create;
+	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
 	show_inode(c, ", ", &args->out.dir);
@@ -460,7 +460,7 @@ static void show_inode_rename(struct seq_file *c, struct tsem_event *ep)
 
 static void show_inode_killpriv(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_inode_create_args *args = &ep->CELL.inode_create;
+	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
 	show_inode(c, ", ", &args->out.inode);

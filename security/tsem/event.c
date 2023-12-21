@@ -399,7 +399,7 @@ static void fill_inode(struct inode *inode, struct tsem_inode_cell *ip)
 	memcpy(ip->s_uuid, inode->i_sb->s_uuid.b, sizeof(ip->s_uuid));
 }
 
-static int get_inode_create(struct tsem_inode_create_args *args)
+static int get_inode_create(struct tsem_inode_args *args)
 {
 	int retn;
 	struct inode *dir = args->in.dir;
@@ -415,7 +415,7 @@ static int get_inode_create(struct tsem_inode_create_args *args)
 	return 0;
 }
 
-static int get_inode_link(struct tsem_inode_create_args *args)
+static int get_inode_link(struct tsem_inode_args *args)
 {
 	int retn;
 	struct inode *dir = args->in.dir;
@@ -444,7 +444,7 @@ static int get_inode_link(struct tsem_inode_create_args *args)
 	return retn;
 }
 
-static int get_inode_symlink(struct tsem_inode_create_args *args)
+static int get_inode_symlink(struct tsem_inode_args *args)
 {
 	int retn;
 	const char *old_name = args->in.old_name;
@@ -468,7 +468,7 @@ static int get_inode_symlink(struct tsem_inode_create_args *args)
 	return retn;
 }
 
-static int get_inode_mknod(struct tsem_inode_create_args *args)
+static int get_inode_mknod(struct tsem_inode_args *args)
 {
 	int retn;
 	struct inode *dir = args->in.dir;
@@ -522,7 +522,7 @@ static int get_inode_rename(struct tsem_inode_rename_args *args)
 	return 0;
 }
 
-static int get_inode_killpriv(struct tsem_inode_create_args *args)
+static int get_inode_killpriv(struct tsem_inode_args *args)
 {
 	int retn;
 	struct dentry *dentry = args->in.dentry;
@@ -811,22 +811,22 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_INODE_MKDIR:
 	case TSEM_INODE_RMDIR:
 	case TSEM_INODE_UNLINK:
-		retn = get_inode_create(&ep->CELL.inode_create);
+		retn = get_inode_create(&ep->CELL.inode);
 		break;
 	case TSEM_INODE_LINK:
-		retn = get_inode_link(&ep->CELL.inode_create);
+		retn = get_inode_link(&ep->CELL.inode);
 		break;
 	case TSEM_INODE_SYMLINK:
-		retn = get_inode_symlink(&ep->CELL.inode_create);
+		retn = get_inode_symlink(&ep->CELL.inode);
 		break;
 	case TSEM_INODE_MKNOD:
-		retn = get_inode_mknod(&ep->CELL.inode_create);
+		retn = get_inode_mknod(&ep->CELL.inode);
 		break;
 	case TSEM_INODE_RENAME:
 		retn = get_inode_rename(&ep->CELL.inode_rename);
 		break;
 	case TSEM_INODE_KILLPRIV:
-		retn = get_inode_killpriv(&ep->CELL.inode_create);
+		retn = get_inode_killpriv(&ep->CELL.inode);
 		break;
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
@@ -884,15 +884,15 @@ static void free_cell(struct tsem_event *ep)
 	case TSEM_INODE_UNLINK:
 	case TSEM_INODE_MKNOD:
 	case TSEM_INODE_KILLPRIV:
-		kfree(ep->CELL.inode_create.out.path.pathname);
+		kfree(ep->CELL.inode.out.path.pathname);
 		break;
 	case TSEM_INODE_LINK:
-		kfree(ep->CELL.inode_create.out.path.pathname);
-		kfree(ep->CELL.inode_create.out.new_path.pathname);
+		kfree(ep->CELL.inode.out.path.pathname);
+		kfree(ep->CELL.inode.out.new_path.pathname);
 		break;
 	case TSEM_INODE_SYMLINK:
-		kfree(ep->CELL.inode_create.out.old_name);
-		kfree(ep->CELL.inode_create.out.path.pathname);
+		kfree(ep->CELL.inode.out.old_name);
+		kfree(ep->CELL.inode.out.path.pathname);
 		break;
 	case TSEM_INODE_RENAME:
 		kfree(ep->CELL.inode_rename.out.old_path.pathname);
