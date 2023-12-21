@@ -1375,6 +1375,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_FILE_IOCTL:
 	case TSEM_FILE_LOCK:
+	case TSEM_FILE_FCNTL:
 		show_file_ioctl(c, ep);
 		break;
 	case TSEM_SOCKET_CREATE:

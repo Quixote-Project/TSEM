@@ -433,6 +433,7 @@ static int tsem_file_fcntl(struct file *file, unsigned int cmd,
 			   unsigned long arg)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -446,7 +447,14 @@ static int tsem_file_fcntl(struct file *file, unsigned int cmd,
 	if (bypass_filesystem(file_inode(file)))
 		return 0;
 
-	return dispatch_generic_event(TSEM_FILE_FCNTL, NOLOCK);
+	ep = tsem_event_allocate(TSEM_FILE_FCNTL, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.file.cmd = cmd;
+	ep->CELL.file.in.file = file;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_file_receive(struct file *file)

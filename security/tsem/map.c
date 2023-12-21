@@ -346,6 +346,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 	case TSEM_FILE_IOCTL:
 	case TSEM_FILE_LOCK:
+	case TSEM_FILE_FCNTL:
 		retn = add_file(shash, &ep->CELL.file);
 		if (retn)
 			goto done;
