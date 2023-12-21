@@ -288,12 +288,13 @@ static int dispatch_event(struct tsem_event *ep)
 
 	if (!retn)
 		retn = event_action(ctx, ep->event);
+
+	tsem_event_put(ep);
 	return retn;
 }
 
 static int dispatch_generic_event(enum tsem_event_type event, bool locked)
 {
-	int retn;
 	struct tsem_event *ep;
 
 	if (!tsem_context(current)->id && tsem_mode == NO_ROOT_MODELING)
@@ -304,15 +305,11 @@ static int dispatch_generic_event(enum tsem_event_type event, bool locked)
 		return -ENOMEM;
 	ep->no_params = true;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_file_open(struct file *file)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct inode *inode = file_inode(file);
 	struct tsem_event *ep;
@@ -339,16 +336,12 @@ static int tsem_file_open(struct file *file)
 
 	ep->CELL.file.in.file = file;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_mmap_file(struct file *file, unsigned long reqprot,
 			  unsigned long prot, unsigned long flags)
 {
-	int retn;
 	const char *p;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct inode *inode = NULL;
@@ -387,10 +380,7 @@ static int tsem_mmap_file(struct file *file, unsigned long reqprot,
 	ep->CELL.mmap_file.prot = prot;
 	ep->CELL.mmap_file.flags = flags;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_file_ioctl(struct file *file, unsigned int cmd,
@@ -525,10 +515,7 @@ static int tsem_task_kill(struct task_struct *target,
 	memcpy(ep->CELL.task_kill.target, tsem_task(target)->task_id,
 	       tsem_digestsize());
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_ptrace_traceme(struct task_struct *parent)
@@ -764,7 +751,6 @@ static int tsem_unix_may_send(struct socket *sock, struct socket *other)
 
 static int tsem_socket_create(int family, int type, int protocol, int kern)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -787,16 +773,12 @@ static int tsem_socket_create(int family, int type, int protocol, int kern)
 	ep->CELL.socket_create.protocol = protocol;
 	ep->CELL.socket_create.kern = kern;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_socket_connect(struct socket *sock, struct sockaddr *addr,
 			     int addr_len)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -813,17 +795,13 @@ static int tsem_socket_connect(struct socket *sock, struct sockaddr *addr,
 	ep->CELL.socket_connect.addr = addr;
 	ep->CELL.socket_connect.addr_len = addr_len;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_socket_bind(struct socket *sock, struct sockaddr *addr,
 			    int addr_len)
 
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -840,16 +818,11 @@ static int tsem_socket_bind(struct socket *sock, struct sockaddr *addr,
 	ep->CELL.socket_connect.addr = addr;
 	ep->CELL.socket_connect.addr_len = addr_len;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
-
+	return dispatch_event(ep);
 }
 
 static int tsem_socket_accept(struct socket *sock, struct socket *newsock)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct sock *sk = sock->sk;
 	const struct in6_addr *ipv6;
@@ -874,10 +847,7 @@ static int tsem_socket_accept(struct socket *sock, struct socket *newsock)
 	if (ipv6)
 		ep->CELL.socket_accept.u.ipv6 = *ipv6;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_socket_listen(struct socket *sock, int backlog)
@@ -1091,7 +1061,6 @@ static int tsem_sb_remount(struct super_block *sb, void *mnt_opts)
 static int tsem_sb_pivotroot(const struct path *old_path,
 			     const struct path *new_path)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1109,10 +1078,7 @@ static int tsem_sb_pivotroot(const struct path *old_path,
 	ep->CELL.sb_pivotroot.in.old_path = old_path;
 	ep->CELL.sb_pivotroot.in.new_path = new_path;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_sb_statfs(struct dentry *dentry)
@@ -1418,7 +1384,6 @@ static int tsem_netlink_send(struct sock *sk, struct sk_buff *skb)
 static int tsem_inode_create(struct inode *dir, struct dentry *dentry,
 			     umode_t mode)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1442,16 +1407,12 @@ static int tsem_inode_create(struct inode *dir, struct dentry *dentry,
 	ep->CELL.inode.in.dentry = dentry;
 	ep->CELL.inode.mode = mode;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_link(struct dentry *old_dentry, struct inode *dir,
 			   struct dentry *new_dentry)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1476,15 +1437,11 @@ static int tsem_inode_link(struct dentry *old_dentry, struct inode *dir,
 	ep->CELL.inode.in.new_dentry = new_dentry;
 	ep->CELL.inode.mode = 0;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_unlink(struct inode *dir, struct dentry *dentry)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1504,16 +1461,12 @@ static int tsem_inode_unlink(struct inode *dir, struct dentry *dentry)
 	ep->CELL.inode.in.dentry = dentry;
 	ep->CELL.inode.mode = 0;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_symlink(struct inode *dir, struct dentry *dentry,
 			      const char *old_name)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1536,16 +1489,12 @@ static int tsem_inode_symlink(struct inode *dir, struct dentry *dentry,
 	ep->CELL.inode.in.dentry = dentry;
 	ep->CELL.inode.in.old_name = old_name;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_mkdir(struct inode *dir, struct dentry *dentry,
 			    umode_t mode)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1569,15 +1518,11 @@ static int tsem_inode_mkdir(struct inode *dir, struct dentry *dentry,
 	ep->CELL.inode.in.dentry = dentry;
 	ep->CELL.inode.mode = mode;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_rmdir(struct inode *dir, struct dentry *dentry)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1597,16 +1542,12 @@ static int tsem_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	ep->CELL.inode.in.dentry = dentry;
 	ep->CELL.inode.mode = 0;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
 			     struct inode *new_dir, struct dentry *new_dentry)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1628,16 +1569,12 @@ static int tsem_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
 	ep->CELL.inode_rename.in.old_dentry = old_dentry;
 	ep->CELL.inode_rename.in.new_dentry = new_dentry;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_mknod(struct inode *dir, struct dentry *dentry,
 			    umode_t mode, dev_t dev)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1659,17 +1596,11 @@ static int tsem_inode_mknod(struct inode *dir, struct dentry *dentry,
 	ep->CELL.inode.mode = mode;
 	ep->CELL.inode.dev = dev;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
-
-	return dispatch_generic_event(TSEM_INODE_MKNOD, NOLOCK);
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_setattr(struct dentry *dentry, struct iattr *attr)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1696,15 +1627,11 @@ static int tsem_inode_setattr(struct dentry *dentry, struct iattr *attr)
 	ep->CELL.inode_attr.in.dentry = dentry;
 	ep->CELL.inode_attr.in.iattr = attr;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_getattr(const struct path *path)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1726,17 +1653,13 @@ static int tsem_inode_getattr(const struct path *path)
 
 	ep->CELL.inode_attr.in.path = path;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_setxattr(struct mnt_idmap *idmap,
 			       struct dentry *dentry, const char *name,
 			       const void *value, size_t size, int flags)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1760,15 +1683,11 @@ static int tsem_inode_setxattr(struct mnt_idmap *idmap,
 	ep->CELL.inode_xattr.in.size = size;
 	ep->CELL.inode_xattr.in.flags = flags;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_getxattr(struct dentry *dentry, const char *name)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep = NULL;
 
@@ -1791,15 +1710,11 @@ static int tsem_inode_getxattr(struct dentry *dentry, const char *name)
 	ep->CELL.inode_xattr.in.dentry = dentry;
 	ep->CELL.inode_xattr.in.name = name;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_listxattr(struct dentry *dentry)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1820,16 +1735,12 @@ static int tsem_inode_listxattr(struct dentry *dentry)
 
 	ep->CELL.inode_xattr.in.dentry = dentry;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_removexattr(struct mnt_idmap *idmap,
 				  struct dentry *dentry, const char *name)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1849,15 +1760,11 @@ static int tsem_inode_removexattr(struct mnt_idmap *idmap,
 	ep->CELL.inode_xattr.in.dentry = dentry;
 	ep->CELL.inode_xattr.in.name = name;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry)
 {
-	int retn;
 	char msg[TRAPPED_MSG_LENGTH];
 	struct tsem_event *ep;
 
@@ -1872,10 +1779,7 @@ static int tsem_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry)
 
 	ep->CELL.inode.in.dentry = dentry;
 
-	retn = dispatch_event(ep);
-	tsem_event_put(ep);
-
-	return retn;
+	return dispatch_event(ep);
 }
 
 static int tsem_tun_dev_create(void)
