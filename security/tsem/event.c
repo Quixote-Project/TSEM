@@ -554,6 +554,9 @@ static int get_file_cell(struct tsem_file_args *args)
 	args->out.flags = file->f_flags;
 	fill_inode(inode, &args->out.inode);
 
+	if (!S_ISREG(inode->i_mode))
+		goto done;
+
 	retn = add_file_digest(file, args);
 	if (retn)
 		kfree(args->out.path.pathname);
@@ -831,6 +834,7 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
 	case TSEM_FILE_IOCTL:
+	case TSEM_FILE_LOCK:
 		retn = get_file_cell(&ep->CELL.file);
 		break;
 	case TSEM_MMAP_FILE:
@@ -903,6 +907,7 @@ static void free_cell(struct tsem_event *ep)
 	case TSEM_BPRM_COMMITTING_CREDS:
 	case TSEM_MMAP_FILE:
 	case TSEM_FILE_IOCTL:
+	case TSEM_FILE_LOCK:
 		kfree(ep->CELL.file.out.path.pathname);
 		break;
 	case TSEM_INODE_GETATTR:

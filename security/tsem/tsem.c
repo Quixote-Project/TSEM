@@ -411,6 +411,7 @@ static int tsem_file_ioctl(struct file *file, unsigned int cmd,
 static int tsem_file_lock(struct file *file, unsigned int cmd)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "name=%s, cmd=%u",
@@ -418,7 +419,14 @@ static int tsem_file_lock(struct file *file, unsigned int cmd)
 		return trapped_task(TSEM_FILE_LOCK, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_FILE_LOCK, NOLOCK);
+	ep = tsem_event_allocate(TSEM_FILE_LOCK, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.file.cmd = cmd;
+	ep->CELL.file.in.file = file;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_file_fcntl(struct file *file, unsigned int cmd,
