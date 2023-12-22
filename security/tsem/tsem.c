@@ -627,13 +627,21 @@ static int tsem_task_getpgid(struct task_struct *p)
 static int tsem_task_getsid(struct task_struct *p)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "target=%s", p->comm);
 		return trapped_task(TSEM_TASK_GETSID, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_TASK_GETSID, LOCKED);
+	ep = tsem_event_allocate(TSEM_TASK_GETSID, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	memcpy(ep->CELL.task_kill.target, tsem_task(p)->task_id,
+	       tsem_digestsize());
+
+	return dispatch_event(ep);
 }
 
 static int tsem_task_setnice(struct task_struct *p, int nice)
