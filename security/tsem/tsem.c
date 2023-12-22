@@ -528,9 +528,9 @@ static int tsem_task_kill(struct task_struct *target,
 	cross_model = src_ctx->id != tgt_ctx->id;
 
 	if (info != SEND_SIG_NOINFO && SI_FROMKERNEL(info))
-		return retn;
+		return 0;
 	if (sig == SIGURG)
-		return retn;
+		return 0;
 	if (!capable(TSEM_CONTROL_CAPABILITY) &&
 	    has_capability_noaudit(target, TSEM_CONTROL_CAPABILITY))
 		return -EPERM;
