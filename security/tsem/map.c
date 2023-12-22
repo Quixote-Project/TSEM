@@ -581,6 +581,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_TASK_SETNICE:
+	case TSEM_TASK_SETIOPRIO:
 		p = ep->CELL.task_kill.target;
 		size = sizeof(ep->CELL.task_kill.target);
 		retn = crypto_shash_update(shash, p, size);
