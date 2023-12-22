@@ -745,6 +745,7 @@ static int tsem_task_setrlimit(struct task_struct *p, unsigned int resource,
 static int tsem_task_setscheduler(struct task_struct *p)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "target=%s", p->comm);
@@ -752,7 +753,14 @@ static int tsem_task_setscheduler(struct task_struct *p)
 					   LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_TASK_SETSCHEDULER, LOCKED);
+	ep = tsem_event_allocate(TSEM_TASK_SETSCHEDULER, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	memcpy(ep->CELL.task_kill.target, tsem_task(p)->task_id,
+	       tsem_digestsize());
+
+	return dispatch_event(ep);
 }
 
 static int tsem_task_getscheduler(struct task_struct *p)
