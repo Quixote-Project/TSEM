@@ -613,6 +613,16 @@ static void show_task_setpgid(struct seq_file *c, struct tsem_event *ep)
 			 args->source);
 }
 
+static void show_task_getpgid(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
+
+	show_event(c, ep);
+
+	tsem_fs_show_key(c, "}", "task", "%*phN", tsem_digestsize(),
+			 args->target);
+}
+
 static void show_inode_getattr(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_inode_attr_args *args = &ep->CELL.inode_attr;
@@ -1419,6 +1429,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_TASK_SETPGID:
 		show_task_setpgid(c, ep);
+		break;
+	case TSEM_TASK_GETPGID:
+		show_task_getpgid(c, ep);
 		break;
 	case TSEM_INODE_GETATTR:
 		show_inode_getattr(c, ep);
