@@ -647,6 +647,7 @@ static int tsem_task_getsid(struct task_struct *p)
 static int tsem_task_setnice(struct task_struct *p, int nice)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "target=%s, nice=%d",
@@ -654,7 +655,15 @@ static int tsem_task_setnice(struct task_struct *p, int nice)
 		return trapped_task(TSEM_TASK_SETNICE, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_TASK_SETNICE, LOCKED);
+	ep = tsem_event_allocate(TSEM_TASK_SETNICE, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.task_kill.value = nice;
+	memcpy(ep->CELL.task_kill.target, tsem_task(p)->task_id,
+	       tsem_digestsize());
+
+	return dispatch_event(ep);
 }
 
 static int tsem_task_setioprio(struct task_struct *p, int ioprio)

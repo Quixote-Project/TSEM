@@ -1217,6 +1217,7 @@ struct tsem_socket_accept_args {
  * tsem_task_kill security event handler.
  */
 struct tsem_task_kill_args {
+	int value;
 	u32 cross_model;
 	u32 signal;
 	u8 source[HASH_MAX_DIGESTSIZE];
