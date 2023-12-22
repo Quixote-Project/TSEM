@@ -555,6 +555,12 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 			goto done;
 		break;
 
+	case TSEM_PTRACE_TRACEME:
+		p = ep->CELL.task_kill.source;
+		size = sizeof(ep->CELL.task_kill.source);
+		retn = crypto_shash_finup(shash, p, size, mapping);
+		break;
+
 	case TSEM_INODE_GETATTR:
 		retn = add_path(shash, &ep->CELL.inode_attr.out.path);
 		if (retn)

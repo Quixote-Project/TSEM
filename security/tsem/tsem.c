@@ -513,7 +513,6 @@ static int tsem_task_kill(struct task_struct *target,
 {
 	bool cross_model;
 	char msg[TRAPPED_MSG_LENGTH];
-	int retn;
 	struct tsem_event *ep;
 	struct tsem_context *src_ctx = tsem_context(current);
 	struct tsem_context *tgt_ctx = tsem_context(target);
@@ -552,13 +551,21 @@ static int tsem_task_kill(struct task_struct *target,
 static int tsem_ptrace_traceme(struct task_struct *parent)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "parent=%s", parent->comm);
 		return trapped_task(TSEM_PTRACE_TRACEME, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_PTRACE_TRACEME, LOCKED);
+	ep = tsem_event_allocate(TSEM_PTRACE_TRACEME, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	memcpy(ep->CELL.task_kill.source, tsem_task(parent)->task_id,
+	       tsem_digestsize());
+
+	return dispatch_event(ep);
 }
 
 static int tsem_task_setpgid(struct task_struct *p, pid_t pgid)
