@@ -571,17 +571,37 @@ static int tsem_ptrace_traceme(struct task_struct *parent)
 static int tsem_task_setpgid(struct task_struct *p, pid_t pgid)
 {
 	char msg[TRAPPED_MSG_LENGTH];
-	struct tsem_context *ctx = tsem_context(current);
+	struct tsem_event *ep;
+	struct task_struct *src;
 
 	if (tsem_task_untrusted(current)) {
-		scnprintf(msg, sizeof(msg), "target=%s", p->comm);
-		pr_warn("Untrusted %s: comm=%s, pid=%d, parameters='%s'\n",
-			tsem_names[TSEM_TASK_SETPGID], current->comm,
-			task_pid_nr(current), msg);
-		return event_action(ctx, TSEM_TASK_SETPGID);
+		scnprintf(msg, sizeof(msg),
+			  "Untrusted %s: comm=%s, pid=%d, parameters='%s'\n",
+			  tsem_names[TSEM_TASK_SETPGID], current->comm,
+			  task_pid_nr(current), msg);
+		return trapped_task(TSEM_TASK_SETPGID, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_TASK_SETPGID, true);
+	ep = tsem_event_allocate(TSEM_TASK_SETPGID, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	memcpy(ep->CELL.task_kill.target, tsem_task(p)->task_id,
+	       tsem_digestsize());
+
+	if (!pgid)
+		memcpy(ep->CELL.task_kill.source, tsem_task(p)->task_id,
+		       tsem_digestsize());
+	else {
+		rcu_read_lock();
+		src = find_task_by_vpid(pgid);
+		rcu_read_unlock();
+		if (src)
+			memcpy(ep->CELL.task_kill.source,
+			       tsem_task(src)->task_id, tsem_digestsize());
+	}
+
+	return dispatch_event(ep);
 }
 
 static int tsem_task_getpgid(struct task_struct *p)
