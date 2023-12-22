@@ -575,6 +575,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 	case TSEM_TASK_GETPGID:
 	case TSEM_TASK_GETSID:
+	case TSEM_TASK_GETIOPRIO:
 		p = ep->CELL.task_kill.target;
 		size = sizeof(ep->CELL.task_kill.target);
 		retn = crypto_shash_finup(shash, p, size, mapping);

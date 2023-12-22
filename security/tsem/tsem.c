@@ -691,13 +691,21 @@ static int tsem_task_setioprio(struct task_struct *p, int ioprio)
 static int tsem_task_getioprio(struct task_struct *p)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "target=%s", p->comm);
 		return trapped_task(TSEM_TASK_GETIOPRIO, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_TASK_GETIOPRIO, NOLOCK);
+	ep = tsem_event_allocate(TSEM_TASK_GETIOPRIO, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	memcpy(ep->CELL.task_kill.target, tsem_task(p)->task_id,
+	       tsem_digestsize());
+
+	return dispatch_event(ep);
 }
 
 static int tsem_task_prlimit(const struct cred *cred, const struct cred *tcred,
