@@ -1208,6 +1208,10 @@ struct tsem_socket_accept_args {
 
 /**
  * struct tsem_task_kill_args - TSEM task kill arguments.
+ * @u.value: The signed representation of an integer argument.
+ * @u.resource: The unsigned representation of an integer argument.
+ * @cur: The current resource limit for a task_setrlimit call.
+ * @max: The maximum resource limit for a task_setrlimit call.
  * @cross_model: A flag variable used to indicate whether or not the
  *		 signal is originating from a security modeling
  *		 namespace other than the namespace of the target process.
@@ -1219,7 +1223,12 @@ struct tsem_socket_accept_args {
  * tsem_task_kill security event handler.
  */
 struct tsem_task_kill_args {
-	int value;
+	union {
+		int value;
+		unsigned int resource;
+	} u;
+	u64 cur;
+	u64 max;
 	u32 cross_model;
 	u32 signal;
 	u8 source[HASH_MAX_DIGESTSIZE];

@@ -637,7 +637,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		if (retn)
 			goto done;
 
-		retn = add_u32(shash, ep->CELL.task_kill.value);
+		retn = add_u32(shash, ep->CELL.task_kill.u.value);
 		if (retn)
 			goto done;
 
@@ -654,6 +654,28 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 			goto done;
 
 		retn = add_u32(shash, ep->CELL.task_prlimit.flags);
+		break;
+
+	case TSEM_TASK_SETRLIMIT:
+		p = ep->CELL.task_kill.target;
+		size = sizeof(ep->CELL.task_kill.target);
+		retn = crypto_shash_update(shash, p, size);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.task_kill.u.resource);
+		if (retn)
+			goto done;
+
+		retn = add_u64(shash, ep->CELL.task_kill.cur);
+		if (retn)
+			goto done;
+
+		retn = add_u64(shash, ep->CELL.task_kill.max);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_INODE_GETATTR:

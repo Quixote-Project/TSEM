@@ -659,7 +659,7 @@ static int tsem_task_setnice(struct task_struct *p, int nice)
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.task_kill.value = nice;
+	ep->CELL.task_kill.u.value = nice;
 	memcpy(ep->CELL.task_kill.target, tsem_task(p)->task_id,
 	       tsem_digestsize());
 
@@ -681,7 +681,7 @@ static int tsem_task_setioprio(struct task_struct *p, int ioprio)
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.task_kill.value = ioprio;
+	ep->CELL.task_kill.u.value = ioprio;
 	memcpy(ep->CELL.task_kill.target, tsem_task(p)->task_id,
 	       tsem_digestsize());
 
@@ -739,6 +739,7 @@ static int tsem_task_setrlimit(struct task_struct *p, unsigned int resource,
 			       struct rlimit *new_rlim)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -748,7 +749,17 @@ static int tsem_task_setrlimit(struct task_struct *p, unsigned int resource,
 		return trapped_task(TSEM_TASK_SETRLIMIT, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_TASK_SETRLIMIT, LOCKED);
+	ep = tsem_event_allocate(TSEM_TASK_SETRLIMIT, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.task_kill.u.resource = resource;
+	ep->CELL.task_kill.cur = new_rlim->rlim_cur;
+	ep->CELL.task_kill.max = new_rlim->rlim_max;
+	memcpy(ep->CELL.task_kill.target, tsem_task(p)->task_id,
+	       tsem_digestsize());
+
+	return dispatch_event(ep);
 }
 
 static int tsem_task_setscheduler(struct task_struct *p)

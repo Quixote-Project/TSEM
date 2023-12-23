@@ -646,7 +646,7 @@ static void show_task_nice(struct seq_file *c, struct tsem_event *ep)
 
 	tsem_fs_show_key(c, ",", "task", "%*phN", tsem_digestsize(),
 			 args->target);
-	tsem_fs_show_key(c, "}", "nice", "%d", args->value);
+	tsem_fs_show_key(c, "}", "nice", "%d", args->u.value);
 }
 
 static void show_task_prlimit(struct seq_file *c, struct tsem_event *ep)
@@ -664,6 +664,19 @@ static void show_task_prlimit(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "flags", "%d", args->flags);
 }
 
+static void show_task_setrlimit(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
+
+	show_event(c, ep);
+
+	tsem_fs_show_key(c, ",", "task", "%*phN", tsem_digestsize(),
+			 args->target);
+	tsem_fs_show_key(c, ",", "resource", "%u", args->u.resource);
+	tsem_fs_show_key(c, ",", "current", "%llu", args->cur);
+	tsem_fs_show_key(c, "}", "max", "%llu", args->max);
+}
+
 static void show_task_value(struct seq_file *c, struct tsem_event *ep,
 			    char *key)
 {
@@ -673,7 +686,7 @@ static void show_task_value(struct seq_file *c, struct tsem_event *ep,
 
 	tsem_fs_show_key(c, ",", "task", "%*phN", tsem_digestsize(),
 			 args->target);
-	tsem_fs_show_key(c, "}", key, "%d", args->value);
+	tsem_fs_show_key(c, "}", key, "%d", args->u.value);
 }
 
 static void show_inode_getattr(struct seq_file *c, struct tsem_event *ep)
@@ -1498,6 +1511,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_TASK_PRLIMIT:
 		show_task_prlimit(c, ep);
+		break;
+	case TSEM_TASK_SETRLIMIT:
+		show_task_setrlimit(c, ep);
 		break;
 	case TSEM_INODE_GETATTR:
 		show_inode_getattr(c, ep);

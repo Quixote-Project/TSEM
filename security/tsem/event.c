@@ -663,8 +663,8 @@ static int get_socket_cell(struct tsem_socket_connect_args *scp)
 
 static void get_prlimit(struct tsem_task_prlimit_args *args)
 {
-	struct cred *cred = args->in.cred;
-	struct cred *tcred = args->in.tcred;
+	const struct cred *cred = args->in.cred;
+	const struct cred *tcred = args->in.tcred;
 
 	memset(&args->out, '\0', sizeof(*args));
 
