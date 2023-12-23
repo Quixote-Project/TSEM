@@ -1265,6 +1265,30 @@ struct tsem_task_prlimit_args {
 };
 
 /**
+ * struct tsem_task_prctl - TSEM task prctl arguments.
+ * @u.value: The signed representation of an integer argument.
+ * @u.resource: The unsigned representation of an integer argument.
+ * @cur: The current resource limit for a task_setrlimit call.
+ * @max: The maximum resource limit for a task_setrlimit call.
+ * @cross_model: A flag variable used to indicate whether or not the
+ *		 signal is originating from a security modeling
+ *		 namespace other than the namespace of the target process.
+ * @signal: The number of the signal being sent.
+ * @source: The task identifier of the process sending the signal
+ * @target: The task identifier of the target process.
+ *
+ * This structure is used to encapsulate the arguments provided to the
+ * tsem_task_kill security event handler.
+ */
+struct tsem_task_prctl_args {
+	int option;
+	unsigned long arg2;
+	unsigned long arg3;
+	unsigned long arg4;
+	unsigned long arg5;
+};
+
+/**
  * struct tsem_inode_attr_args - TSEM inode manipulation arguments.
  * @in.path: In the case of the inode_getattr call the path to the
  *	     inode being referenced.
@@ -1543,6 +1567,7 @@ struct tsem_event {
 		struct tsem_socket_accept_args socket_accept;
 		struct tsem_task_kill_args task_kill;
 		struct tsem_task_prlimit_args task_prlimit;
+		struct tsem_task_prctl_args task_prctl;
 		struct tsem_inode_attr_args inode_attr;
 		struct tsem_inode_xattr_args inode_xattr;
 		struct tsem_sb_pivotroot_args sb_pivotroot;

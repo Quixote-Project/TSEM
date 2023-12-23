@@ -808,13 +808,24 @@ static int tsem_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 			   unsigned long arg4, unsigned long arg5)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "option=%d", option);
 		return trapped_task(TSEM_TASK_PRCTL, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_TASK_PRCTL, LOCKED);
+	ep = tsem_event_allocate(TSEM_TASK_PRCTL, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.task_prctl.option = option;
+	ep->CELL.task_prctl.arg2 = arg2;
+	ep->CELL.task_prctl.arg3 = arg3;
+	ep->CELL.task_prctl.arg4 = arg4;
+	ep->CELL.task_prctl.arg5 = arg5;
+
+	return dispatch_event(ep);
 }
 
 static void tsem_bprm_committing_creds(struct linux_binprm *bprm)

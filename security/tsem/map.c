@@ -682,6 +682,31 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_TASK_PRCTL:
+		retn = add_u32(shash, ep->CELL.task_prctl.option);
+		if (retn)
+			goto done;
+
+		retn = add_u64(shash, ep->CELL.task_prctl.arg2);
+		if (retn)
+			goto done;
+
+		retn = add_u64(shash, ep->CELL.task_prctl.arg3);
+		if (retn)
+			goto done;
+
+		retn = add_u64(shash, ep->CELL.task_prctl.arg4);
+		if (retn)
+			goto done;
+
+		retn = add_u64(shash, ep->CELL.task_prctl.arg5);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
+
 	case TSEM_INODE_GETATTR:
 		retn = add_path(shash, &ep->CELL.inode_attr.out.path);
 		if (retn)

@@ -677,6 +677,19 @@ static void show_task_setrlimit(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "max", "%llu", args->max);
 }
 
+static void show_task_prctl(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_task_prctl_args *args = &ep->CELL.task_prctl;
+
+	show_event(c, ep);
+
+	tsem_fs_show_key(c, ",", "option", "%d", args->option);
+	tsem_fs_show_key(c, ",", "arg2", "%llu", args->arg2);
+	tsem_fs_show_key(c, ",", "arg3", "%llu", args->arg3);
+	tsem_fs_show_key(c, ",", "arg4", "%llu", args->arg4);
+	tsem_fs_show_key(c, "}", "arg5", "%llu", args->arg5);
+}
+
 static void show_task_value(struct seq_file *c, struct tsem_event *ep,
 			    char *key)
 {
@@ -1514,6 +1527,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_TASK_SETRLIMIT:
 		show_task_setrlimit(c, ep);
+		break;
+	case TSEM_TASK_PRCTL:
+		show_task_prctl(c, ep);
 		break;
 	case TSEM_INODE_GETATTR:
 		show_inode_getattr(c, ep);
