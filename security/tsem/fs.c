@@ -1457,6 +1457,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 	case TSEM_TASK_GETSID:
 	case TSEM_TASK_GETIOPRIO:
 	case TSEM_TASK_SETSCHEDULER:
+	case TSEM_TASK_GETSCHEDULER:
 		show_task_getpgid(c, ep);
 		break;
 	case TSEM_TASK_SETNICE:
