@@ -195,6 +195,52 @@ static int add_file(struct shash_desc *shash, struct tsem_file_args *args)
 	return retn;
 }
 
+static int add_creds(struct shash_desc *shash, struct tsem_COE *cp)
+{
+	int retn;
+
+	retn = add_u32(shash, cp->uid);
+	if (!retn)
+		goto done;
+
+	retn = add_u32(shash, cp->euid);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, cp->suid);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, cp->gid);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, cp->egid);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, cp->sgid);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, cp->fsuid);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, cp->fsgid);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, cp->capeff.value);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, cp->securebits);
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -596,6 +642,18 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 			goto done;
 
 		retn = crypto_shash_final(shash, mapping);
+		break;
+
+	case TSEM_TASK_PRLIMIT:
+		retn = add_creds(shash, &ep->CELL.task_prlimit.out.cred);
+		if (retn)
+			goto done;
+
+		retn = add_creds(shash, &ep->CELL.task_prlimit.out.tcred);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.task_prlimit.flags);
 		break;
 
 	case TSEM_INODE_GETATTR:

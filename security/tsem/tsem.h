@@ -913,6 +913,8 @@ struct tsem_COE {
 		kernel_cap_t mask;
 		u64 value;
 	} capeff;
+
+	unsigned int securebits;
 };
 
 /**
@@ -1225,6 +1227,35 @@ struct tsem_task_kill_args {
 };
 
 /**
+ * struct tsem_task_prlimit_args - TSEM task prlimit arguments.
+ * @flags: The flag variable passed to the LSM handler.
+ * @in.cred: The cred pointer passed to the handler.
+ * @in.tcred: The tcred pointer passed to the handler.
+ * @out.cred: The TSEM representation of the in.cred pointer.
+ * @out.tcred: The TSEM representation of the in.tcred pointer.
+ *
+ * This structure is used to hold and retain the arguments provided to
+ * the tsem_task_prlimit security event handler.
+ */
+struct tsem_task_prlimit_args {
+	unsigned int flags;
+
+	union {
+		struct {
+			const struct cred *cred;
+			const struct cred *tcred;
+
+		} in;
+
+		struct {
+			struct tsem_COE cred;
+			struct tsem_COE tcred;
+		} out;
+
+	};
+};
+
+/**
  * struct tsem_inode_attr_args - TSEM inode manipulation arguments.
  * @in.path: In the case of the inode_getattr call the path to the
  *	     inode being referenced.
@@ -1502,6 +1533,7 @@ struct tsem_event {
 		struct tsem_socket_connect_args socket_connect;
 		struct tsem_socket_accept_args socket_accept;
 		struct tsem_task_kill_args task_kill;
+		struct tsem_task_prlimit_args task_prlimit;
 		struct tsem_inode_attr_args inode_attr;
 		struct tsem_inode_xattr_args inode_xattr;
 		struct tsem_sb_pivotroot_args sb_pivotroot;

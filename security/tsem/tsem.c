@@ -712,6 +712,7 @@ static int tsem_task_prlimit(const struct cred *cred, const struct cred *tcred,
 			     unsigned int flags)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -723,7 +724,15 @@ static int tsem_task_prlimit(const struct cred *cred, const struct cred *tcred,
 		return trapped_task(TSEM_TASK_PRLIMIT, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_TASK_PRLIMIT, LOCKED);
+	ep = tsem_event_allocate(TSEM_TASK_PRLIMIT, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.task_prlimit.flags = flags;
+	ep->CELL.task_prlimit.in.cred = cred;
+	ep->CELL.task_prlimit.in.tcred = tcred;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_task_setrlimit(struct task_struct *p, unsigned int resource,

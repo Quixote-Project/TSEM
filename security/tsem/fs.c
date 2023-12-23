@@ -312,6 +312,21 @@ static int config_namespace(enum tsem_control_type type, const char *arg)
 	return retn;
 }
 
+static void show_creds(struct seq_file *c, char *key, struct tsem_COE *cp)
+{
+	tsem_fs_show_field(c, key);
+	tsem_fs_show_key(c, ",", "uid", "%u", cp->uid);
+	tsem_fs_show_key(c, ",", "euid", "%u", cp->euid);
+	tsem_fs_show_key(c, ",", "suid", "%u", cp->suid);
+	tsem_fs_show_key(c, ",", "gid", "%u", cp->gid);
+	tsem_fs_show_key(c, ",", "egid", "%u", cp->egid);
+	tsem_fs_show_key(c, ",", "sgid", "%u", cp->sgid);
+	tsem_fs_show_key(c, ",", "fsuid", "%u", cp->fsuid);
+	tsem_fs_show_key(c, ",", "fsgid", "%u", cp->fsgid);
+	tsem_fs_show_key(c, ",", "capeff", "0x%llx", cp->capeff.value);
+	tsem_fs_show_key(c, "}", "securebits", "%u", cp->securebits);
+}
+
 static void show_event(struct seq_file *c, struct tsem_event *ep)
 {
 	tsem_fs_show_field(c, "event");
@@ -632,6 +647,21 @@ static void show_task_nice(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, ",", "task", "%*phN", tsem_digestsize(),
 			 args->target);
 	tsem_fs_show_key(c, "}", "nice", "%d", args->value);
+}
+
+static void show_task_prlimit(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_task_prlimit_args *args = &ep->CELL.task_prlimit;
+
+	show_event(c, ep);
+
+	show_creds(c, "cred", &args->out.cred);
+	seq_puts(c, ", ");
+
+	show_creds(c, "tcred", &args->out.tcred);
+	seq_puts(c, ", ");
+
+	tsem_fs_show_key(c, "}", "flags", "%d", args->flags);
 }
 
 static void show_task_value(struct seq_file *c, struct tsem_event *ep,
@@ -1465,6 +1495,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_TASK_SETIOPRIO:
 		show_task_value(c, ep, "ioprio");
+		break;
+	case TSEM_TASK_PRLIMIT:
+		show_task_prlimit(c, ep);
 		break;
 	case TSEM_INODE_GETATTR:
 		show_inode_getattr(c, ep);

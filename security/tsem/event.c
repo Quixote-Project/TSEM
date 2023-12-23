@@ -399,6 +399,31 @@ static void fill_inode(struct inode *inode, struct tsem_inode_cell *ip)
 	memcpy(ip->s_uuid, inode->i_sb->s_uuid.b, sizeof(ip->s_uuid));
 }
 
+static void fill_creds(const struct cred *cp, struct tsem_COE *tcp)
+{
+	struct user_namespace *ns;
+
+	if (tsem_context(current)->use_current_ns)
+		ns = current_user_ns();
+	else
+		ns = &init_user_ns;
+
+	tcp->uid = from_kuid(ns, cp->uid);
+	tcp->euid = from_kuid(ns, cp->euid);
+	tcp->suid = from_kuid(ns, cp->suid);
+
+	tcp->gid = from_kgid(ns, cp->gid);
+	tcp->egid = from_kgid(ns, cp->egid);
+	tcp->sgid = from_kgid(ns, cp->sgid);
+
+	tcp->fsuid = from_kuid(ns, cp->fsuid);
+	tcp->fsgid = from_kgid(ns, cp->fsgid);
+
+	tcp->capeff.mask = cp->cap_effective;
+
+	tcp->securebits = cp->securebits;
+}
+
 static int get_inode_create(struct tsem_inode_args *args)
 {
 	int retn;
@@ -636,6 +661,17 @@ static int get_socket_cell(struct tsem_socket_connect_args *scp)
 	return retn;
 }
 
+static void get_prlimit(struct tsem_task_prlimit_args *args)
+{
+	struct cred *cred = args->in.cred;
+	struct cred *tcred = args->in.tcred;
+
+	memset(&args->out, '\0', sizeof(*args));
+
+	fill_creds(cred, &args->out.cred);
+	fill_creds(tcred, &args->out.tcred);
+}
+
 static int get_inode_getattr(struct tsem_inode_attr_args *args)
 {
 	const struct path *path = args->in.path;
@@ -842,6 +878,9 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_MMAP_FILE:
 		if (!ep->CELL.mmap_file.anonymous)
 			retn = get_file_cell(&ep->CELL.mmap_file.file);
+		break;
+	case TSEM_TASK_PRLIMIT:
+		get_prlimit(&ep->CELL.task_prlimit);
 		break;
 	case TSEM_SOCKET_CONNECT:
 	case TSEM_SOCKET_BIND:
