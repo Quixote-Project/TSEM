@@ -519,6 +519,27 @@ static void show_file_ioctl(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "cmd", "%u", args->cmd);
 }
 
+static void show_unix_socket(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_unix_socket_args *args = &ep->CELL.unix_socket;
+
+	show_event(c, ep);
+
+	tsem_fs_show_field(c, "sock");
+	tsem_fs_show_key(c, ",", "family", "%u", args->out.sock.family);
+	tsem_fs_show_key(c, ",", "type", "%u", args->out.sock.type);
+	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.sock.protocol);
+	tsem_fs_show_key(c, "}, ", "owner", "%*phN", tsem_digestsize(),
+			 args->out.sock.owner);
+
+	tsem_fs_show_field(c, "sock");
+	tsem_fs_show_key(c, ",", "family", "%u", args->out.other.family);
+	tsem_fs_show_key(c, ",", "type", "%u", args->out.other.type);
+	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.other.protocol);
+	tsem_fs_show_key(c, "}}", "owner", "%*phN", tsem_digestsize(),
+			 args->out.other.owner);
+}
+
 static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_socket_create_args *args = &ep->CELL.socket_create;
@@ -1489,6 +1510,10 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 	case TSEM_FILE_LOCK:
 	case TSEM_FILE_FCNTL:
 		show_file_ioctl(c, ep);
+		break;
+	case TSEM_UNIX_STREAM_CONNECT:
+	case TSEM_UNIX_MAY_SEND:
+		show_unix_socket(c, ep);
 		break;
 	case TSEM_SOCKET_CREATE:
 		show_socket_create(c, ep);

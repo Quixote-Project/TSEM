@@ -1126,6 +1126,31 @@ struct tsem_socket_create_args {
 	int type;
 	int protocol;
 	int kern;
+	u8 owner[HASH_MAX_DIGESTSIZE];
+};
+
+/**
+ * struct tsem_unix_socket_args - TSEM AF_UNIX arguments.
+ * @in.sock: A pointer to the sock argument of the LSM hook.
+ * @in.other: A poitner to the other argument of the LSM hook.
+ * @out.sock: The TSEM representation of the sock argument.
+ * @out.other: The TSEM representation of the other argument.
+ *
+ * This structure is used to encapsulate the arguments provided to the
+ * tsem_unix_stream_connect and tsem_unix_may_connect security handlers.
+ */
+struct tsem_unix_socket_args {
+	union {
+		struct {
+			struct sock *sock;
+			struct sock *other;
+		} in;
+
+		struct {
+			struct tsem_socket_create_args sock;
+			struct tsem_socket_create_args other;
+		} out;
+	};
 };
 
 /**
@@ -1464,6 +1489,9 @@ struct tsem_sb_pivotroot_args {
  *		    security event having a struct file argument.
  * @CELL.mmap_file: The structure describing the characteristics of
  *		    a mmap_file security event.
+ * @CELL.unix_socket: The structure describing characteristics for the
+ *		      tsem_unix_stream_connect and tsem_unix_may_send
+ *		      handlers.
  * @CELL.socket_create: The structure describing the characteristics
  *			of a socket_create security event.
  * @CELL.socket_connect: The structure describing the characteristics
@@ -1562,6 +1590,7 @@ struct tsem_event {
 		struct tsem_inode_rename_args inode_rename;
 		struct tsem_file_args file;
 		struct tsem_mmap_file_args mmap_file;
+		struct tsem_unix_socket_args unix_socket;
 		struct tsem_socket_create_args socket_create;
 		struct tsem_socket_connect_args socket_connect;
 		struct tsem_socket_accept_args socket_accept;
@@ -1627,7 +1656,8 @@ struct tsem_event_point {
  * @status: The digest collection state of the inode.  See the
  *	    discussion of enum tsem_inode_state for what information
  *	    is conveyed by the value of this structure member.
-
+ * @owner: The identity of the task that created the inode.
+ *
  * This structure is the second of the two primary control structures
  * that are implemented through the LSM blob functionality.  It is
  * automatically created when the inode structure is created for
@@ -1656,6 +1686,7 @@ struct tsem_inode {
 	struct mutex mutex;
 	struct list_head digest_list;
 	enum tsem_inode_state status;
+	u8 owner[HASH_MAX_DIGESTSIZE];
 };
 
 /**

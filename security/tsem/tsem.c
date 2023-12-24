@@ -871,21 +871,29 @@ static int tsem_unix_stream_connect(struct sock *sock, struct sock *other,
 				    struct sock *newsk)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "family=%u/%u, ",
 			  sock->sk_family, other->sk_family);
-		return trapped_task(TSEM_UNIX_STREAM_CONNECT, msg,
-					   LOCKED);
+		return trapped_task(TSEM_UNIX_STREAM_CONNECT, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_UNIX_STREAM_CONNECT, LOCKED);
+	ep = tsem_event_allocate(TSEM_UNIX_STREAM_CONNECT, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.unix_socket.in.sock = sock;
+	ep->CELL.unix_socket.in.other = other;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_unix_may_send(struct socket *sock, struct socket *other)
 {
 	char msg[TRAPPED_MSG_LENGTH];
 	struct sock *sk = sock->sk;
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "family=%u, type=%u",
@@ -893,7 +901,26 @@ static int tsem_unix_may_send(struct socket *sock, struct socket *other)
 		return trapped_task(TSEM_UNIX_MAY_SEND, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_UNIX_MAY_SEND, LOCKED);
+	ep = tsem_event_allocate(TSEM_UNIX_MAY_SEND, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.unix_socket.in.sock = sock->sk;
+	ep->CELL.unix_socket.in.other = other->sk;
+
+	return dispatch_event(ep);
+}
+
+static int tsem_socket_post_create(struct socket *sock, int family, int type,
+				   int protocol, int kern)
+{
+	struct tsem_inode *tsip = tsem_inode(SOCK_INODE(sock));
+
+	if (unlikely(!tsem_ready))
+		return 0;
+
+	memcpy(tsip->owner, tsem_task(current)->task_id, tsem_digestsize());
+	return 0;
 }
 
 static int tsem_socket_create(int family, int type, int protocol, int kern)
@@ -2037,6 +2064,7 @@ static struct security_hook_list tsem_hooks[] __ro_after_init = {
 	LSM_HOOK_INIT(unix_stream_connect, tsem_unix_stream_connect),
 	LSM_HOOK_INIT(unix_may_send, tsem_unix_may_send),
 
+	LSM_HOOK_INIT(socket_post_create, tsem_socket_post_create),
 	LSM_HOOK_INIT(socket_create, tsem_socket_create),
 	LSM_HOOK_INIT(socket_connect, tsem_socket_connect),
 	LSM_HOOK_INIT(socket_bind, tsem_socket_bind),
