@@ -519,25 +519,25 @@ static void show_file_ioctl(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "cmd", "%u", args->cmd);
 }
 
-static void show_unix_socket(struct seq_file *c, struct tsem_event *ep)
+static void show_socket_pair(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_socket_args *args = &ep->CELL.socket;
 
 	show_event(c, ep);
 
-	tsem_fs_show_field(c, "sock");
-	tsem_fs_show_key(c, ",", "family", "%u", args->out.sock.family);
-	tsem_fs_show_key(c, ",", "type", "%u", args->out.sock.type);
-	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.sock.protocol);
+	tsem_fs_show_field(c, "socka");
+	tsem_fs_show_key(c, ",", "family", "%u", args->out.socka.family);
+	tsem_fs_show_key(c, ",", "type", "%u", args->out.socka.type);
+	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.socka.protocol);
 	tsem_fs_show_key(c, "}, ", "owner", "%*phN", tsem_digestsize(),
-			 args->out.sock.owner);
+			 args->out.socka.owner);
 
-	tsem_fs_show_field(c, "sock");
-	tsem_fs_show_key(c, ",", "family", "%u", args->out.other.family);
-	tsem_fs_show_key(c, ",", "type", "%u", args->out.other.type);
-	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.other.protocol);
+	tsem_fs_show_field(c, "sockb");
+	tsem_fs_show_key(c, ",", "family", "%u", args->out.sockb.family);
+	tsem_fs_show_key(c, ",", "type", "%u", args->out.sockb.type);
+	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.sockb.protocol);
 	tsem_fs_show_key(c, "}}", "owner", "%*phN", tsem_digestsize(),
-			 args->out.other.owner);
+			 args->out.sockb.owner);
 }
 
 static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
@@ -622,11 +622,11 @@ static void show_socket_listen(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	tsem_fs_show_field(c, "sock");
-	tsem_fs_show_key(c, ",", "family", "%u", args->out.sock.family);
-	tsem_fs_show_key(c, ",", "type", "%u", args->out.sock.type);
-	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.sock.protocol);
+	tsem_fs_show_key(c, ",", "family", "%u", args->out.socka.family);
+	tsem_fs_show_key(c, ",", "type", "%u", args->out.socka.type);
+	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.socka.protocol);
 	tsem_fs_show_key(c, "}, ", "owner", "%*phN", tsem_digestsize(),
-			 args->out.sock.owner);
+			 args->out.socka.owner);
 
 	tsem_fs_show_key(c, "}", "backlog", "%d", args->value);
 }
@@ -1529,7 +1529,8 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_UNIX_STREAM_CONNECT:
 	case TSEM_UNIX_MAY_SEND:
-		show_unix_socket(c, ep);
+	case TSEM_SOCKET_SOCKETPAIR:
+		show_socket_pair(c, ep);
 		break;
 	case TSEM_SOCKET_CREATE:
 		show_socket_create(c, ep);

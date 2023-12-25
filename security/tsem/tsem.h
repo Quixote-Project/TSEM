@@ -1145,13 +1145,13 @@ struct tsem_socket_args {
 
 	union {
 		struct {
-			struct sock *sock;
-			struct sock *other;
+			struct sock *socka;
+			struct sock *sockb;
 		} in;
 
 		struct {
-			struct tsem_socket_create_args sock;
-			struct tsem_socket_create_args other;
+			struct tsem_socket_create_args socka;
+			struct tsem_socket_create_args sockb;
 		} out;
 	};
 };

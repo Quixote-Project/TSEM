@@ -681,15 +681,15 @@ static void get_socket(struct sock *sock, struct tsem_socket_create_args *args)
 	       tsem_digestsize());
 }
 
-static void get_unix_socket(struct tsem_socket_args *args)
+static void get_socket_pair(struct tsem_socket_args *args)
 {
-	struct sock *sock = args->in.sock;
-	struct sock *other = args->in.other;
+	struct sock *socka = args->in.socka;
+	struct sock *sockb = args->in.sockb;
 
 	memset(&args->out, '\0', sizeof(*args));
 
-	get_socket(sock, &args->out.sock);
-	get_socket(other, &args->out.other);
+	get_socket(socka, &args->out.socka);
+	get_socket(sockb, &args->out.sockb);
 }
 
 static int get_inode_getattr(struct tsem_inode_attr_args *args)
@@ -904,7 +904,8 @@ int tsem_event_init(struct tsem_event *ep)
 		break;
 	case TSEM_UNIX_STREAM_CONNECT:
 	case TSEM_UNIX_MAY_SEND:
-		get_unix_socket(&ep->CELL.socket);
+	case TSEM_SOCKET_SOCKETPAIR:
+		get_socket_pair(&ep->CELL.socket);
 		break;
 	case TSEM_SOCKET_CONNECT:
 	case TSEM_SOCKET_BIND:
@@ -914,7 +915,8 @@ int tsem_event_init(struct tsem_event *ep)
 		retn = get_socket_accept(&ep->CELL.socket_accept);
 		break;
 	case TSEM_SOCKET_LISTEN:
-		get_socket(ep->CELL.socket.in.sock, &ep->CELL.socket.out.sock);
+		get_socket(ep->CELL.socket.in.socka,
+			   &ep->CELL.socket.out.sockb);
 		break;
 	case TSEM_INODE_GETATTR:
 		retn = get_inode_getattr(&ep->CELL.inode_attr);

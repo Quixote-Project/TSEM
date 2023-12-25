@@ -459,11 +459,12 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 	case TSEM_UNIX_STREAM_CONNECT:
 	case TSEM_UNIX_MAY_SEND:
-		retn = add_socket(shash, &ep->CELL.socket.out.sock);
+	case TSEM_SOCKET_SOCKETPAIR:
+		retn = add_socket(shash, &ep->CELL.socket.out.socka);
 		if (retn)
 			goto done;
 
-		retn = add_socket(shash, &ep->CELL.socket.out.other);
+		retn = add_socket(shash, &ep->CELL.socket.out.sockb);
 		if (retn)
 			goto done;
 
@@ -618,7 +619,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_SOCKET_LISTEN:
-		retn = add_socket(shash, &ep->CELL.socket.out.sock);
+		retn = add_socket(shash, &ep->CELL.socket.out.socka);
 		if (retn)
 			goto done;
 
