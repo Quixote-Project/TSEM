@@ -916,7 +916,7 @@ int tsem_event_init(struct tsem_event *ep)
 		break;
 	case TSEM_SOCKET_LISTEN:
 		get_socket(ep->CELL.socket.in.socka,
-			   &ep->CELL.socket.out.sockb);
+			   &ep->CELL.socket.out.socka);
 		break;
 	case TSEM_INODE_GETATTR:
 		retn = get_inode_getattr(&ep->CELL.inode_attr);
