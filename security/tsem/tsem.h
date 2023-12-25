@@ -1130,16 +1130,19 @@ struct tsem_socket_create_args {
 };
 
 /**
- * struct tsem_unix_socket_args - TSEM AF_UNIX arguments.
- * @in.sock: A pointer to the sock argument of the LSM hook.
- * @in.other: A poitner to the other argument of the LSM hook.
- * @out.sock: The TSEM representation of the sock argument.
- * @out.other: The TSEM representation of the other argument.
+ * struct tsem_socket_args - TSEM socket arguments
+ * @in.sock: A pointer to the socket argument of the LSM hook.
+ * @in.other: A pointer to a second socket argument that may be supplied
+ *	      to the handler.
+ * @out.sock: The TSEM representation of the first socket argument.
+ * @out.other: The TSEM representation of the second socket argument.
  *
- * This structure is used to encapsulate the arguments provided to the
- * tsem_unix_stream_connect and tsem_unix_may_connect security handlers.
+ * This structure is used to encapsulate arguments provided to LSM
+ * hooks that handle generic socket information.
  */
-struct tsem_unix_socket_args {
+struct tsem_socket_args {
+	int value;
+
 	union {
 		struct {
 			struct sock *sock;
@@ -1590,7 +1593,7 @@ struct tsem_event {
 		struct tsem_inode_rename_args inode_rename;
 		struct tsem_file_args file;
 		struct tsem_mmap_file_args mmap_file;
-		struct tsem_unix_socket_args unix_socket;
+		struct tsem_socket_args socket;
 		struct tsem_socket_create_args socket_create;
 		struct tsem_socket_connect_args socket_connect;
 		struct tsem_socket_accept_args socket_accept;

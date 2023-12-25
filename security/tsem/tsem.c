@@ -883,8 +883,8 @@ static int tsem_unix_stream_connect(struct sock *sock, struct sock *other,
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.unix_socket.in.sock = sock;
-	ep->CELL.unix_socket.in.other = other;
+	ep->CELL.socket.in.sock = sock;
+	ep->CELL.socket.in.other = other;
 
 	return dispatch_event(ep);
 }
@@ -905,8 +905,8 @@ static int tsem_unix_may_send(struct socket *sock, struct socket *other)
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.unix_socket.in.sock = sock->sk;
-	ep->CELL.unix_socket.in.other = other->sk;
+	ep->CELL.socket.in.sock = sock->sk;
+	ep->CELL.socket.in.other = other->sk;
 
 	return dispatch_event(ep);
 }
@@ -1029,6 +1029,7 @@ static int tsem_socket_listen(struct socket *sock, int backlog)
 {
 	char msg[TRAPPED_MSG_LENGTH];
 	struct sock *sk = sock->sk;
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "family=%u, type=%u, port=%u",
@@ -1036,7 +1037,14 @@ static int tsem_socket_listen(struct socket *sock, int backlog)
 		return trapped_task(TSEM_SOCKET_LISTEN, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_SOCKET_LISTEN, NOLOCK);
+	ep = tsem_event_allocate(TSEM_SOCKET_LISTEN, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.socket.value = backlog;
+	ep->CELL.socket.in.sock = sk;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_socket_socketpair(struct socket *socka, struct socket *sockb)

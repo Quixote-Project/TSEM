@@ -672,26 +672,24 @@ static void get_prlimit(struct tsem_task_prlimit_args *args)
 	fill_creds(tcred, &args->out.tcred);
 }
 
-static void get_unix_socket(struct tsem_unix_socket_args *args)
+static void get_socket(struct sock *sock, struct tsem_socket_create_args *args)
+{
+	args->family = sock->sk_family;
+	args->type = sock->sk_type;
+	args->protocol = sock->sk_protocol;
+	memcpy(args->owner, tsem_inode(SOCK_INODE(sock->sk_socket))->owner,
+	       tsem_digestsize());
+}
+
+static void get_unix_socket(struct tsem_socket_args *args)
 {
 	struct sock *sock = args->in.sock;
 	struct sock *other = args->in.other;
 
 	memset(&args->out, '\0', sizeof(*args));
 
-	args->out.sock.family = sock->sk_family;
-	args->out.sock.type = sock->sk_type;
-	args->out.sock.protocol = sock->sk_protocol;
-	memcpy(args->out.sock.owner,
-	       tsem_inode(SOCK_INODE(sock->sk_socket))->owner,
-	       tsem_digestsize());
-
-	args->out.other.family = other->sk_family;
-	args->out.other.type = other->sk_type;
-	args->out.other.protocol = other->sk_protocol;
-	memcpy(args->out.other.owner,
-	       tsem_inode(SOCK_INODE(other->sk_socket))->owner,
-	       tsem_digestsize());
+	get_socket(sock, &args->out.sock);
+	get_socket(other, &args->out.other);
 }
 
 static int get_inode_getattr(struct tsem_inode_attr_args *args)
@@ -906,7 +904,7 @@ int tsem_event_init(struct tsem_event *ep)
 		break;
 	case TSEM_UNIX_STREAM_CONNECT:
 	case TSEM_UNIX_MAY_SEND:
-		get_unix_socket(&ep->CELL.unix_socket);
+		get_unix_socket(&ep->CELL.socket);
 		break;
 	case TSEM_SOCKET_CONNECT:
 	case TSEM_SOCKET_BIND:
@@ -914,6 +912,9 @@ int tsem_event_init(struct tsem_event *ep)
 		break;
 	case TSEM_SOCKET_ACCEPT:
 		retn = get_socket_accept(&ep->CELL.socket_accept);
+		break;
+	case TSEM_SOCKET_LISTEN:
+		get_socket(ep->CELL.socket.in.sock, &ep->CELL.socket.out.sock);
 		break;
 	case TSEM_INODE_GETATTR:
 		retn = get_inode_getattr(&ep->CELL.inode_attr);

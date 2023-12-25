@@ -241,8 +241,8 @@ static int add_creds(struct shash_desc *shash, struct tsem_COE *cp)
 	return retn;
 }
 
-static int add_unix_socket(struct shash_desc *shash,
-			   struct tsem_socket_create_args *args)
+static int add_socket(struct shash_desc *shash,
+		      struct tsem_socket_create_args *args)
 {
 	int retn;
 
@@ -459,11 +459,11 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 	case TSEM_UNIX_STREAM_CONNECT:
 	case TSEM_UNIX_MAY_SEND:
-		retn = add_unix_socket(shash, &ep->CELL.unix_socket.out.sock);
+		retn = add_socket(shash, &ep->CELL.socket.out.sock);
 		if (retn)
 			goto done;
 
-		retn = add_unix_socket(shash, &ep->CELL.unix_socket.out.other);
+		retn = add_socket(shash, &ep->CELL.socket.out.other);
 		if (retn)
 			goto done;
 
@@ -615,6 +615,18 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 				goto done;
 			break;
 		}
+		break;
+
+	case TSEM_SOCKET_LISTEN:
+		retn = add_socket(shash, &ep->CELL.socket.out.sock);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.socket.value);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_TASK_KILL:

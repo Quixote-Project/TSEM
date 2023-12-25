@@ -521,7 +521,7 @@ static void show_file_ioctl(struct seq_file *c, struct tsem_event *ep)
 
 static void show_unix_socket(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_unix_socket_args *args = &ep->CELL.unix_socket;
+	struct tsem_socket_args *args = &ep->CELL.socket;
 
 	show_event(c, ep);
 
@@ -613,6 +613,22 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 				 sap->u.mapping);
 		break;
 	}
+}
+
+static void show_socket_listen(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_socket_args *args = &ep->CELL.socket;
+
+	show_event(c, ep);
+
+	tsem_fs_show_field(c, "sock");
+	tsem_fs_show_key(c, ",", "family", "%u", args->out.sock.family);
+	tsem_fs_show_key(c, ",", "type", "%u", args->out.sock.type);
+	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.sock.protocol);
+	tsem_fs_show_key(c, "}, ", "owner", "%*phN", tsem_digestsize(),
+			 args->out.sock.owner);
+
+	tsem_fs_show_key(c, "}", "backlog", "%d", args->value);
 }
 
 static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
@@ -1524,6 +1540,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_SOCKET_ACCEPT:
 		show_socket_accept(c, ep);
+		break;
+	case TSEM_SOCKET_LISTEN:
+		show_socket_listen(c, ep);
 		break;
 	case TSEM_TASK_KILL:
 		show_task_kill(c, ep);
