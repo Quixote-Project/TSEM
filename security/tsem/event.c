@@ -569,7 +569,7 @@ static int get_file_cell(struct tsem_file_args *args)
 	struct file *file = args->in.file;
 	struct inode *inode = file_inode(file);
 
-	memset(&args->out, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(args->out));
 	inode_lock(inode);
 
 	retn = fill_path(&file->f_path, &args->out.path);
@@ -666,7 +666,7 @@ static void get_prlimit(struct tsem_task_prlimit_args *args)
 	const struct cred *cred = args->in.cred;
 	const struct cred *tcred = args->in.tcred;
 
-	memset(&args->out, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(args->out));
 
 	fill_creds(cred, &args->out.cred);
 	fill_creds(tcred, &args->out.tcred);
@@ -686,7 +686,7 @@ static void get_socket_pair(struct tsem_socket_args *args)
 	struct sock *socka = args->in.socka;
 	struct sock *sockb = args->in.sockb;
 
-	memset(&args->out, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(args->out));
 
 	get_socket(socka, &args->out.socka);
 	get_socket(sockb, &args->out.sockb);
@@ -697,7 +697,7 @@ static int get_inode_getattr(struct tsem_inode_attr_args *args)
 	const struct path *path = args->in.path;
 	struct inode *inode = d_backing_inode(path->dentry);
 
-	memset(&args->out, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(args->out));
 	fill_inode(inode, &args->out.inode);
 	return fill_path(path, &args->out.path);
 }
@@ -709,7 +709,7 @@ static int get_inode_setattr(struct tsem_inode_attr_args *args)
 	struct dentry *dentry = args->in.dentry;
 	struct iattr *iattr = args->in.iattr;
 
-	memset(&args->out, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(args->out));
 
 	retn = fill_path_dentry(dentry, &args->out.path);
 	if (retn)
@@ -745,7 +745,7 @@ static int get_inode_setxattr(struct tsem_inode_xattr_args *args)
 	size_t size = args->in.size;
 	int flags = args->in.flags;
 
-	memset(&args->out, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(args->out));
 
 	args->out.size = size;
 	args->out.flags = flags;
@@ -789,7 +789,7 @@ static int get_inode_getxattr(struct tsem_inode_xattr_args *args)
 	const char *name = args->in.name;
 	struct dentry *dentry = args->in.dentry;
 
-	memset(&args->out, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(args->out));
 
 	retn = fill_path_dentry(dentry, &args->out.path);
 	if (retn)
@@ -811,7 +811,7 @@ static int get_inode_listxattr(struct tsem_inode_xattr_args *args)
 	int retn;
 	struct dentry *dentry = args->in.dentry;
 
-	memset(&args->out, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(args->out));
 
 	retn = fill_path_dentry(dentry, &args->out.path);
 	if (retn)
@@ -827,7 +827,7 @@ static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args)
 	const struct path *old_path = args->in.old_path;
 	const struct path *new_path = args->in.new_path;
 
-	memset(&args->out, '\0', sizeof(*args));
+	memset(&args->out, '\0', sizeof(args->out));
 
 	retn = fill_path(old_path, &args->out.old_path);
 	if (!retn)
