@@ -692,6 +692,27 @@ static void get_socket_pair(struct tsem_socket_args *args)
 	get_socket(sockb, &args->out.sockb);
 }
 
+static void get_socket_msg(struct tsem_socket_args *args)
+
+{
+	struct sock *socka = args->in.socka;
+	void *addr = args->in.addr;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	get_socket(socka, &args->out.socka);
+	if (addr) {
+		if (args->out.socka.family == AF_INET) {
+			args->out.have_addr = true;
+			args->out.ipv4 = *(struct sockaddr_in *) addr;
+		}
+		if (args->out.socka.family == AF_INET6) {
+			args->out.have_addr = true;
+			args->out.ipv6 = *(struct sockaddr_in6 *) addr;
+		}
+	}
+}
+
 static int get_inode_getattr(struct tsem_inode_attr_args *args)
 {
 	const struct path *path = args->in.path;
@@ -917,6 +938,9 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_SOCKET_LISTEN:
 		get_socket(ep->CELL.socket.in.socka,
 			   &ep->CELL.socket.out.socka);
+		break;
+	case TSEM_SOCKET_SENDMSG:
+		get_socket_msg(&ep->CELL.socket);
 		break;
 	case TSEM_INODE_GETATTR:
 		retn = get_inode_getattr(&ep->CELL.inode_attr);

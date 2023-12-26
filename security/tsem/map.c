@@ -471,6 +471,42 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_SOCKET_SENDMSG:
+		retn = add_socket(shash, &ep->CELL.socket.out.socka);
+		if (retn)
+			goto done;
+
+		if (!ep->CELL.socket.out.have_addr) {
+			retn = crypto_shash_final(shash, mapping);
+			goto done;
+		}
+
+		if (ep->CELL.socket.out.socka.family == AF_INET) {
+			ipv4 = &ep->CELL.socket.out.ipv4;
+			retn = add_u16(shash, ipv4->sin_port);
+			if (retn)
+				goto done;
+
+			retn = add_u32(shash, ipv4->sin_addr.s_addr);
+			if (retn)
+				goto done;
+			}
+		if (ep->CELL.socket.out.socka.family == AF_INET6) {
+			ipv6 = &ep->CELL.socket.out.ipv6;
+			retn = add_u16(shash, ipv6->sin6_port);
+			if (retn)
+				goto done;
+
+			p = (u8 *) &ipv6->sin6_addr.in6_u.u6_addr8;
+			size = sizeof(ipv6->sin6_addr.in6_u.u6_addr8);
+			retn = crypto_shash_update(shash, p, size);
+			if (retn)
+				goto done;
+		}
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_SOCKET_CREATE:
 		p = (u8 *) &ep->CELL.socket_create.family;
 		size = sizeof(ep->CELL.socket_create.family);

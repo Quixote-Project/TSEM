@@ -631,6 +631,44 @@ static void show_socket_listen(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "backlog", "%d", args->value);
 }
 
+static void show_socket_msg(struct seq_file *c, struct tsem_event *ep)
+{
+	int size;
+	struct sockaddr_in *ipv4;
+	struct sockaddr_in6 *ipv6;
+	struct tsem_socket_args *args = &ep->CELL.socket;
+
+	show_event(c, ep);
+
+	tsem_fs_show_field(c, "socka");
+	tsem_fs_show_key(c, ",", "family", "%u", args->out.socka.family);
+	tsem_fs_show_key(c, ",", "type", "%u", args->out.socka.type);
+	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.socka.protocol);
+	tsem_fs_show_key(c, "}", "owner", "%*phN", tsem_digestsize(),
+			 args->out.socka.owner);
+
+	if (args->out.have_addr) {
+		seq_puts(c, ", ");
+		switch (args->out.socka.family) {
+		case AF_INET:
+			ipv4 = &args->out.ipv4;
+			tsem_fs_show_key(c, ",", "port", "%u", ipv4->sin_port);
+			tsem_fs_show_key(c, "}", "addr", "%u",
+					 ipv4->sin_addr.s_addr);
+			break;
+		case AF_INET6:
+			ipv6 = &args->out.ipv6;
+			size = sizeof(ipv6->sin6_addr.in6_u.u6_addr8);
+			tsem_fs_show_key(c, ",", "port", "%u",
+					 ipv6->sin6_port);
+			tsem_fs_show_key(c, "}", "addr", "%*phN", size,
+					 ipv6->sin6_addr.in6_u.u6_addr8);
+			break;
+		}
+	} else
+		seq_putc(c, '}');
+}
+
 static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
@@ -1538,6 +1576,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 	case TSEM_SOCKET_CONNECT:
 	case TSEM_SOCKET_BIND:
 		show_socket(c, ep);
+		break;
+	case TSEM_SOCKET_SENDMSG:
+		show_socket_msg(c, ep);
 		break;
 	case TSEM_SOCKET_ACCEPT:
 		show_socket_accept(c, ep);

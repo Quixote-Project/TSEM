@@ -1131,11 +1131,18 @@ struct tsem_socket_create_args {
 
 /**
  * struct tsem_socket_args - TSEM socket arguments
- * @in.sock: A pointer to the socket argument of the LSM hook.
- * @in.other: A pointer to a second socket argument that may be supplied
+ * @value: A numeric value passed to the LSM hook.
+ * @in.socka: A pointer to the socket argument of the LSM hook.
+ * @in.sockb: A pointer to a second socket argument that may be supplied
  *	      to the handler.
- * @out.sock: The TSEM representation of the first socket argument.
- * @out.other: The TSEM representation of the second socket argument.
+ * @in.addr: In the case of the socket_sendmsg handler a pointer
+ *	     to the recipient of the message.
+ * @out.socka: The TSEM representation of the first socket argument.
+ * @out.sockjb: The TSEM representation of the second socket argument.
+ * @out.have_addr: A boolean flag used to indicate that either the
+ *		   ipv6 or ipv6 union members have been populated.
+ * @out.ipv4: The IPV4 address of the message if found.
+ * @out.ipv6: The IPV6 address of the message if found.
  *
  * This structure is used to encapsulate arguments provided to LSM
  * hooks that handle generic socket information.
@@ -1147,11 +1154,17 @@ struct tsem_socket_args {
 		struct {
 			struct sock *socka;
 			struct sock *sockb;
+			void *addr;
 		} in;
 
 		struct {
 			struct tsem_socket_create_args socka;
 			struct tsem_socket_create_args sockb;
+			bool have_addr;
+			union {
+				struct sockaddr_in ipv4;
+				struct sockaddr_in6 ipv6;
+			};
 		} out;
 	};
 };
