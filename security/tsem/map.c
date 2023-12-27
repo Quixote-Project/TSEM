@@ -472,6 +472,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_SOCKET_SENDMSG:
+	case TSEM_SOCKET_RECVMSG:
 		retn = add_socket(shash, &ep->CELL.socket.out.socka);
 		if (retn)
 			goto done;
@@ -490,7 +491,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 			retn = add_u32(shash, ipv4->sin_addr.s_addr);
 			if (retn)
 				goto done;
-			}
+		}
 		if (ep->CELL.socket.out.socka.family == AF_INET6) {
 			ipv6 = &ep->CELL.socket.out.ipv6;
 			retn = add_u16(shash, ipv6->sin6_port);

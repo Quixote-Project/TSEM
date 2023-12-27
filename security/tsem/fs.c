@@ -1578,6 +1578,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		show_socket(c, ep);
 		break;
 	case TSEM_SOCKET_SENDMSG:
+	case TSEM_SOCKET_RECVMSG:
 		show_socket_msg(c, ep);
 		break;
 	case TSEM_SOCKET_ACCEPT:

@@ -940,6 +940,7 @@ int tsem_event_init(struct tsem_event *ep)
 			   &ep->CELL.socket.out.socka);
 		break;
 	case TSEM_SOCKET_SENDMSG:
+	case TSEM_SOCKET_RECVMSG:
 		get_socket_msg(&ep->CELL.socket);
 		break;
 	case TSEM_INODE_GETATTR:
