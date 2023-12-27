@@ -519,6 +519,17 @@ static void show_file_ioctl(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "cmd", "%u", args->cmd);
 }
 
+static void show_socket_info(struct seq_file *c, const char *key,
+			     struct tsem_socket_create_args *args)
+{
+	tsem_fs_show_field(c, key);
+	tsem_fs_show_key(c, ",", "family", "%u", args->family);
+	tsem_fs_show_key(c, ",", "type", "%u", args->type);
+	tsem_fs_show_key(c, ",", "protocol", "%u", args->protocol);
+	tsem_fs_show_key(c, "}", "owner", "%*phN", tsem_digestsize(),
+			 args->owner);
+}
+
 static void show_socket_pair(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_socket_args *args = &ep->CELL.socket;
@@ -667,6 +678,14 @@ static void show_socket_msg(struct seq_file *c, struct tsem_event *ep)
 		}
 	} else
 		seq_putc(c, '}');
+}
+
+static void show_socket_argument(struct seq_file *c, struct tsem_event *ep)
+{
+	show_event(c, ep);
+
+	show_socket_info(c, "socka", &ep->CELL.socket.out.socka);
+	seq_puts(c, "}");
 }
 
 static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
@@ -1580,6 +1599,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 	case TSEM_SOCKET_SENDMSG:
 	case TSEM_SOCKET_RECVMSG:
 		show_socket_msg(c, ep);
+		break;
+	case TSEM_SOCKET_GETSOCKNAME:
+		show_socket_argument(c, ep);
 		break;
 	case TSEM_SOCKET_ACCEPT:
 		show_socket_accept(c, ep);

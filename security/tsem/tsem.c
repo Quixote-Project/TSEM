@@ -1121,6 +1121,7 @@ static int tsem_socket_getsockname(struct socket *sock)
 {
 	char msg[TRAPPED_MSG_LENGTH];
 	struct sock *sk = sock->sk;
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "family=%u", sk->sk_family);
@@ -1128,7 +1129,13 @@ static int tsem_socket_getsockname(struct socket *sock)
 					   NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_SOCKET_GETSOCKNAME, NOLOCK);
+	ep = tsem_event_allocate(TSEM_SOCKET_GETSOCKNAME, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.socket.in.socka = sk;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_socket_getpeername(struct socket *sock)

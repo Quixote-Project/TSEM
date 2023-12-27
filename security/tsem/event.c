@@ -713,6 +713,15 @@ static void get_socket_msg(struct tsem_socket_args *args)
 	}
 }
 
+static void get_socket_argument(struct tsem_socket_args *args)
+
+{
+	struct sock *socka = args->in.socka;
+
+	memset(&args->out, '\0', sizeof(args->out));
+	get_socket(socka, &args->out.socka);
+}
+
 static int get_inode_getattr(struct tsem_inode_attr_args *args)
 {
 	const struct path *path = args->in.path;
@@ -936,8 +945,8 @@ int tsem_event_init(struct tsem_event *ep)
 		retn = get_socket_accept(&ep->CELL.socket_accept);
 		break;
 	case TSEM_SOCKET_LISTEN:
-		get_socket(ep->CELL.socket.in.socka,
-			   &ep->CELL.socket.out.socka);
+	case TSEM_SOCKET_GETSOCKNAME:
+		get_socket_argument(&ep->CELL.socket);
 		break;
 	case TSEM_SOCKET_SENDMSG:
 	case TSEM_SOCKET_RECVMSG:

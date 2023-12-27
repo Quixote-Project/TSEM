@@ -508,6 +508,14 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_SOCKET_GETSOCKNAME:
+		retn = add_socket(shash, &ep->CELL.socket.out.socka);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_SOCKET_CREATE:
 		p = (u8 *) &ep->CELL.socket_create.family;
 		size = sizeof(ep->CELL.socket_create.family);
