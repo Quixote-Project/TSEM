@@ -851,6 +851,52 @@ static int get_inode_listxattr(struct tsem_inode_xattr_args *args)
 	return 0;
 }
 
+static int get_kernel_module(struct tsem_kernel_args *args)
+{
+	int retn = 0;
+	char *kmod_name = args->in.kmod_name;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	args->out.kmod_name = kstrdup(kmod_name, GFP_KERNEL);
+	if (!args->out.kmod_name)
+		retn = -ENOMEM;
+
+	args->out.kmod_name = kstrdup(kmod_name, GFP_KERNEL);
+	if (!args->out.kmod_name)
+		retn = -ENOMEM;
+
+	return retn;
+}
+
+static int get_kernel_file(struct tsem_kernel_args *args)
+{
+	int retn = 0;
+	struct file *file = args->in.file;
+	struct inode *inode = file_inode(file);
+
+	memset(&args->out, '\0', sizeof(args->out));
+	inode_lock(inode);
+
+	retn = fill_path(&file->f_path, &args->out.file.out.path);
+	if (retn)
+		goto done;
+
+	args->out.file.out.flags = file->f_flags;
+	fill_inode(inode, &args->out.file.out.inode);
+
+	if (!S_ISREG(inode->i_mode))
+		goto done;
+
+	retn = add_file_digest(file, &args->out.file);
+	if (retn)
+		kfree(args->out.file.out.path.pathname);
+
+ done:
+	inode_unlock(inode);
+	return retn;
+}
+
 static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args)
 {
 	int retn;
@@ -971,6 +1017,12 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_INODE_LISTXATTR:
 		retn = get_inode_listxattr(&ep->CELL.inode_xattr);
 		break;
+	case TSEM_KERNEL_MODULE_REQUEST:
+		retn = get_kernel_module(&ep->CELL.kernel);
+		break;
+	case TSEM_KERNEL_READ_FILE:
+		retn = get_kernel_file(&ep->CELL.kernel);
+		break;
 	case TSEM_SB_PIVOTROOT:
 		retn = get_sb_pivotroot(&ep->CELL.sb_pivotroot);
 		break;
@@ -990,6 +1042,12 @@ int tsem_event_init(struct tsem_event *ep)
 static void free_cell(struct tsem_event *ep)
 {
 	switch (ep->event) {
+	case TSEM_KERNEL_MODULE_REQUEST:
+		kfree(ep->CELL.kernel.out.kmod_name);
+		break;
+	case TSEM_KERNEL_READ_FILE:
+		kfree(ep->CELL.kernel.out.file.out.path.pathname);
+		break;
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:
 	case TSEM_INODE_RMDIR:

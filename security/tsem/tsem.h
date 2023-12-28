@@ -1433,6 +1433,44 @@ struct tsem_inode_xattr_args {
 };
 
 /**
+ * struct tsem_kernel_args - TSEM event descriptions for kernel requests.
+ * id: For the tsem_kernel_load_data handler the of the load type
+ *     being requested.
+ * contents: The boolean flag used to indicate whether or not the
+ *           security_kernel_post_load_data handler should be called.
+ * @in.kmod_name: A pointer to the buffer containing the name of the
+ *		   module to load.
+ * @in.file: A pointer to the file structure passwd to the
+ *	     tsem_kernel_file_file handler.
+ * @out.kmod_name: The retained copy of the kernel module name.
+ * @out.file: The TSEM representation of the file structure that was
+ *	      passed to the tsem_kernel_read_file handler.
+ *
+ * This structure is used to encapsulate information on the arguments
+ * passed to the following LSM hook handlers:
+ *
+ * tsem_kernel_module_request
+ * tsem_kernel_load_data
+ * tsem_kernel_read_file
+ */
+struct tsem_kernel_args {
+	enum kernel_load_data_id id;
+	bool contents;
+
+	union {
+		struct {
+			struct file *file;
+			char *kmod_name;
+		} in;
+
+		struct {
+			char *kmod_name;
+			struct tsem_file_args file;
+		} out;
+	};
+};
+
+/**
  * struct tsem_sb_pivotroot_args - TSEM sb_pivotroot arguments.
  * @in.old_path: A pointer to the path description for the old root
  *		 that was passed to the security event hadler.
@@ -1611,6 +1649,7 @@ struct tsem_event {
 		struct tsem_socket_create_args socket_create;
 		struct tsem_socket_connect_args socket_connect;
 		struct tsem_socket_accept_args socket_accept;
+		struct tsem_kernel_args kernel;
 		struct tsem_task_kill_args task_kill;
 		struct tsem_task_prlimit_args task_prlimit;
 		struct tsem_task_prctl_args task_prctl;

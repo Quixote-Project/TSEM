@@ -1208,6 +1208,7 @@ static int tsem_socket_shutdown(struct socket *sock, int how)
 static int tsem_kernel_module_request(char *kmod_name)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -1218,12 +1219,19 @@ static int tsem_kernel_module_request(char *kmod_name)
 					   NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_KERNEL_MODULE_REQUEST, NOLOCK);
+	ep = tsem_event_allocate(TSEM_KERNEL_MODULE_REQUEST, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.kernel.in.kmod_name = kmod_name;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_kernel_load_data(enum kernel_load_data_id id, bool contents)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "id=%d, contents=%d", id,
@@ -1231,13 +1239,22 @@ static int tsem_kernel_load_data(enum kernel_load_data_id id, bool contents)
 		return trapped_task(TSEM_KERNEL_LOAD_DATA, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_KERNEL_LOAD_DATA, NOLOCK);
+	ep = tsem_event_allocate(TSEM_KERNEL_LOAD_DATA, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.kernel.id = id;
+	ep->CELL.kernel.contents = contents;
+
+	return dispatch_event(ep);
 }
+
 
 static int tsem_kernel_read_file(struct file *file,
 				 enum kernel_read_file_id id, bool contents)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -1247,7 +1264,15 @@ static int tsem_kernel_read_file(struct file *file,
 		return trapped_task(TSEM_KERNEL_READ_FILE, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_KERNEL_READ_FILE, NOLOCK);
+	ep = tsem_event_allocate(TSEM_KERNEL_READ_FILE, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.kernel.id = id;
+	ep->CELL.kernel.contents = contents;
+	ep->CELL.kernel.in.file = file;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_sb_mount(const char *dev_name, const struct path *path,

@@ -676,6 +676,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 		retn = crypto_shash_final(shash, mapping);
 		break;
+
 	case TSEM_SOCKET_SETSOCKOPT:
 		retn = add_socket(shash, &ep->CELL.socket.out.socka);
 		if (retn)
@@ -686,6 +687,42 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 			goto done;
 
 		retn = add_u32(shash, ep->CELL.socket.optname);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
+	case TSEM_KERNEL_MODULE_REQUEST:
+		retn = add_str(shash, ep->CELL.kernel.out.kmod_name);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
+	case TSEM_KERNEL_LOAD_DATA:
+		retn = add_u32(shash, ep->CELL.kernel.id);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.kernel.contents);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
+	case TSEM_KERNEL_READ_FILE:
+		retn = add_file(shash, &ep->CELL.kernel.out.file);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.kernel.id);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.kernel.contents);
 		if (retn)
 			goto done;
 

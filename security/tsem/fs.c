@@ -700,6 +700,37 @@ static void show_socket_setsockopt(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "optname", "%d", ep->CELL.socket.optname);
 }
 
+static void show_kernel_module_request(struct seq_file *c,
+				       struct tsem_event *ep)
+{
+	struct tsem_kernel_args *args = &ep->CELL.kernel;
+
+	show_event(c, ep);
+	tsem_fs_show_key(c, "}", "kmod_name", "%s", args->out.kmod_name);
+}
+
+static void show_kernel_load_data(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_kernel_args *args = &ep->CELL.kernel;
+
+	show_event(c, ep);
+	tsem_fs_show_key(c, ",", "id", "%d", args->id);
+	tsem_fs_show_key(c, "}", "contents", "%d", args->contents);
+}
+
+static void show_kernel_read_file(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_kernel_args *args = &ep->CELL.kernel;
+
+	show_event(c, ep);
+
+	show_file(c, &args->out.file);
+	seq_puts(c, "}, ");
+
+	tsem_fs_show_key(c, ",", "id", "%d", args->id);
+	tsem_fs_show_key(c, "}", "contents", "%d", args->contents);
+}
+
 static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
@@ -1627,6 +1658,15 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_SOCKET_SHUTDOWN:
 		show_socket_value(c, ep, "how");
+		break;
+	case TSEM_KERNEL_MODULE_REQUEST:
+		show_kernel_module_request(c, ep);
+		break;
+	case TSEM_KERNEL_LOAD_DATA:
+		show_kernel_load_data(c, ep);
+		break;
+	case TSEM_KERNEL_READ_FILE:
+		show_kernel_read_file(c, ep);
 		break;
 	case TSEM_TASK_KILL:
 		show_task_kill(c, ep);
