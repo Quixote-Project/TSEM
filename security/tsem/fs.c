@@ -626,7 +626,8 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 	}
 }
 
-static void show_socket_listen(struct seq_file *c, struct tsem_event *ep)
+static void show_socket_value(struct seq_file *c, struct tsem_event *ep,
+			      char *key)
 {
 	struct tsem_socket_args *args = &ep->CELL.socket;
 
@@ -639,7 +640,7 @@ static void show_socket_listen(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}, ", "owner", "%*phN", tsem_digestsize(),
 			 args->out.socka.owner);
 
-	tsem_fs_show_key(c, "}", "backlog", "%d", args->value);
+	tsem_fs_show_key(c, "}", key, "%d", args->value);
 }
 
 static void show_socket_msg(struct seq_file *c, struct tsem_event *ep)
@@ -1622,7 +1623,10 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		show_socket_accept(c, ep);
 		break;
 	case TSEM_SOCKET_LISTEN:
-		show_socket_listen(c, ep);
+		show_socket_value(c, ep, "backlog");
+		break;
+	case TSEM_SOCKET_SHUTDOWN:
+		show_socket_value(c, ep, "how");
 		break;
 	case TSEM_TASK_KILL:
 		show_task_kill(c, ep);
