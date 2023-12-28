@@ -1149,6 +1149,7 @@ struct tsem_socket_create_args {
  */
 struct tsem_socket_args {
 	int value;
+	int optname;
 
 	union {
 		struct {

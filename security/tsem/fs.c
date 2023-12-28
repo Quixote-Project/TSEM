@@ -688,6 +688,17 @@ static void show_socket_argument(struct seq_file *c, struct tsem_event *ep)
 	seq_puts(c, "}");
 }
 
+static void show_socket_setsockopt(struct seq_file *c, struct tsem_event *ep)
+{
+	show_event(c, ep);
+
+	show_socket_info(c, "socka", &ep->CELL.socket.out.socka);
+	seq_puts(c, ", ");
+
+	tsem_fs_show_key(c, ",", "level", "%d", ep->CELL.socket.value);
+	tsem_fs_show_key(c, "}", "optname", "%d", ep->CELL.socket.optname);
+}
+
 static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
@@ -1603,6 +1614,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 	case TSEM_SOCKET_GETSOCKNAME:
 	case TSEM_SOCKET_GETPEERNAME:
 		show_socket_argument(c, ep);
+		break;
+	case TSEM_SOCKET_SETSOCKOPT:
+		show_socket_setsockopt(c, ep);
 		break;
 	case TSEM_SOCKET_ACCEPT:
 		show_socket_accept(c, ep);

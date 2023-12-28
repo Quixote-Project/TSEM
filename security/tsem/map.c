@@ -675,6 +675,21 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 		retn = crypto_shash_final(shash, mapping);
 		break;
+	case TSEM_SOCKET_SETSOCKOPT:
+		retn = add_socket(shash, &ep->CELL.socket.out.socka);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.socket.value);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.socket.optname);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
 
 	case TSEM_TASK_KILL:
 		p = (u8 *) &ep->CELL.task_kill.cross_model;
