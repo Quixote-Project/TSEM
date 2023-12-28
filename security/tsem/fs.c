@@ -1601,6 +1601,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		show_socket_msg(c, ep);
 		break;
 	case TSEM_SOCKET_GETSOCKNAME:
+	case TSEM_SOCKET_GETPEERNAME:
 		show_socket_argument(c, ep);
 		break;
 	case TSEM_SOCKET_ACCEPT:

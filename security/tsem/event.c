@@ -946,6 +946,7 @@ int tsem_event_init(struct tsem_event *ep)
 		break;
 	case TSEM_SOCKET_LISTEN:
 	case TSEM_SOCKET_GETSOCKNAME:
+	case TSEM_SOCKET_GETPEERNAME:
 		get_socket_argument(&ep->CELL.socket);
 		break;
 	case TSEM_SOCKET_SENDMSG:

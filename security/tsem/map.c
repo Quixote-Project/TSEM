@@ -509,6 +509,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_SOCKET_GETSOCKNAME:
+	case TSEM_SOCKET_GETPEERNAME:
 		retn = add_socket(shash, &ep->CELL.socket.out.socka);
 		if (retn)
 			goto done;
