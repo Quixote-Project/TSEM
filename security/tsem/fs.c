@@ -743,7 +743,7 @@ static void show_kernel_read_file(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_file(c, &args->out.file);
-	seq_puts(c, "}, ");
+	seq_puts(c, ", ");
 
 	tsem_fs_show_key(c, ",", "id", "%d", args->id);
 	tsem_fs_show_key(c, "}", "contents", "%d", args->contents);
