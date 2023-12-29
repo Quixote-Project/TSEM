@@ -310,6 +310,14 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_SYSLOG:
+		retn = add_u32(shash, ep->CELL.value);
+		if (retn)
+			break;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_INODE_LINK:
 		retn = add_inode(shash, &ep->CELL.inode.out.dir);
 		if (retn)

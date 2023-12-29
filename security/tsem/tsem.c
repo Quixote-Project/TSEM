@@ -1455,13 +1455,20 @@ static int tsem_sem_semop(struct kern_ipc_perm *perm, struct sembuf *sops,
 static int tsem_syslog(int type)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "type=%d", type);
 		return trapped_task(TSEM_SYSLOG, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_SYSLOG, NOLOCK);
+	ep = tsem_event_allocate(TSEM_SYSLOG, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.value = type;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_settime(const struct timespec64 *ts, const struct timezone *tz)

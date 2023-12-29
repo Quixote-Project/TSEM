@@ -429,6 +429,12 @@ static void show_inode_link(struct seq_file *c, struct tsem_event *ep)
 	seq_putc(c, '}');
 }
 
+static void show_syslog(struct seq_file *c, struct tsem_event *ep)
+{
+	show_event(c, ep);
+	tsem_fs_show_key(c, "}", "type", "%d", ep->CELL.value);
+}
+
 static void show_inode_symlink(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_inode_args *args = &ep->CELL.inode;
@@ -1592,6 +1598,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		show_event_generic(c, ep);
 
 	switch (ep->event) {
+	case TSEM_SYSLOG:
+		show_syslog(c, ep);
+		break;
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:
 		show_inode_create(c, ep);

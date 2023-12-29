@@ -1641,6 +1641,7 @@ struct tsem_event {
 
 	bool no_params;
 	union {
+		int value;
 		struct tsem_inode_args inode;
 		struct tsem_inode_rename_args inode_rename;
 		struct tsem_file_args file;
