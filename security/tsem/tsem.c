@@ -1474,6 +1474,7 @@ static int tsem_syslog(int type)
 static int tsem_settime(const struct timespec64 *ts, const struct timezone *tz)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -1483,7 +1484,20 @@ static int tsem_settime(const struct timespec64 *ts, const struct timezone *tz)
 		return trapped_task(TSEM_SETTIME, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_SETTIME, NOLOCK);
+	ep = tsem_event_allocate(TSEM_SETTIME, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	if (ts) {
+		ep->CELL.time.seconds = ts->tv_sec;
+		ep->CELL.time.nsecs = ts->tv_nsec;
+	}
+	if (tz) {
+		ep->CELL.time.minuteswest = tz->tz_minuteswest;
+		ep->CELL.time.dsttime = tz->tz_dsttime;
+	}
+
+	return dispatch_event(ep);
 }
 
 static int tsem_quotactl(int cmds, int type, int id, struct super_block *sb)

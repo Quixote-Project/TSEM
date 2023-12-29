@@ -318,6 +318,26 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_SETTIME:
+		retn = add_u64(shash, ep->CELL.time.seconds);
+		if (retn)
+			goto done;
+
+		retn = add_u64(shash, ep->CELL.time.nsecs);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.time.minuteswest);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.time.dsttime);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_INODE_LINK:
 		retn = add_inode(shash, &ep->CELL.inode.out.dir);
 		if (retn)

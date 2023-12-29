@@ -1471,6 +1471,24 @@ struct tsem_kernel_args {
 };
 
 /**
+ * struct tsem_time_args - TSEM event description for setting the time
+ *
+ * @seconds: The number of seconds passed to the time set function.
+ * @nsecs: The number of nanoseconds to set the time to.
+ * @mwest: The minutes west of GMT for the time being set.
+ * @dsttime: The daylight savings time offset.
+ *
+ * This structure is a simple encapsulation of the arguments passed to
+ * the TSEM_SETTIME handler.
+ */
+struct tsem_time_args {
+	long seconds;
+	long nsecs;
+	int minuteswest;
+	int dsttime;
+};
+
+/**
  * struct tsem_sb_pivotroot_args - TSEM sb_pivotroot arguments.
  * @in.old_path: A pointer to the path description for the old root
  *		 that was passed to the security event hadler.
@@ -1657,6 +1675,7 @@ struct tsem_event {
 		struct tsem_inode_attr_args inode_attr;
 		struct tsem_inode_xattr_args inode_xattr;
 		struct tsem_sb_pivotroot_args sb_pivotroot;
+		struct tsem_time_args time;
 	} CELL;
 };
 

@@ -435,6 +435,18 @@ static void show_syslog(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "type", "%d", ep->CELL.value);
 }
 
+static void show_settime(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_time_args *args = &ep->CELL.time;
+
+	show_event(c, ep);
+
+	tsem_fs_show_key(c, ",", "seconds", "%d", args->seconds);
+	tsem_fs_show_key(c, ",", "nsecs", "%d", args->nsecs);
+	tsem_fs_show_key(c, ",", "minuteswest", "%d", args->minuteswest);
+	tsem_fs_show_key(c, "}", "dsttime", "%d", args->dsttime);
+}
+
 static void show_inode_symlink(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_inode_args *args = &ep->CELL.inode;
@@ -1600,6 +1612,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 	switch (ep->event) {
 	case TSEM_SYSLOG:
 		show_syslog(c, ep);
+		break;
+	case TSEM_SETTIME:
+		show_settime(c, ep);
 		break;
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:
