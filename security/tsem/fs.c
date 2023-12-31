@@ -548,6 +548,24 @@ static void show_socket_info(struct seq_file *c, const char *key,
 			 args->owner);
 }
 
+static void show_netlink(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_netlink_args *args = &ep->CELL.netlink;
+
+	show_event(c, ep);
+
+	show_socket_info(c, "sock", &args->out.sock);
+	seq_puts(c, ", ");
+
+	tsem_fs_show_key(c, ",", "uid", "%u", args->out.uid);
+	tsem_fs_show_key(c, ",", "gid", "%u", args->out.gid);
+	tsem_fs_show_key(c, ",", "portid", "%u", args->out.portid);
+	tsem_fs_show_key(c, ",", "dst_group", "%u", args->out.dst_group);
+	tsem_fs_show_key(c, ",", "flags", "%u", args->out.flags);
+	tsem_fs_show_key(c, ",", "nsid_set", "%u", args->out.nsid_set);
+	tsem_fs_show_key(c, "}", "nsid", "%d", args->out.nsid);
+}
+
 static void show_socket_pair(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_socket_args *args = &ep->CELL.socket;
@@ -1615,6 +1633,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_SETTIME:
 		show_settime(c, ep);
+		break;
+	case TSEM_NETLINK_SEND:
+		show_netlink(c, ep);
 		break;
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:

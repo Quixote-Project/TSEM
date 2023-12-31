@@ -897,6 +897,31 @@ static int get_kernel_file(struct tsem_kernel_args *args)
 	return retn;
 }
 
+static void get_netlink(struct tsem_netlink_args *args)
+{
+	struct sock *sock = args->in.sock;
+	struct netlink_skb_parms *np = args->in.parms;
+	struct user_namespace *ns;
+
+	memset(&args->out, '\0', sizeof(args->out));
+	get_socket(sock, &args->out.sock);
+
+	if (tsem_context(current)->use_current_ns)
+		ns = current_user_ns();
+	else
+		ns = &init_user_ns;
+	args->out.uid = from_kuid(ns, np->creds.uid);
+	args->out.gid = from_kgid(ns, np->creds.gid);
+
+	args->out.portid = np->portid;
+	args->out.dst_group = np->dst_group;
+	args->out.flags = np->flags;
+	args->out.nsid_set = np->nsid_is_set;
+	args->out.nsid = np->nsid;
+
+	return;
+}
+
 static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args)
 {
 	int retn;
@@ -942,6 +967,9 @@ int tsem_event_init(struct tsem_event *ep)
 		goto done;
 
 	switch (ep->event) {
+	case TSEM_NETLINK_SEND:
+		get_netlink(&ep->CELL.netlink);
+		break;
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:
 	case TSEM_INODE_RMDIR:

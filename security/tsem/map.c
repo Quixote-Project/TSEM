@@ -280,6 +280,40 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		goto done;
 
 	switch (ep->event) {
+	case TSEM_NETLINK_SEND:
+		retn = add_socket(shash, &ep->CELL.socket.out.socka);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.netlink.out.uid);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.netlink.out.gid);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.netlink.out.portid);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.netlink.out.dst_group);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.netlink.out.flags);
+		if (retn)
+			goto done;
+
+		if (ep->CELL.netlink.out.nsid_set) {
+			retn = add_u32(shash, ep->CELL.netlink.out.flags);
+			if (retn)
+				goto done;
+		}
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:
 		retn = add_inode(shash, &ep->CELL.inode.out.dir);

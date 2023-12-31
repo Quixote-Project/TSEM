@@ -1652,6 +1652,7 @@ static int tsem_netlink_send(struct sock *sk, struct sk_buff *skb)
 {
 	char msg[TRAPPED_MSG_LENGTH];
 	struct scm_creds *cred;
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		cred = NETLINK_CREDS(skb);
@@ -1662,7 +1663,14 @@ static int tsem_netlink_send(struct sock *sk, struct sk_buff *skb)
 		return trapped_task(TSEM_NETLINK_SEND, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_NETLINK_SEND, NOLOCK);
+	ep = tsem_event_allocate(TSEM_NETLINK_SEND, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.netlink.in.sock = sk;
+	ep->CELL.netlink.in.parms = (struct netlink_skb_parms *) skb->cb;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_inode_create(struct inode *dir, struct dentry *dentry,

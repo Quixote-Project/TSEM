@@ -1249,6 +1249,46 @@ struct tsem_socket_accept_args {
 };
 
 /**
+ * struct tsem_netlink_args - TSEM netlink event parameters
+ * @in.sock: The sock argument to the LSM hook.
+ * @in.parms: The pointer to the netlink parameters from the sk_buff
+ *	      structure that was passed to the LSM hook.
+ * @out.sock: The TSEM representation of the sock argument.
+ * @out.uid: The UID, in the TSEM designated namespace of the uid in
+ *	     the netlink control block.
+ * @out.gid: THE GID, in the TSEM designated namespace of the gid in
+ *	     the netlink control block.
+ * @out.portid: The portid member of the netlink_skb_parms structure.
+ * @out.dst_group: The dst_group member of the netlink_skb_parms structure.
+ * @out.flags: The flags member of the netlink_skb_parms structure.
+ * @nsid_set: The nsid_set flag member of the netlink_skb_parms structure.
+ * @nsid: The nsid member of the netlink_skb_parms structure.
+ *
+ * This structure is used to encapsulate and retain the arguments
+ * provided to the tsem_netlink_send event handler.
+ *
+ */
+struct tsem_netlink_args {
+	union {
+		struct {
+			struct sock *sock;
+			struct netlink_skb_parms *parms;
+		} in;
+
+		struct {
+			struct tsem_socket_create_args sock;
+			uid_t uid;
+			gid_t gid;
+			__u32 portid;
+			__u32 dst_group;
+			__u32 flags;
+			bool nsid_set;
+			int nsid;
+		} out;
+	};
+};
+
+/**
  * struct tsem_task_kill_args - TSEM task kill arguments.
  * @u.value: The signed representation of an integer argument.
  * @u.resource: The unsigned representation of an integer argument.
@@ -1660,6 +1700,7 @@ struct tsem_event {
 	bool no_params;
 	union {
 		int value;
+		struct tsem_netlink_args netlink;
 		struct tsem_inode_args inode;
 		struct tsem_inode_rename_args inode_rename;
 		struct tsem_file_args file;
