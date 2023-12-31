@@ -1012,6 +1012,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_SB_STATFS:
+	case TSEM_INODE_LISTXATTR:
 		retn = add_path(shash, &ep->CELL.sb.out.path);
 		if (retn)
 			goto done;
