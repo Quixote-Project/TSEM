@@ -1138,6 +1138,9 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.sb_pivotroot.out.old_path.pathname);
 		kfree(ep->CELL.sb_pivotroot.out.new_path.pathname);
 		break;
+	case TSEM_SB_STATFS:
+		kfree(ep->CELL.sb.out.path.pathname);
+		break;
 	default:
 		break;
 	}
