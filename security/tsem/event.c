@@ -937,6 +937,19 @@ static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args)
 	return retn;
 }
 
+static int get_sb_statfs(struct tsem_sb_args *args)
+{
+	int retn;
+	struct dentry *dentry = args->in.dentry;
+
+	retn = fill_path_dentry(dentry, &args->out.path);
+	if (retn)
+		return -ENOMEM;
+
+	fill_inode(dentry->d_inode, &args->out.inode);
+	return 0;
+}
+
 /**
  * tsem_event_init() - Initialize a security event description structure.
  * @ep: A pointer to the tsem_event structure that describes the
@@ -1053,6 +1066,9 @@ int tsem_event_init(struct tsem_event *ep)
 		break;
 	case TSEM_SB_PIVOTROOT:
 		retn = get_sb_pivotroot(&ep->CELL.sb_pivotroot);
+		break;
+	case TSEM_SB_STATFS:
+		retn = get_sb_statfs(&ep->CELL.sb);
 		break;
 	default:
 		break;

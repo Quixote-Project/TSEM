@@ -1011,6 +1011,18 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_SB_STATFS:
+		retn = add_path(shash, &ep->CELL.sb.out.path);
+		if (retn)
+			goto done;
+
+		retn = add_inode(shash, &ep->CELL.sb.out.inode);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	default:
 		p = (u8 *) tsem_names[ep->event];
 		size = strlen(tsem_names[ep->event]);

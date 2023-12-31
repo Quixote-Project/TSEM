@@ -1347,13 +1347,20 @@ static int tsem_sb_pivotroot(const struct path *old_path,
 static int tsem_sb_statfs(struct dentry *dentry)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "name=%s", dentry->d_name.name);
 		return trapped_task(TSEM_SB_STATFS, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_SB_STATFS, NOLOCK);
+	ep = tsem_event_allocate(TSEM_SB_STATFS, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.sb.in.dentry = dentry;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_move_mount(const struct path *from_path,

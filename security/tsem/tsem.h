@@ -1289,6 +1289,34 @@ struct tsem_netlink_args {
 };
 
 /**
+ * struct tsem_sb_args - TSEM parameters for superblock security events.
+ * @in.dentry: The dentry argument passed to the tsem_sb_statfs handler.
+ * @out.inode: The TSEM representation of an inode to the handler.
+ *
+ * This structure is used to encapsulate and retain the arguments for
+ * the family of security event handlers that deal with superblocks.  The
+ * list of these handlers is as follows:
+ *
+ * tsem_sb_mount
+ * tsem_sb_umount
+ * tsem_sb_remount
+ * tsem_move_mount
+ * tsem_sb_statfs
+ */
+struct tsem_sb_args {
+	union {
+		struct {
+			struct dentry *dentry;
+		} in;
+
+		struct {
+			struct tsem_inode_cell inode;
+			struct tsem_path path;
+		} out;
+	};
+};
+
+/**
  * struct tsem_task_kill_args - TSEM task kill arguments.
  * @u.value: The signed representation of an integer argument.
  * @u.resource: The unsigned representation of an integer argument.
@@ -1716,6 +1744,7 @@ struct tsem_event {
 		struct tsem_inode_attr_args inode_attr;
 		struct tsem_inode_xattr_args inode_xattr;
 		struct tsem_sb_pivotroot_args sb_pivotroot;
+		struct tsem_sb_args sb;
 		struct tsem_time_args time;
 	} CELL;
 };

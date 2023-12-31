@@ -954,6 +954,17 @@ static void show_sb_pivotroot(struct seq_file *c, struct tsem_event *ep)
 	seq_puts(c, "}");
 }
 
+static void show_sb_statfs(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_sb_args *args = &ep->CELL.sb;
+
+	show_event(c, ep);
+
+	show_path(c, "path", &args->out.path);
+	seq_puts(c, ", ");
+	show_inode(c, "}", &args->out.inode);
+}
+
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
@@ -1762,6 +1773,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_SB_PIVOTROOT:
 		show_sb_pivotroot(c, ep);
+		break;
+	case TSEM_SB_STATFS:
+		show_sb_statfs(c, ep);
 		break;
 	default:
 		break;
