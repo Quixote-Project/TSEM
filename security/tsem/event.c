@@ -931,6 +931,29 @@ static void get_key_alloc(struct tsem_key_args *args)
 	return;
 }
 
+static void get_key_perm(struct tsem_key_args *args)
+{
+	const struct cred *cred = args->in.cred;
+	struct user_namespace *ns;
+	const key_ref_t ref = args->in.ref;
+	struct key *key = key_ref_to_ptr(ref);
+
+	memset(&args->out, '\0', sizeof(args->out));
+	fill_creds(cred, &args->out.cred);
+
+	args->out.possessed = is_key_possessed(ref);
+
+	if (tsem_context(current)->use_current_ns)
+		ns = current_user_ns();
+	else
+		ns = &init_user_ns;
+	args->out.uid = from_kuid(ns, key->uid);
+	args->out.gid = from_kgid(ns, key->gid);
+
+	args->out.perm = key->perm;
+	args->out.flags = key->flags;
+}
+
 static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args)
 {
 	int retn;
@@ -994,6 +1017,9 @@ int tsem_event_init(struct tsem_event *ep)
 		break;
 	case TSEM_KEY_ALLOC:
 		get_key_alloc(&ep->CELL.key);
+		break;
+	case TSEM_KEY_PERMISSION:
+		get_key_perm(&ep->CELL.key);
 		break;
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:

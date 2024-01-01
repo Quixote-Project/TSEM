@@ -954,6 +954,23 @@ static void show_key_alloc(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "flags", "%llu", args->flags);
 }
 
+static void show_key_permission(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_key_args *args = &ep->CELL.key;
+
+	show_event(c, ep);
+
+	tsem_fs_show_key(c, ",", "possessed", "%u", args->out.possessed);
+	tsem_fs_show_key(c, ",", "uid", "%u", args->out.uid);
+	tsem_fs_show_key(c, ",", "gid", "%u", args->out.gid);
+	tsem_fs_show_key(c, ", ", "flags", "%lu", args->out.flags);
+
+	show_creds(c, "cred", &args->out.cred);
+	seq_puts(c, ", ");
+
+	tsem_fs_show_key(c, "}", "perm", "%u", args->out.perm);
+}
+
 static void show_sb_pivotroot(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_sb_pivotroot_args *args = &ep->CELL.sb_pivotroot;
@@ -1785,6 +1802,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_KEY_ALLOC:
 		show_key_alloc(c, ep);
+		break;
+	case TSEM_KEY_PERMISSION:
+		show_key_permission(c, ep);
 		break;
 	case TSEM_SB_PIVOTROOT:
 		show_sb_pivotroot(c, ep);

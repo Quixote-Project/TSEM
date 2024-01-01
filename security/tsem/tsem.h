@@ -1602,12 +1602,18 @@ struct tsem_key_args {
 
 	union {
 		struct {
+			key_ref_t ref;
 			const struct cred *cred;
 
 		} in;
 
 		struct {
+			bool possessed;
+			uid_t uid;
+			gid_t gid;
+			unsigned long flags;
 			struct tsem_COE cred;
+			u32 perm;
 		} out;
 
 	};
