@@ -1616,6 +1616,7 @@ static int tsem_key_alloc(struct key *key, const struct cred *cred,
 			  unsigned long flags)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -1630,7 +1631,14 @@ static int tsem_key_alloc(struct key *key, const struct cred *cred,
 		return trapped_task(TSEM_KEY_ALLOC, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_KEY_ALLOC, NOLOCK);
+	ep = tsem_event_allocate(TSEM_KEY_ALLOC, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.key.flags = flags;
+	ep->CELL.key.in.cred = cred;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_key_permission(key_ref_t key_ref, const struct cred *cred,

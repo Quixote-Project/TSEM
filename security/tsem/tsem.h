@@ -1588,6 +1588,32 @@ struct tsem_sb_pivotroot_args {
 };
 
 /**
+ * struct tsem_key_args - TSEM key handler arguments.
+ * @flags: The flags value passed to the key_alloc handler.
+ * @in.cred: A pointer to the credentials structure passed to the
+ *	     LSM hook.
+ * @out.cred: The TSEM representation of the credentials structure.
+ *
+ * This structure is used to hold the arguments to the LSM hooks that
+ * handle key security event and their retained TSEM equivalents.
+ */
+struct tsem_key_args {
+	unsigned long flags;
+
+	union {
+		struct {
+			const struct cred *cred;
+
+		} in;
+
+		struct {
+			struct tsem_COE cred;
+		} out;
+
+	};
+};
+
+/**
  * struct tsem_event - TSEM security event description.
  * @index: The index number of the slot in the structure magazine that
  *	   is being refilled.
@@ -1743,6 +1769,7 @@ struct tsem_event {
 		struct tsem_task_prctl_args task_prctl;
 		struct tsem_inode_attr_args inode_attr;
 		struct tsem_inode_xattr_args inode_xattr;
+		struct tsem_key_args key;
 		struct tsem_sb_pivotroot_args sb_pivotroot;
 		struct tsem_sb_args sb;
 		struct tsem_time_args time;

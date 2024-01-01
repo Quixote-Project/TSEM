@@ -922,6 +922,15 @@ static void get_netlink(struct tsem_netlink_args *args)
 	return;
 }
 
+static void get_key_alloc(struct tsem_key_args *args)
+{
+	const struct cred *cred = args->in.cred;
+
+	memset(&args->out, '\0', sizeof(args->out));
+	fill_creds(cred, &args->out.cred);
+	return;
+}
+
 static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args)
 {
 	int retn;
@@ -982,6 +991,9 @@ int tsem_event_init(struct tsem_event *ep)
 	switch (ep->event) {
 	case TSEM_NETLINK_SEND:
 		get_netlink(&ep->CELL.netlink);
+		break;
+	case TSEM_KEY_ALLOC:
+		get_key_alloc(&ep->CELL.key);
 		break;
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:

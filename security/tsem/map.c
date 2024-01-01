@@ -999,6 +999,18 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_KEY_ALLOC:
+		retn = add_creds(shash, &ep->CELL.key.out.cred);
+		if (retn)
+			goto done;
+
+		retn = add_u64(shash, ep->CELL.key.flags);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_SB_PIVOTROOT:
 		retn = add_path(shash, &ep->CELL.sb_pivotroot.out.old_path);
 		if (retn)
