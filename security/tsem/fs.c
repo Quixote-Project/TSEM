@@ -971,6 +971,21 @@ static void show_key_permission(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "perm", "%u", args->out.perm);
 }
 
+static void show_sb_mount(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_sb_args *args = &ep->CELL.sb;
+
+	show_event(c, ep);
+
+	tsem_fs_show_key(c, ",", "dev_name", "%s", args->out.dev_name);
+
+	show_path(c, "path", &args->out.path);
+	seq_puts(c, ", ");
+
+	tsem_fs_show_key(c, ",", "type", "%s", args->out.type);
+	tsem_fs_show_key(c, "}", "flags", "%lu", args->flags);
+}
+
 static void show_sb_pivotroot(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_sb_pivotroot_args *args = &ep->CELL.sb_pivotroot;
@@ -1805,6 +1820,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_KEY_PERMISSION:
 		show_key_permission(c, ep);
+		break;
+	case TSEM_SB_MOUNT:
+		show_sb_mount(c, ep);
 		break;
 	case TSEM_SB_PIVOTROOT:
 		show_sb_pivotroot(c, ep);

@@ -1279,6 +1279,7 @@ static int tsem_sb_mount(const char *dev_name, const struct path *path,
 			 const char *type, unsigned long flags, void *data)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -1289,7 +1290,16 @@ static int tsem_sb_mount(const char *dev_name, const struct path *path,
 		return trapped_task(TSEM_SB_MOUNT, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_SB_MOUNT, NOLOCK);
+	ep = tsem_event_allocate(TSEM_SB_MOUNT, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.sb.flags = flags;
+	ep->CELL.sb.in.dev_name = dev_name;
+	ep->CELL.sb.in.path = path;
+	ep->CELL.sb.in.type = type;
+
+	return dispatch_event(ep);
 }
 
 static	int tsem_sb_umount(struct vfsmount *mnt, int flags)

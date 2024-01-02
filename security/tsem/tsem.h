@@ -1304,14 +1304,21 @@ struct tsem_netlink_args {
  * tsem_sb_statfs
  */
 struct tsem_sb_args {
+	unsigned long flags;
+
 	union {
 		struct {
 			struct dentry *dentry;
+			const char *dev_name;
+			const struct path *path;
+			const char *type;
 		} in;
 
 		struct {
 			struct tsem_inode_cell inode;
 			struct tsem_path path;
+			char *dev_name;
+			char *type;
 		} out;
 	};
 };
