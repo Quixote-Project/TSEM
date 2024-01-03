@@ -1326,6 +1326,7 @@ static	int tsem_sb_umount(struct vfsmount *mnt, int flags)
 static int tsem_sb_remount(struct super_block *sb, void *mnt_opts)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (unlikely(!tsem_ready))
 		return 0;
@@ -1336,7 +1337,13 @@ static int tsem_sb_remount(struct super_block *sb, void *mnt_opts)
 		return trapped_task(TSEM_SB_REMOUNT, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_SB_REMOUNT, NOLOCK);
+	ep = tsem_event_allocate(TSEM_SB_REMOUNT, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.sb.in.sb = sb;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_sb_pivotroot(const struct path *old_path,

@@ -939,6 +939,31 @@ static int get_sb_umount(struct tsem_sb_args *args)
 	return 0;
 }
 
+static int get_sb_remount(struct tsem_sb_args *args)
+{
+	int retn = -ENOMEM;
+	struct super_block *sb = args->in.sb;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	args->flags = sb->s_flags;
+
+	args->out.type = kstrdup(sb->s_type->name, GFP_KERNEL);
+	if (!args->out.type)
+		goto done;
+
+	fill_inode(d_backing_inode(sb->s_root), &args->out.inode);
+	retn = fill_path_dentry(sb->s_root, &args->out.path);
+
+ done:
+	if (retn) {
+		kfree(args->out.type);
+		kfree(args->out.path.pathname);
+	}
+
+	return retn;
+}
+
 static void get_netlink(struct tsem_netlink_args *args)
 {
 	struct sock *sock = args->in.sock;
@@ -1150,6 +1175,9 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_SB_UMOUNT:
 		retn = get_sb_umount(&ep->CELL.sb);
 		break;
+	case TSEM_SB_REMOUNT:
+		retn = get_sb_remount(&ep->CELL.sb);
+		break;
 	case TSEM_SB_PIVOTROOT:
 		retn = get_sb_pivotroot(&ep->CELL.sb_pivotroot);
 		break;
@@ -1226,6 +1254,10 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.sb.out.path.pathname);
 		break;
 	case TSEM_SB_UMOUNT:
+		kfree(ep->CELL.sb.out.path.pathname);
+		break;
+	case TSEM_SB_REMOUNT:
+		kfree(ep->CELL.sb.out.type);
 		kfree(ep->CELL.sb.out.path.pathname);
 		break;
 	case TSEM_SB_PIVOTROOT:
