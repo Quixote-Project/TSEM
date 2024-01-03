@@ -1678,7 +1678,7 @@ static int tsem_key_permission(key_ref_t key_ref, const struct cred *cred,
 		return trapped_task(TSEM_KEY_PERMISSION, msg, LOCKED);
 	}
 
-	ep = tsem_event_allocate(TSEM_KEY_PERMISSION, NOLOCK);
+	ep = tsem_event_allocate(TSEM_KEY_PERMISSION, LOCKED);
 	if (!ep)
 		return -ENOMEM;
 
