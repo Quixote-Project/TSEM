@@ -924,6 +924,21 @@ static int get_sb_mount(struct tsem_sb_args *args)
 	return retn;
 }
 
+static int get_sb_umount(struct tsem_sb_args *args)
+{
+	int retn;
+	struct dentry *dentry = args->in.dentry;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	retn = fill_path_dentry(dentry, &args->out.path);
+	if (retn)
+		return -ENOMEM;
+
+	fill_inode(d_backing_inode(dentry), &args->out.inode);
+	return 0;
+}
+
 static void get_netlink(struct tsem_netlink_args *args)
 {
 	struct sock *sock = args->in.sock;
@@ -1132,6 +1147,9 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_SB_MOUNT:
 		retn = get_sb_mount(&ep->CELL.sb);
 		break;
+	case TSEM_SB_UMOUNT:
+		retn = get_sb_umount(&ep->CELL.sb);
+		break;
 	case TSEM_SB_PIVOTROOT:
 		retn = get_sb_pivotroot(&ep->CELL.sb_pivotroot);
 		break;
@@ -1205,6 +1223,9 @@ static void free_cell(struct tsem_event *ep)
 	case TSEM_SB_MOUNT:
 		kfree(ep->CELL.sb.out.dev_name);
 		kfree(ep->CELL.sb.out.type);
+		kfree(ep->CELL.sb.out.path.pathname);
+		break;
+	case TSEM_SB_UMOUNT:
 		kfree(ep->CELL.sb.out.path.pathname);
 		break;
 	case TSEM_SB_PIVOTROOT:

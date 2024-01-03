@@ -986,6 +986,20 @@ static void show_sb_mount(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "flags", "%lu", args->flags);
 }
 
+static void show_sb_umount(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_sb_args *args = &ep->CELL.sb;
+
+	show_event(c, ep);
+
+	show_path(c, "path", &args->out.path);
+	seq_puts(c, ", ");
+
+	show_inode(c, ", ", &args->out.inode);
+
+	tsem_fs_show_key(c, "}", "flags", "%d", args->flags);
+}
+
 static void show_sb_pivotroot(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_sb_pivotroot_args *args = &ep->CELL.sb_pivotroot;
@@ -1823,6 +1837,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_SB_MOUNT:
 		show_sb_mount(c, ep);
+		break;
+	case TSEM_SB_UMOUNT:
+		show_sb_umount(c, ep);
 		break;
 	case TSEM_SB_PIVOTROOT:
 		show_sb_pivotroot(c, ep);

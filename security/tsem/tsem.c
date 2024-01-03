@@ -1305,6 +1305,7 @@ static int tsem_sb_mount(const char *dev_name, const struct path *path,
 static	int tsem_sb_umount(struct vfsmount *mnt, int flags)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "root=%s, flags=%d",
@@ -1312,7 +1313,14 @@ static	int tsem_sb_umount(struct vfsmount *mnt, int flags)
 		return trapped_task(TSEM_SB_UMOUNT, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_SB_UMOUNT, NOLOCK);
+	ep = tsem_event_allocate(TSEM_SB_UMOUNT, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.sb.flags = flags;
+	ep->CELL.sb.in.dentry = mnt->mnt_root;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_sb_remount(struct super_block *sb, void *mnt_opts)
