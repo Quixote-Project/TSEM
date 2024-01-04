@@ -1641,6 +1641,20 @@ struct tsem_key_args {
 };
 
 /**
+ * struct tsem_bpf_args - TSEM bpf security handler arguments.
+ * @cmd: For the security_bpf LSM handler the command number passed
+ *	 the event handler.
+ * @size: The size argument passed to the security_bpf handler.
+ *
+ * This structure is used to hold the arguments to the LSM hooks that
+ * handle BPF security management.
+ */
+struct tsem_bpf_args {
+	int cmd;
+	unsigned int size;
+};
+
+/**
  * struct tsem_event - TSEM security event description.
  * @index: The index number of the slot in the structure magazine that
  *	   is being refilled.
@@ -1704,6 +1718,9 @@ struct tsem_key_args {
  * @CELL.inode_create: The structure describing the input and
  *		       TSEM translated values of the arguments for
  *		       the inode_create event.
+ * @CELL.bpf: The structure describing the input and TSEM translated
+ *	      and retained arguments for the LSM security hooks that
+ *	      manage bpf related security decisions.
  *
  * This structure is the primary data structure for describing
  * security events that are registered in a security modeling
@@ -1800,6 +1817,7 @@ struct tsem_event {
 		struct tsem_sb_pivotroot_args sb_pivotroot;
 		struct tsem_sb_args sb;
 		struct tsem_time_args time;
+		struct tsem_bpf_args bpf;
 	} CELL;
 };
 

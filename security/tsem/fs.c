@@ -1038,6 +1038,16 @@ static void show_sb_statfs(struct seq_file *c, struct tsem_event *ep)
 	show_inode(c, "}", &args->out.inode);
 }
 
+static void show_bpf(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_bpf_args *args = &ep->CELL.bpf;
+
+	show_event(c, ep);
+
+	tsem_fs_show_key(c, ",", "cmd", "%d", args->cmd);
+	tsem_fs_show_key(c, "}", "size", "%u", args->size);
+}
+
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
@@ -1864,6 +1874,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_SB_STATFS:
 		show_sb_statfs(c, ep);
+		break;
+	case TSEM_BPF:
+		show_bpf(c, ep);
 		break;
 	default:
 		break;

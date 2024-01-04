@@ -2165,13 +2165,21 @@ static int tsem_tun_dev_open(void *security)
 static int tsem_bpf(int cmd, union bpf_attr *attr, unsigned int size)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "cmd=%d, size=%u", cmd, size);
 		return trapped_task(TSEM_BPF, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_BPF, NOLOCK);
+	ep = tsem_event_allocate(TSEM_BPF, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.bpf.cmd = cmd;
+	ep->CELL.bpf.size = size;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_bpf_map(struct bpf_map *map, fmode_t fmode)
