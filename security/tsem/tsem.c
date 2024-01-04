@@ -677,7 +677,7 @@ static int tsem_task_setioprio(struct task_struct *p, int ioprio)
 		return trapped_task(TSEM_TASK_SETIOPRIO, msg, NOLOCK);
 	}
 
-	ep = tsem_event_allocate(TSEM_TASK_SETIOPRIO, LOCKED);
+	ep = tsem_event_allocate(TSEM_TASK_SETIOPRIO, NOLOCK);
 	if (!ep)
 		return -ENOMEM;
 
@@ -698,7 +698,7 @@ static int tsem_task_getioprio(struct task_struct *p)
 		return trapped_task(TSEM_TASK_GETIOPRIO, msg, NOLOCK);
 	}
 
-	ep = tsem_event_allocate(TSEM_TASK_GETIOPRIO, LOCKED);
+	ep = tsem_event_allocate(TSEM_TASK_GETIOPRIO, NOLOCK);
 	if (!ep)
 		return -ENOMEM;
 
