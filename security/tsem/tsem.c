@@ -2176,8 +2176,8 @@ static int tsem_bpf(int cmd, union bpf_attr *attr, unsigned int size)
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.bpf.cmd = cmd;
-	ep->CELL.bpf.size = size;
+	ep->CELL.bpf.bpf.cmd = cmd;
+	ep->CELL.bpf.bpf.size = size;
 
 	return dispatch_event(ep);
 }
@@ -2198,13 +2198,21 @@ static int tsem_bpf_map(struct bpf_map *map, fmode_t fmode)
 static int tsem_bpf_prog(struct bpf_prog *prog)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "type=%d", prog->type);
 		return trapped_task(TSEM_BPF_PROG, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_BPF_PROG, NOLOCK);
+	ep = tsem_event_allocate(TSEM_BPF_PROG, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.bpf.prog.type = prog->type;
+	ep->CELL.bpf.prog.attach_type = prog->expected_attach_type;
+
+	return dispatch_event(ep);
 }
 #endif
 

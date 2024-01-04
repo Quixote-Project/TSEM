@@ -1650,8 +1650,17 @@ struct tsem_key_args {
  * handle BPF security management.
  */
 struct tsem_bpf_args {
-	int cmd;
-	unsigned int size;
+	union {
+		struct {
+			int cmd;
+			unsigned int size;
+		} bpf;
+
+		struct {
+			int type;
+			int attach_type;
+		} prog;
+	};
 };
 
 /**
