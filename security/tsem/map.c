@@ -1040,17 +1040,21 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_SB_MOUNT:
-		retn = add_str(shash, ep->CELL.sb.out.dev_name);
-		if (retn)
-			goto done;
+		if (ep->CELL.sb.out.dev_name) {
+			retn = add_str(shash, ep->CELL.sb.out.dev_name);
+			if (retn)
+				goto done;
+		}
 
 		retn = add_path(shash, &ep->CELL.sb.out.path);
 		if (retn)
 			goto done;
 
-		retn = add_str(shash, ep->CELL.sb.out.type);
-		if (retn)
-			goto done;
+		if (ep->CELL.sb.out.type) {
+			retn = add_str(shash, ep->CELL.sb.out.type);
+			if (retn)
+				goto done;
+		}
 
 		retn = add_u64(shash, ep->CELL.sb.flags);
 		if (retn)

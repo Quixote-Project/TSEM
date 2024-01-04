@@ -906,13 +906,17 @@ static int get_sb_mount(struct tsem_sb_args *args)
 
 	memset(&args->out, '\0', sizeof(args->out));
 
-	args->out.dev_name = kstrdup(dev_name, GFP_KERNEL);
-	if (!args->out.dev_name)
-		goto done;
+	if (dev_name) {
+		args->out.dev_name = kstrdup(dev_name, GFP_KERNEL);
+		if (!args->out.dev_name)
+			goto done;
+	}
 
-	args->out.type = kstrdup(type, GFP_KERNEL);
-	if (!args->out.type)
-		goto done;
+	if (type) {
+		args->out.type = kstrdup(type, GFP_KERNEL);
+		if (!args->out.type)
+			goto done;
+	}
 
 	retn = fill_path(path, &args->out.path);
 

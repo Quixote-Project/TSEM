@@ -977,12 +977,14 @@ static void show_sb_mount(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "dev_name", "%s", args->out.dev_name);
+	if (args->out.dev_name)
+		tsem_fs_show_key(c, ",", "dev_name", "%s", args->out.dev_name);
 
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
 
-	tsem_fs_show_key(c, ",", "type", "%s", args->out.type);
+	if (args->out.type)
+		tsem_fs_show_key(c, ",", "type", "%s", args->out.type);
 	tsem_fs_show_key(c, "}", "flags", "%lu", args->flags);
 }
 
