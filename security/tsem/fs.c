@@ -1040,6 +1040,18 @@ static void show_sb_statfs(struct seq_file *c, struct tsem_event *ep)
 	show_inode(c, "}", &args->out.inode);
 }
 
+static void show_move_mount(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_sb_args *args = &ep->CELL.sb;
+
+	show_event(c, ep);
+
+	show_path(c, "path1", &args->out.path);
+	seq_puts(c, ", ");
+	show_path(c, "path2", &args->out.path2);
+	seq_puts(c, "}");
+}
+
 static void show_bpf(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_bpf_args *args = &ep->CELL.bpf;
@@ -1896,6 +1908,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_SB_STATFS:
 		show_sb_statfs(c, ep);
+		break;
+	case TSEM_MOVE_MOUNT:
+		show_move_mount(c, ep);
 		break;
 	case TSEM_BPF:
 		show_bpf(c, ep);

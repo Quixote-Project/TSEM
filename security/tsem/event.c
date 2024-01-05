@@ -1053,6 +1053,21 @@ static int get_sb_statfs(struct tsem_sb_args *args)
 	return 0;
 }
 
+static int get_move_mount(struct tsem_sb_args *args)
+{
+	int retn;
+	const struct path *old_path = args->in.path;
+	const struct path *new_path = args->in.path2;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	retn = fill_path(old_path, &args->out.path);
+	if (!retn)
+		retn = fill_path(new_path, &args->out.path2);
+
+	return retn;
+}
+
 /**
  * tsem_event_init() - Initialize a security event description structure.
  * @ep: A pointer to the tsem_event structure that describes the
@@ -1188,6 +1203,9 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_SB_STATFS:
 		retn = get_sb_statfs(&ep->CELL.sb);
 		break;
+	case TSEM_MOVE_MOUNT:
+		retn = get_move_mount(&ep->CELL.sb);
+		break;
 	default:
 		break;
 	}
@@ -1270,6 +1288,10 @@ static void free_cell(struct tsem_event *ep)
 		break;
 	case TSEM_SB_STATFS:
 		kfree(ep->CELL.sb.out.path.pathname);
+		break;
+	case TSEM_MOVE_MOUNT:
+		kfree(ep->CELL.sb.out.path.pathname);
+		kfree(ep->CELL.sb.out.path2.pathname);
 		break;
 	default:
 		break;

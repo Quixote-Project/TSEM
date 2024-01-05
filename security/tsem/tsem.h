@@ -1297,14 +1297,18 @@ struct tsem_netlink_args {
  * @in.dentry: An incoming dentry argument.
  * @in.dev_name: The name of the device to be used for the sb_mount
  *		 command.
+ * @in.path: The path argument passed to the sb_mount commands.
  * @in.type: A character pointer to the filesystem type being processed
  *	     by the superblock security handlers.
- * @in.path: The path argument passed to the sb_mount commands.
+ * @in.path2: The second path argument passed to the move_mount and
+ *	      sb_pivotroot security handlers.
  * @out.inode: The TSEM representation of the inode backing the dentry
  *	       argument to an LSM handler.
- * @out.path: The TSEM represent of the incoming path argument.
+ * @out.path: The TSEM representation of the incoming path argument.
  * @out.dev_name: A copy of the dev_name argument.
  * @out.type: A copy of the filesystem type.
+ * @out.path2: The TSEM representation of the second path argument if
+ *	       used.
  *
  * This structure is used to encapsulate and retain the arguments for
  * the family of security event handlers that deal with superblocks.  The
@@ -1326,6 +1330,7 @@ struct tsem_sb_args {
 			const char *dev_name;
 			const struct path *path;
 			const char *type;
+			const struct path *path2;
 		} in;
 
 		struct {
@@ -1333,6 +1338,7 @@ struct tsem_sb_args {
 			struct tsem_path path;
 			char *dev_name;
 			char *type;
+			struct tsem_path path2;
 		} out;
 	};
 };

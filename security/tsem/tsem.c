@@ -1392,6 +1392,7 @@ static int tsem_move_mount(const struct path *from_path,
 			   const struct path *to_path)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "%s -> %s",
@@ -1400,7 +1401,15 @@ static int tsem_move_mount(const struct path *from_path,
 		return trapped_task(TSEM_MOVE_MOUNT, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_MOVE_MOUNT, NOLOCK);
+
+	ep = tsem_event_allocate(TSEM_MOVE_MOUNT, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.sb.in.path = from_path;
+	ep->CELL.sb.in.path2 = to_path;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_shm_associate(struct kern_ipc_perm *perm, int shmflg)
