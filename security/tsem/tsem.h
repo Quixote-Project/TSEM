@@ -1642,12 +1642,23 @@ struct tsem_key_args {
 
 /**
  * struct tsem_bpf_args - TSEM bpf security handler arguments.
- * @cmd: For the security_bpf LSM handler the command number passed
- *	 the event handler.
- * @size: The size argument passed to the security_bpf handler.
- *
- * This structure is used to hold the arguments to the LSM hooks that
- * handle BPF security management.
+ * @bpf.cmd: For the security_bpf LSM handler the command number passed
+ *	     the event handler.
+ * @bpf.size: For the security_bpf LSM handler the size argument passed
+ *	      to the event handler.
+ * @prog.type: For the security_bpf_prog LSM handler the type member of
+ *	       the bpf_prog structure passed to the event handler.
+ * @prog.attach_type: For the security_bpf LSM handler the attach_type
+ *		      member of the bpf_prog structure passed to the
+ *		      event handler.
+ * @map.map_type: For the security_map LSM handler the map_type member
+ *		  of the bpf_map structure passed to the event handler.
+ * @map.fmode: For the security_map LSM handler the fmode argument passed
+ *	       to the event handler.
+
+ * This structure is used to hold the arguments to the various LSM
+ * hooks that handle BPF security management.  This structure is a
+ * union over structures for each of the TSEM bpf handlers.
  */
 struct tsem_bpf_args {
 	union {
@@ -1660,6 +1671,11 @@ struct tsem_bpf_args {
 			int type;
 			int attach_type;
 		} prog;
+
+		struct {
+			int map_type;
+			fmode_t fmode;
+		} map;
 	};
 };
 

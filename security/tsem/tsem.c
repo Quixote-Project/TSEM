@@ -2185,6 +2185,7 @@ static int tsem_bpf(int cmd, union bpf_attr *attr, unsigned int size)
 static int tsem_bpf_map(struct bpf_map *map, fmode_t fmode)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "type=%d, size=%u", map->map_type,
@@ -2192,7 +2193,14 @@ static int tsem_bpf_map(struct bpf_map *map, fmode_t fmode)
 		return trapped_task(TSEM_BPF_MAP, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_BPF_MAP, NOLOCK);
+	ep = tsem_event_allocate(TSEM_BPF_MAP, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.bpf.map.fmode = fmode;
+	ep->CELL.bpf.map.map_type = map->map_type;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_bpf_prog(struct bpf_prog *prog)

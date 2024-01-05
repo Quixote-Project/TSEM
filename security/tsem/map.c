@@ -1136,6 +1136,18 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_BPF_MAP:
+		retn = add_u32(shash, ep->CELL.bpf.map.map_type);
+		if (!retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.bpf.map.fmode);
+		if (!retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_BPF_PROG:
 		retn = add_u32(shash, ep->CELL.bpf.prog.type);
 		if (!retn)

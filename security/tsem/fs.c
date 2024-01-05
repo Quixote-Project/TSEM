@@ -1050,6 +1050,16 @@ static void show_bpf(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "size", "%u", args->bpf.size);
 }
 
+static void show_bpf_map(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_bpf_args *args = &ep->CELL.bpf;
+
+	show_event(c, ep);
+
+	tsem_fs_show_key(c, ",", "map_type", "%d", args->map.map_type);
+	tsem_fs_show_key(c, "}", "fmode", "%u", args->map.fmode);
+}
+
 static void show_bpf_prog(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_bpf_args *args = &ep->CELL.bpf;
@@ -1889,6 +1899,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_BPF:
 		show_bpf(c, ep);
+		break;
+	case TSEM_BPF_MAP:
+		show_bpf_map(c, ep);
 		break;
 	case TSEM_BPF_PROG:
 		show_bpf_prog(c, ep);
