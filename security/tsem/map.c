@@ -1099,18 +1099,6 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
-	case TSEM_SB_PIVOTROOT:
-		retn = add_path(shash, &ep->CELL.sb_pivotroot.out.old_path);
-		if (retn)
-			goto done;
-
-		retn = add_path(shash, &ep->CELL.sb_pivotroot.out.new_path);
-		if (retn)
-			goto done;
-
-		retn = crypto_shash_final(shash, mapping);
-		break;
-
 	case TSEM_SB_STATFS:
 	case TSEM_INODE_LISTXATTR:
 		retn = add_path(shash, &ep->CELL.sb.out.path);
@@ -1124,6 +1112,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_SB_PIVOTROOT:
 	case TSEM_MOVE_MOUNT:
 		retn = add_path(shash, &ep->CELL.sb.out.path);
 		if (retn)

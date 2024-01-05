@@ -1363,8 +1363,8 @@ static int tsem_sb_pivotroot(const struct path *old_path,
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.sb_pivotroot.in.old_path = old_path;
-	ep->CELL.sb_pivotroot.in.new_path = new_path;
+	ep->CELL.sb.in.path = old_path;
+	ep->CELL.sb.in.path2 = new_path;
 
 	return dispatch_event(ep);
 }

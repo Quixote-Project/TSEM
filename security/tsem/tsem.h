@@ -1584,37 +1584,6 @@ struct tsem_time_args {
 };
 
 /**
- * struct tsem_sb_pivotroot_args - TSEM sb_pivotroot arguments.
- * @in.old_path: A pointer to the path description for the old root
- *		 that was passed to the security event hadler.
- * @in.new_path: A pointer to the path description for the path that will
- *		 be the new root.
- * @out.old_path: A pointer to a null terminated buffer containing the
- *		  path of the old root.
- * @out.new_path: A pointer to a null terminated buffer containing the
- *		  path to the new root.
- *
- * This structure is used to encapsulate information on the arguments
- * passed to the sb_pivotroot LSM hook.  The in structure is used to
- * hold the pointers to the arguments passed to the LSM hook.  Argument
- * information that is to be held for the life of the event are held
- * in the out structure.
- */
-struct tsem_sb_pivotroot_args {
-	union {
-		struct {
-			const struct path *old_path;
-			const struct path *new_path;
-		} in;
-
-		struct {
-			struct tsem_path old_path;
-			struct tsem_path new_path;
-		} out;
-	};
-};
-
-/**
  * struct tsem_key_args - TSEM key handler arguments.
  * @flags: The flags value passed to the key_alloc handler.
  * @in.cred: A pointer to the credentials structure passed to the
@@ -1845,7 +1814,6 @@ struct tsem_event {
 		struct tsem_inode_attr_args inode_attr;
 		struct tsem_inode_xattr_args inode_xattr;
 		struct tsem_key_args key;
-		struct tsem_sb_pivotroot_args sb_pivotroot;
 		struct tsem_sb_args sb;
 		struct tsem_time_args time;
 		struct tsem_bpf_args bpf;

@@ -1025,21 +1025,6 @@ static void get_key_perm(struct tsem_key_args *args)
 	args->out.flags = key->flags;
 }
 
-static int get_sb_pivotroot(struct tsem_sb_pivotroot_args *args)
-{
-	int retn;
-	const struct path *old_path = args->in.old_path;
-	const struct path *new_path = args->in.new_path;
-
-	memset(&args->out, '\0', sizeof(args->out));
-
-	retn = fill_path(old_path, &args->out.old_path);
-	if (!retn)
-		retn = fill_path(new_path, &args->out.new_path);
-
-	return retn;
-}
-
 static int get_sb_statfs(struct tsem_sb_args *args)
 {
 	int retn;
@@ -1197,12 +1182,10 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_SB_REMOUNT:
 		retn = get_sb_remount(&ep->CELL.sb);
 		break;
-	case TSEM_SB_PIVOTROOT:
-		retn = get_sb_pivotroot(&ep->CELL.sb_pivotroot);
-		break;
 	case TSEM_SB_STATFS:
 		retn = get_sb_statfs(&ep->CELL.sb);
 		break;
+	case TSEM_SB_PIVOTROOT:
 	case TSEM_MOVE_MOUNT:
 		retn = get_move_mount(&ep->CELL.sb);
 		break;
@@ -1283,15 +1266,12 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.sb.out.path.pathname);
 		break;
 	case TSEM_SB_PIVOTROOT:
-		kfree(ep->CELL.sb_pivotroot.out.old_path.pathname);
-		kfree(ep->CELL.sb_pivotroot.out.new_path.pathname);
-		break;
-	case TSEM_SB_STATFS:
-		kfree(ep->CELL.sb.out.path.pathname);
-		break;
 	case TSEM_MOVE_MOUNT:
 		kfree(ep->CELL.sb.out.path.pathname);
 		kfree(ep->CELL.sb.out.path2.pathname);
+		break;
+	case TSEM_SB_STATFS:
+		kfree(ep->CELL.sb.out.path.pathname);
 		break;
 	default:
 		break;
