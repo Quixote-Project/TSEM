@@ -1403,19 +1403,19 @@ struct tsem_task_prlimit_args {
 
 /**
  * struct tsem_task_prctl - TSEM task prctl arguments.
- * @u.value: The signed representation of an integer argument.
- * @u.resource: The unsigned representation of an integer argument.
- * @cur: The current resource limit for a task_setrlimit call.
- * @max: The maximum resource limit for a task_setrlimit call.
- * @cross_model: A flag variable used to indicate whether or not the
- *		 signal is originating from a security modeling
- *		 namespace other than the namespace of the target process.
- * @signal: The number of the signal being sent.
- * @source: The task identifier of the process sending the signal
- * @target: The task identifier of the target process.
+ * @option: The first argument to the task_prctl LSM handler
+ *	    specifying the command to be executed.
+ * @arg2: The first argument to the handler.
+ * @arg3: The second argument to the handler.
+ * @arg4: The third argument to the handler.
+ * @arg5: The fourth and final argument to the handler.
  *
  * This structure is used to encapsulate the arguments provided to the
- * tsem_task_kill security event handler.
+ * tsem_task_prctl security event handler.  The argument model is to
+ * specify the 'option' value which is the kernel prctl call that is
+ * to be executed.  The remaining positional arguments are without
+ * specific format and are designed to be interpreted by the prctl
+ * system call based on the command specified.
  */
 struct tsem_task_prctl_args {
 	int option;

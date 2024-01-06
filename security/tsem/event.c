@@ -10,6 +10,7 @@
 #include <linux/iversion.h>
 #include <linux/user_namespace.h>
 #include <linux/base64.h>
+#include <uapi/linux/prctl.h>
 
 #include "tsem.h"
 #include "../integrity/integrity.h"
@@ -672,6 +673,12 @@ static void get_prlimit(struct tsem_task_prlimit_args *args)
 	fill_creds(tcred, &args->out.tcred);
 }
 
+static void get_prctl(struct tsem_task_prctl_args *args)
+{
+	if (args->option == PR_SET_NAME || args->option == PR_GET_NAME)
+		args->arg2 = 0;
+}
+
 static void get_socket(struct sock *sock, struct tsem_socket_create_args *args)
 {
 	args->family = sock->sk_family;
@@ -1127,6 +1134,9 @@ int tsem_event_init(struct tsem_event *ep)
 		break;
 	case TSEM_TASK_PRLIMIT:
 		get_prlimit(&ep->CELL.task_prlimit);
+		break;
+	case TSEM_TASK_PRCTL:
+		get_prctl(&ep->CELL.task_prctl);
 		break;
 	case TSEM_UNIX_STREAM_CONNECT:
 	case TSEM_UNIX_MAY_SEND:
