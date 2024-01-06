@@ -1057,6 +1057,28 @@ static int get_move_mount(struct tsem_sb_args *args)
 	return retn;
 }
 
+static int get_quotactl(struct tsem_quota_args *args)
+{
+	int retn;
+	struct super_block *sb = args->in.sb;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	args->out.s_flags = sb->s_flags;
+
+	args->out.fstype = kstrdup(sb->s_type->name, GFP_KERNEL);
+	if (!args->out.fstype)
+		goto done;
+
+	fill_inode(d_backing_inode(sb->s_root), &args->out.inode);
+	retn = fill_path_dentry(sb->s_root, &args->out.path);
+
+ done:
+	if (retn)
+		kfree(args->out.fstype);
+	return retn;
+}
+
 /**
  * tsem_event_init() - Initialize a security event description structure.
  * @ep: A pointer to the tsem_event structure that describes the
@@ -1196,6 +1218,9 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_MOVE_MOUNT:
 		retn = get_move_mount(&ep->CELL.sb);
 		break;
+	case TSEM_QUOTACTL:
+		retn = get_quotactl(&ep->CELL.quota);
+		break;
 	default:
 		break;
 	}
@@ -1276,6 +1301,10 @@ static void free_cell(struct tsem_event *ep)
 	case TSEM_MOVE_MOUNT:
 		kfree(ep->CELL.sb.out.path.pathname);
 		kfree(ep->CELL.sb.out.path2.pathname);
+		break;
+	case TSEM_QUOTACTL:
+		kfree(ep->CELL.quota.out.fstype);
+		kfree(ep->CELL.quota.out.path.pathname);
 		break;
 	case TSEM_SB_STATFS:
 		kfree(ep->CELL.sb.out.path.pathname);

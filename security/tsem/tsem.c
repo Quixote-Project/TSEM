@@ -1544,6 +1544,7 @@ static int tsem_settime(const struct timespec64 *ts, const struct timezone *tz)
 static int tsem_quotactl(int cmds, int type, int id, struct super_block *sb)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -1552,7 +1553,16 @@ static int tsem_quotactl(int cmds, int type, int id, struct super_block *sb)
 		return trapped_task(TSEM_QUOTACTL, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_QUOTACTL, NOLOCK);
+	ep = tsem_event_allocate(TSEM_QUOTACTL, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.quota.cmds = cmds;
+	ep->CELL.quota.type = type;
+	ep->CELL.quota.id = id;
+	ep->CELL.quota.in.sb = sb;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_quota_on(struct dentry *dentry)

@@ -1584,6 +1584,50 @@ struct tsem_time_args {
 };
 
 /**
+ * struct tsem_quota_args - TSEM arguments for quota security management.
+ * @cmds: The cmds argument from the security_quotactl handler.
+ * @type: The type argument from the security_quotactl handler.
+ * @id: The id argument from the security_quotactl handler.
+ * @in.sb: The superblock pointer argument from the security_quotactl handler.
+ * @in.dentry: In the case of the quota_on LSM handler the dentry
+ *	       argument to the handler.
+ * @out.path: In the case of the quotactl handler the path to the
+ *	      mountpoint of the superblock.  In the case of the
+ *	      quota_on handler the dentry being checked.
+ * @out.inode: In the case of the quotactl handler the inode
+ *	       description of the filesystem mountpoint.  In the
+ *	       case of the quota_on handler the inode backing the
+ *	       dentry that is being checked.
+ * @out.s_flags: In the case of the quotactl handler the flags from
+ *		 the superblock of the filesystem.
+ * @out.fstype: In the case of the quotactl handler the filesystem
+ *		type of the mountpoint.
+ *
+ * This structure is an encapsulation of the arguments and their
+ * retention values for the LSM security handlers that make security
+ * decisions relevant to filesystem quota manipulation.
+ */
+struct tsem_quota_args {
+	int cmds;
+	int type;
+	int id;
+
+	union {
+		struct {
+			struct super_block *sb;
+			struct dentry *dentry;
+		} in;
+
+		struct {
+			struct tsem_path path;
+			struct tsem_inode_cell inode;
+			unsigned long s_flags;
+			char *fstype;
+		} out;
+	};
+};
+
+/**
  * struct tsem_key_args - TSEM key handler arguments.
  * @flags: The flags value passed to the key_alloc handler.
  * @in.cred: A pointer to the credentials structure passed to the
@@ -1815,6 +1859,7 @@ struct tsem_event {
 		struct tsem_inode_xattr_args inode_xattr;
 		struct tsem_key_args key;
 		struct tsem_sb_args sb;
+		struct tsem_quota_args quota;
 		struct tsem_time_args time;
 		struct tsem_bpf_args bpf;
 	} CELL;
