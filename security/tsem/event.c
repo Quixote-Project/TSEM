@@ -996,8 +996,6 @@ static void get_netlink(struct tsem_netlink_args *args)
 	args->out.flags = np->flags;
 	args->out.nsid_set = np->nsid_is_set;
 	args->out.nsid = np->nsid;
-
-	return;
 }
 
 static void get_key_alloc(struct tsem_key_args *args)
@@ -1006,7 +1004,6 @@ static void get_key_alloc(struct tsem_key_args *args)
 
 	memset(&args->out, '\0', sizeof(args->out));
 	fill_creds(cred, &args->out.cred);
-	return;
 }
 
 static void get_key_perm(struct tsem_key_args *args)
