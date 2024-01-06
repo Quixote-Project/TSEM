@@ -1568,13 +1568,20 @@ static int tsem_quotactl(int cmds, int type, int id, struct super_block *sb)
 static int tsem_quota_on(struct dentry *dentry)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "name=%s", dentry->d_name.name);
 		return trapped_task(TSEM_QUOTA_ON, msg, NOLOCK);
 	}
 
-	return dispatch_generic_event(TSEM_QUOTA_ON, NOLOCK);
+	ep = tsem_event_allocate(TSEM_QUOTA_ON, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.quota.in.dentry = dentry;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_msg_queue_associate(struct kern_ipc_perm *perm, int msqflg)

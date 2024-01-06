@@ -1157,6 +1157,18 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_QUOTA_ON:
+		retn = add_path(shash, &ep->CELL.quota.out.path);
+		if (retn)
+			goto done;
+
+		retn = add_inode(shash, &ep->CELL.quota.out.inode);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_BPF:
 		retn = add_u32(shash, ep->CELL.bpf.bpf.cmd);
 		if (!retn)

@@ -1079,6 +1079,16 @@ static int get_quotactl(struct tsem_quota_args *args)
 	return retn;
 }
 
+static int get_quotaon(struct tsem_quota_args *args)
+{
+	struct dentry *dentry = args->in.dentry;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	fill_inode(d_backing_inode(dentry), &args->out.inode);
+	return fill_path_dentry(dentry, &args->out.path);
+}
+
 /**
  * tsem_event_init() - Initialize a security event description structure.
  * @ep: A pointer to the tsem_event structure that describes the
@@ -1221,6 +1231,9 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_QUOTACTL:
 		retn = get_quotactl(&ep->CELL.quota);
 		break;
+	case TSEM_QUOTA_ON:
+		retn = get_quotaon(&ep->CELL.quota);
+		break;
 	default:
 		break;
 	}
@@ -1304,6 +1317,9 @@ static void free_cell(struct tsem_event *ep)
 		break;
 	case TSEM_QUOTACTL:
 		kfree(ep->CELL.quota.out.fstype);
+		kfree(ep->CELL.quota.out.path.pathname);
+		break;
+	case TSEM_QUOTA_ON:
 		kfree(ep->CELL.quota.out.path.pathname);
 		break;
 	case TSEM_SB_STATFS:

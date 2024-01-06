@@ -1058,6 +1058,17 @@ static void show_quotactl(struct seq_file *c, struct tsem_event *ep)
 	seq_putc(c, '}');
 }
 
+static void show_quotaon(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_quota_args *args = &ep->CELL.quota;
+
+	show_event(c, ep);
+
+	show_inode(c, ", ", &args->out.inode);
+	show_path(c, "path", &args->out.path);
+	seq_putc(c, '}');
+}
+
 static void show_bpf(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_bpf_args *args = &ep->CELL.bpf;
@@ -1918,6 +1929,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_QUOTACTL:
 		show_quotactl(c, ep);
+		break;
+	case TSEM_QUOTA_ON:
+		show_quotaon(c, ep);
 		break;
 	case TSEM_BPF:
 		show_bpf(c, ep);
