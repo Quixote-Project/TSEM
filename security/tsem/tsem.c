@@ -64,49 +64,6 @@ static enum mode_type {
 
 static char *default_hash_function __ro_after_init;
 
-static int __init set_magazine_size(char *magazine_value)
-{
-	if (kstrtouint(magazine_value, 0, &magazine_size))
-		pr_warn("tsem: Failed to parse root cache size.\n");
-
-	if (!magazine_size) {
-		pr_warn("tsem: Forcing non-zero cache size.\n");
-		magazine_size = TSEM_ROOT_MAGAZINE_SIZE;
-	}
-
-	pr_info("tsem: Setting default root cache size to %u.\n",
-		magazine_size);
-	return 1;
-}
-__setup("tsem_cache=", set_magazine_size);
-
-static int __init set_modeling_mode(char *mode_value)
-{
-	unsigned long mode = 0;
-
-	if (kstrtoul(mode_value, 0, &mode)) {
-		pr_warn("tsem: Failed to parse modeling mode.\n");
-		return 1;
-	}
-
-	if (mode == 1)
-		tsem_mode = NO_ROOT_MODELING;
-	else if (mode == 2)
-		tsem_mode = EXPORT_ONLY;
-	else
-		pr_warn("tsem: Unknown mode specified.\n");
-	return 1;
-}
-__setup("tsem_mode=", set_modeling_mode);
-
-static int __init set_default_hash_function(char *hash_function)
-{
-
-	default_hash_function = hash_function;
-	return 1;
-}
-__setup("tsem_digest=", set_default_hash_function);
-
 const char * const tsem_names[TSEM_EVENT_CNT] = {
 	"undefined",
 	"bprm_committing_creds",
@@ -209,6 +166,60 @@ static const unsigned long pseudo_filesystems[] = {
 	NSFS_MAGIC,
 	EFIVARFS_MAGIC
 };
+
+static int __init set_magazine_size(char *magazine_value)
+{
+	if (kstrtouint(magazine_value, 0, &magazine_size))
+		pr_warn("tsem: Failed to parse root cache size.\n");
+
+	if (!magazine_size) {
+		pr_warn("tsem: Forcing non-zero cache size.\n");
+		magazine_size = TSEM_ROOT_MAGAZINE_SIZE;
+	}
+
+	pr_info("tsem: Setting default root cache size to %u.\n",
+		magazine_size);
+	return 1;
+}
+__setup("tsem_cache=", set_magazine_size);
+
+static int __init set_modeling_mode(char *mode_value)
+{
+	unsigned long mode = 0;
+
+	if (kstrtoul(mode_value, 0, &mode)) {
+		pr_warn("tsem: Failed to parse modeling mode.\n");
+		return 1;
+	}
+
+	if (mode == 1)
+		tsem_mode = NO_ROOT_MODELING;
+	else if (mode == 2)
+		tsem_mode = EXPORT_ONLY;
+	else
+		pr_warn("tsem: Unknown mode specified.\n");
+	return 1;
+}
+__setup("tsem_mode=", set_modeling_mode);
+
+static int __init set_default_hash_function(char *hash_function)
+{
+
+	default_hash_function = hash_function;
+	return 1;
+}
+__setup("tsem_digest=", set_default_hash_function);
+
+static bool bypass_event(void)
+{
+	struct tsem_context *ctx = tsem_context(current);
+
+	if (tsem_mode == NO_ROOT_MODELING && !ctx->id)
+		return true;
+	if (tsem_mode == EXPORT_ONLY && !ctx->id && !ctx->external)
+		return true;
+	return false;
+}
 
 static bool bypass_filesystem(struct inode *inode)
 {
@@ -2155,6 +2166,9 @@ static int tsem_tun_dev_create(void)
 		return trapped_task(TSEM_TUN_DEV_CREATE, "none",
 					   NOLOCK);
 
+	if (bypass_event())
+		return 0;
+
 	return dispatch_generic_event(TSEM_TUN_DEV_CREATE, NOLOCK);
 }
 
@@ -2163,6 +2177,8 @@ static int tsem_tun_dev_attach_queue(void *security)
 	if (tsem_task_untrusted(current))
 		return trapped_task(TSEM_TUN_DEV_ATTACH_QUEUE, "none",
 					   NOLOCK);
+	if (bypass_event())
+		return 0;
 
 	return dispatch_generic_event(TSEM_TUN_DEV_ATTACH_QUEUE, NOLOCK);
 }
@@ -2176,6 +2192,9 @@ static int tsem_tun_dev_attach(struct sock *sk, void *security)
 		return trapped_task(TSEM_TUN_DEV_ATTACH, msg, NOLOCK);
 	}
 
+	if (bypass_event())
+		return 0;
+
 	return dispatch_generic_event(TSEM_TUN_DEV_ATTACH, NOLOCK);
 }
 
@@ -2183,6 +2202,9 @@ static int tsem_tun_dev_open(void *security)
 {
 	if (tsem_task_untrusted(current))
 		return trapped_task(TSEM_TUN_DEV_OPEN, "none", NOLOCK);
+
+	if (bypass_event())
+		return 0;
 
 	return dispatch_generic_event(TSEM_TUN_DEV_OPEN, NOLOCK);
 }
