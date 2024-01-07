@@ -1835,6 +1835,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_SOCKET_GETSOCKNAME:
 	case TSEM_SOCKET_GETPEERNAME:
+	case TSEM_TUN_DEV_ATTACH_QUEUE:
 		show_socket_argument(c, ep);
 		break;
 	case TSEM_SOCKET_SETSOCKOPT:

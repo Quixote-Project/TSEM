@@ -2162,30 +2162,44 @@ static int tsem_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry)
 
 static int tsem_tun_dev_create(void)
 {
+	struct tsem_event *ep;
+
 	if (tsem_task_untrusted(current))
-		return trapped_task(TSEM_TUN_DEV_CREATE, "none",
-					   NOLOCK);
+		return trapped_task(TSEM_TUN_DEV_CREATE, "none", NOLOCK);
 
 	if (bypass_event())
 		return 0;
 
-	return dispatch_generic_event(TSEM_TUN_DEV_CREATE, NOLOCK);
+	ep = tsem_event_allocate(TSEM_TUN_DEV_CREATE, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+	ep->no_params = true;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_tun_dev_attach_queue(void *security)
 {
+	struct tsem_event *ep;
+
 	if (tsem_task_untrusted(current))
-		return trapped_task(TSEM_TUN_DEV_ATTACH_QUEUE, "none",
-					   NOLOCK);
+		return trapped_task(TSEM_TUN_DEV_ATTACH_QUEUE, "none", NOLOCK);
+
 	if (bypass_event())
 		return 0;
 
-	return dispatch_generic_event(TSEM_TUN_DEV_ATTACH_QUEUE, NOLOCK);
+	ep = tsem_event_allocate(TSEM_TUN_DEV_ATTACH_QUEUE, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+	ep->no_params = true;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_tun_dev_attach(struct sock *sk, void *security)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "family=%u", sk->sk_family);
@@ -2195,18 +2209,31 @@ static int tsem_tun_dev_attach(struct sock *sk, void *security)
 	if (bypass_event())
 		return 0;
 
-	return dispatch_generic_event(TSEM_TUN_DEV_ATTACH, NOLOCK);
+	ep = tsem_event_allocate(TSEM_TUN_DEV_ATTACH, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.socket.in.socka = sk;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_tun_dev_open(void *security)
 {
+	struct tsem_event *ep;
+
 	if (tsem_task_untrusted(current))
 		return trapped_task(TSEM_TUN_DEV_OPEN, "none", NOLOCK);
 
 	if (bypass_event())
 		return 0;
 
-	return dispatch_generic_event(TSEM_TUN_DEV_OPEN, NOLOCK);
+	ep = tsem_event_allocate(TSEM_TUN_DEV_OPEN, NOLOCK);
+	if (!ep)
+		return -ENOMEM;
+	ep->no_params = true;
+
+	return dispatch_event(ep);
 }
 
 #ifdef CONFIG_BPF_SYSCALL

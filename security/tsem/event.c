@@ -1184,6 +1184,7 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_SOCKET_GETPEERNAME:
 	case TSEM_SOCKET_SETSOCKOPT:
 	case TSEM_SOCKET_SHUTDOWN:
+	case TSEM_TUN_DEV_ATTACH_QUEUE:
 		get_socket_argument(&ep->CELL.socket);
 		break;
 	case TSEM_SOCKET_SENDMSG:
