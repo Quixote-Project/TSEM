@@ -566,6 +566,30 @@ static void show_netlink(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "nsid", "%d", args->out.nsid);
 }
 
+static void show_ipc_cred(struct seq_file *c, struct tsem_ipc_args *args)
+{
+	tsem_fs_show_field(c, "ipccred");
+	tsem_fs_show_key(c, ",", "uid", "%u", args->out.perm.uid);
+	tsem_fs_show_key(c, ",", "gid", "%u", args->out.perm.gid);
+	tsem_fs_show_key(c, ",", "cuid", "%u", args->out.perm.cuid);
+	tsem_fs_show_key(c, ",", "cgid", "%u", args->out.perm.cgid);
+	tsem_fs_show_key(c, ",", "mode", "0%o", args->out.perm.mode);
+	tsem_fs_show_key(c, "}", "owner", "%*phN", tsem_digestsize(),
+			 args->out.owner);
+}
+
+static void show_ipc_permission(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_ipc_args *args = &ep->CELL.ipc;
+
+	show_event(c, ep);
+
+	show_ipc_cred(c, args);
+	seq_puts(c, ", ");
+
+	tsem_fs_show_key(c, "}", "flag", "%u", args->perm_flag);
+}
+
 static void show_socket_pair(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_socket_args *args = &ep->CELL.socket;
@@ -1781,6 +1805,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_NETLINK_SEND:
 		show_netlink(c, ep);
+		break;
+	case TSEM_IPC_PERMISSION:
+		show_ipc_permission(c, ep);
 		break;
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:

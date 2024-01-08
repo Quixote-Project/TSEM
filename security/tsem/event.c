@@ -998,6 +998,34 @@ static void get_netlink(struct tsem_netlink_args *args)
 	args->out.nsid = np->nsid;
 }
 
+static void get_ipc_cred(struct kern_ipc_perm *perm, struct tsem_ipc_perm *tp)
+{
+	struct user_namespace *ns;
+
+	if (tsem_context(current)->use_current_ns)
+		ns = current_user_ns();
+	else
+		ns = &init_user_ns;
+
+	tp->uid = from_kuid(ns, perm->uid);
+	tp->gid = from_kgid(ns, perm->gid);
+	tp->cuid = from_kuid(ns, perm->cuid);
+	tp->cgid = from_kgid(ns, perm->cgid);
+	tp->mode = perm->mode;
+}
+
+static void get_ipc_permission(struct tsem_ipc_args *args)
+{
+	struct kern_ipc_perm *perm = args->in.perm;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	get_ipc_cred(perm, &args->out.perm);
+	memcpy(args->out.owner, tsem_ipc(perm)->owner, tsem_digestsize());
+
+	return;
+}
+
 static void get_key_alloc(struct tsem_key_args *args)
 {
 	const struct cred *cred = args->in.cred;
@@ -1121,6 +1149,9 @@ int tsem_event_init(struct tsem_event *ep)
 	switch (ep->event) {
 	case TSEM_NETLINK_SEND:
 		get_netlink(&ep->CELL.netlink);
+		break;
+	case TSEM_IPC_PERMISSION:
+		get_ipc_permission(&ep->CELL.ipc);
 		break;
 	case TSEM_KEY_ALLOC:
 		get_key_alloc(&ep->CELL.key);

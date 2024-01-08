@@ -22,7 +22,8 @@
 
 struct lsm_blob_sizes tsem_blob_sizes __ro_after_init = {
 	.lbs_task = sizeof(struct tsem_task),
-	.lbs_inode = sizeof(struct tsem_inode)
+	.lbs_inode = sizeof(struct tsem_inode),
+	.lbs_ipc = sizeof(struct tsem_ipc),
 };
 
 enum tsem_action_type tsem_root_actions[TSEM_EVENT_CNT] = {
@@ -1657,9 +1658,18 @@ static int tsem_msg_queue_msgrcv(struct kern_ipc_perm *perm,
 	return dispatch_generic_event(TSEM_MSG_QUEUE_MSGRCV, LOCKED);
 }
 
+static int tsem_ipc_alloc(struct kern_ipc_perm *kipc)
+{
+	struct tsem_ipc *tipc = tsem_ipc(kipc);
+
+	memcpy(tipc->owner, tsem_task(current)->task_id, tsem_digestsize());
+	return 0;
+}
+
 static int tsem_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -1670,7 +1680,14 @@ static int tsem_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 		return trapped_task(TSEM_IPC_PERMISSION, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_IPC_PERMISSION, LOCKED);
+	ep = tsem_event_allocate(TSEM_IPC_PERMISSION, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.ipc.perm_flag = flag;
+	ep->CELL.ipc.in.perm = ipcp;
+
+	return dispatch_event(ep);
 }
 
 #ifdef CONFIG_KEYS
@@ -2355,9 +2372,12 @@ static struct security_hook_list tsem_hooks[] __ro_after_init = {
 	LSM_HOOK_INIT(sb_statfs, tsem_sb_statfs),
 	LSM_HOOK_INIT(move_mount, tsem_move_mount),
 
+	LSM_HOOK_INIT(shm_alloc_security, tsem_ipc_alloc),
 	LSM_HOOK_INIT(shm_associate, tsem_shm_associate),
 	LSM_HOOK_INIT(shm_shmctl, tsem_shm_shmctl),
 	LSM_HOOK_INIT(shm_shmat, tsem_shm_shmat),
+
+	LSM_HOOK_INIT(sem_alloc_security, tsem_ipc_alloc),
 	LSM_HOOK_INIT(sem_associate, tsem_sem_associate),
 	LSM_HOOK_INIT(sem_semctl, tsem_sem_semctl),
 	LSM_HOOK_INIT(sem_semop, tsem_sem_semop),
@@ -2368,6 +2388,7 @@ static struct security_hook_list tsem_hooks[] __ro_after_init = {
 	LSM_HOOK_INIT(quotactl, tsem_quotactl),
 	LSM_HOOK_INIT(quota_on, tsem_quota_on),
 
+	LSM_HOOK_INIT(msg_queue_alloc_security, tsem_ipc_alloc),
 	LSM_HOOK_INIT(msg_queue_associate, tsem_msg_queue_associate),
 	LSM_HOOK_INIT(msg_queue_msgctl, tsem_msg_queue_msgctl),
 	LSM_HOOK_INIT(msg_queue_msgsnd, tsem_msg_queue_msgsnd),

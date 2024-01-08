@@ -264,6 +264,36 @@ static int add_socket(struct shash_desc *shash,
 	return retn;
 }
 
+static int add_ipc_cred(struct shash_desc *shash, struct tsem_ipc_args *args)
+{
+	int retn;
+
+	retn = add_u32(shash, args->out.perm.uid);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->out.perm.gid);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->out.perm.cuid);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->out.perm.cgid);
+	if (retn)
+		goto done;
+
+	retn = add_u16(shash, args->out.perm.mode);
+	if (retn)
+		goto done;
+
+	retn = crypto_shash_update(shash, args->out.owner, tsem_digestsize());
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -310,6 +340,18 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 			if (retn)
 				goto done;
 		}
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
+	case TSEM_IPC_PERMISSION:
+		retn = add_ipc_cred(shash, &ep->CELL.ipc);
+		if (retn)
+			goto done;
+
+		retn = add_u16(shash, ep->CELL.ipc.perm_flag);
+		if (retn)
+			goto done;
 
 		retn = crypto_shash_final(shash, mapping);
 		break;

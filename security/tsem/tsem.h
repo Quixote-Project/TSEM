@@ -1699,6 +1699,61 @@ struct tsem_bpf_args {
 };
 
 /**
+ * struct tsem_ipc_perm - TSEM retained members of an IPC permission
+ *			  structure.
+ * @uid: The uid member of the IPC permission structure translated into
+ *	 the namespace reference for the modeling namespace.
+ * @gid: The gid member of the IPC permission structure translated into
+ *	 the namespace reference for the modeling namespace.
+ * @cuid: The cuid member of the IPC permission structure translated
+ *	  into the namespace reference for the modeling namespace.
+ * @cgid: The cgid member of the IPC permission structure translated
+ *	  into the namespace reference for the modeling namespace.
+ * @mode: The mode member of the IPC permission structure.
+ *
+ * This structure is used to hold the translated values from a
+ * kern_ipc_perm structure that is passed to one of the LSM IPC
+ * shared memory security handlers.
+ */
+struct tsem_ipc_perm {
+	uid_t uid;
+	gid_t gid;
+	uid_t cuid;
+	gid_t cgid;
+	umode_t mode;
+};
+
+/**
+ * struct tsem_ipc_args - TSEM arguments for IPC security handlers.
+ * @perm_flag: For the tsem_ipc_permission handler the permission
+ *	       flag passed to the handler.
+ * @in.perm: The kern_ipc_perm structure that is passed to multiple
+ *	     handlers that define the permissions for the IPC
+ *	     object whose security status is being checked.
+ * @out.perm: The TSEM translated versions of the perm pointer that
+ *	      was passed to a handler.
+ * @out.owner: The TASK_ID of the task that created the IPC resource.
+ *
+ * This structure is an encapsulation of the arguments and their
+ * retention values for the LSM security handlers that make security
+ * decisions relevant to IPC objects.
+ */
+struct tsem_ipc_args {
+	short perm_flag;
+
+	union {
+		struct {
+			struct kern_ipc_perm *perm;
+		} in;
+
+		struct {
+			struct tsem_ipc_perm perm;
+			u8 owner[HASH_MAX_DIGESTSIZE];
+		} out;
+	};
+};
+
+/**
  * struct tsem_event - TSEM security event description.
  * @index: The index number of the slot in the structure magazine that
  *	   is being refilled.
@@ -1862,6 +1917,7 @@ struct tsem_event {
 		struct tsem_quota_args quota;
 		struct tsem_time_args time;
 		struct tsem_bpf_args bpf;
+		struct tsem_ipc_args ipc;
 	} CELL;
 };
 
@@ -1948,6 +2004,19 @@ struct tsem_inode {
 	struct mutex mutex;
 	struct list_head digest_list;
 	enum tsem_inode_state status;
+	u8 owner[HASH_MAX_DIGESTSIZE];
+};
+
+/**
+ * struct tsem_ipc - TSEM IPC security structure.
+ * @owner: The identity of the task that created the IPC resource.
+ *
+ * Like the tsem_inode structure this structure is allocated for
+ * IPC resources that are created.  This structure allows IPC
+ * security handlers to include in their security coefficient the
+ * task identity of the process that created the resource.
+ */
+struct tsem_ipc {
 	u8 owner[HASH_MAX_DIGESTSIZE];
 };
 
@@ -2099,6 +2168,11 @@ static inline struct tsem_model *tsem_model(struct task_struct *task)
 static inline struct tsem_inode *tsem_inode(struct inode *inode)
 {
 	return inode->i_security + tsem_blob_sizes.lbs_inode;
+}
+
+static inline struct tsem_ipc *tsem_ipc(struct kern_ipc_perm *kipc)
+{
+	return kipc->security + tsem_blob_sizes.lbs_ipc;
 }
 
 static inline struct crypto_shash *tsem_digest(void)
