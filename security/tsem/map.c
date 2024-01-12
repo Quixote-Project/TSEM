@@ -374,6 +374,22 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_SEM_SEMOP:
+		retn = add_ipc_cred(shash, &ep->CELL.ipc);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.ipc.nsops);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.ipc.value);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:
 		retn = add_inode(shash, &ep->CELL.inode.out.dir);

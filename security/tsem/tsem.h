@@ -1728,6 +1728,8 @@ struct tsem_ipc_perm {
  * @perm_flag: For the tsem_ipc_permission handler the permission
  * @value: A signed integer value that serves as an argument type to
  *	   a number of the handlers.
+ * @nsops: In the came of the tsem_sem_semop handler the nsops argument
+ *	   to the handler.
  * @in.perm: The kern_ipc_perm structure that is passed to multiple
  *	     handlers that define the permissions for the IPC
  *	     object whose security status is being checked.
@@ -1742,6 +1744,7 @@ struct tsem_ipc_perm {
 struct tsem_ipc_args {
 	short perm_flag;
 	int value;
+	unsigned int nsops;
 
 	union {
 		struct {

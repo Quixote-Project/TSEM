@@ -1534,6 +1534,7 @@ static int tsem_sem_semop(struct kern_ipc_perm *perm, struct sembuf *sops,
 			  unsigned int nsops, int alter)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -1542,7 +1543,15 @@ static int tsem_sem_semop(struct kern_ipc_perm *perm, struct sembuf *sops,
 		return trapped_task(TSEM_SEM_SEMOP, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_SEM_SEMOP, LOCKED);
+	ep = tsem_event_allocate(TSEM_SEM_SEMOP, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.ipc.in.perm = perm;
+	ep->CELL.ipc.nsops = nsops;
+	ep->CELL.ipc.value = alter;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_syslog(int type)

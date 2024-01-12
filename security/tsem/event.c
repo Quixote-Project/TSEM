@@ -1156,6 +1156,7 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_SHM_SHMAT:
 	case TSEM_SEM_ASSOCIATE:
 	case TSEM_SEM_SEMCTL:
+	case TSEM_SEM_SEMOP:
 	case TSEM_MSG_QUEUE_ASSOCIATE:
 	case TSEM_MSG_QUEUE_MSGCTL:
 		get_ipc_permission(&ep->CELL.ipc);

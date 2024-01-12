@@ -603,6 +603,19 @@ static void show_ipc_shm_value(struct seq_file *c, struct tsem_event *ep,
 	tsem_fs_show_key(c, "}", name, "%d", args->perm_flag);
 }
 
+static void show_sem_semop(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_ipc_args *args = &ep->CELL.ipc;
+
+	show_event(c, ep);
+
+	show_ipc_cred(c, args);
+	seq_puts(c, ", ");
+
+	tsem_fs_show_key(c, ",", "nsops", "%u", args->nsops);
+	tsem_fs_show_key(c, "}", "alter", "%d", args->value);
+}
+
 static void show_socket_pair(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_socket_args *args = &ep->CELL.socket;
@@ -1830,6 +1843,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 	case TSEM_SEM_SEMCTL:
 	case TSEM_MSG_QUEUE_MSGCTL:
 		show_ipc_shm_value(c, ep, "cmd");
+		break;
+	case TSEM_SEM_SEMOP:
+		show_sem_semop(c, ep);
 		break;
 	case TSEM_SEM_ASSOCIATE:
 		show_ipc_shm_value(c, ep, "semflg");
