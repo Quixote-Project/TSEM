@@ -590,6 +590,19 @@ static void show_ipc_permission(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "flag", "%u", args->perm_flag);
 }
 
+static void show_ipc_shm_value(struct seq_file *c, struct tsem_event *ep,
+			       char *name)
+{
+	struct tsem_ipc_args *args = &ep->CELL.ipc;
+
+	show_event(c, ep);
+
+	show_ipc_cred(c, args);
+	seq_puts(c, ", ");
+
+	tsem_fs_show_key(c, "}", name, "%d", args->perm_flag);
+}
+
 static void show_socket_pair(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_socket_args *args = &ep->CELL.socket;
@@ -1808,6 +1821,21 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_IPC_PERMISSION:
 		show_ipc_permission(c, ep);
+		break;
+	case TSEM_SHM_ASSOCIATE:
+	case TSEM_SHM_SHMAT:
+		show_ipc_shm_value(c, ep, "shmflg");
+		break;
+	case TSEM_SHM_SHMCTL:
+	case TSEM_SEM_SEMCTL:
+	case TSEM_MSG_QUEUE_MSGCTL:
+		show_ipc_shm_value(c, ep, "cmd");
+		break;
+	case TSEM_SEM_ASSOCIATE:
+		show_ipc_shm_value(c, ep, "semflg");
+		break;
+	case TSEM_MSG_QUEUE_ASSOCIATE:
+		show_ipc_shm_value(c, ep, "msqflg");
 		break;
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:

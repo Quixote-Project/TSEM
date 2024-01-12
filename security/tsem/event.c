@@ -1151,6 +1151,13 @@ int tsem_event_init(struct tsem_event *ep)
 		get_netlink(&ep->CELL.netlink);
 		break;
 	case TSEM_IPC_PERMISSION:
+	case TSEM_SHM_ASSOCIATE:
+	case TSEM_SHM_SHMCTL:
+	case TSEM_SHM_SHMAT:
+	case TSEM_SEM_ASSOCIATE:
+	case TSEM_SEM_SEMCTL:
+	case TSEM_MSG_QUEUE_ASSOCIATE:
+	case TSEM_MSG_QUEUE_MSGCTL:
 		get_ipc_permission(&ep->CELL.ipc);
 		break;
 	case TSEM_KEY_ALLOC:

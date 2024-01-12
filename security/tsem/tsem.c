@@ -1427,6 +1427,7 @@ static int tsem_move_mount(const struct path *from_path,
 static int tsem_shm_associate(struct kern_ipc_perm *perm, int shmflg)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "id=%d, mode=%u, flags=%d",
@@ -1434,12 +1435,20 @@ static int tsem_shm_associate(struct kern_ipc_perm *perm, int shmflg)
 		return trapped_task(TSEM_SHM_ASSOCIATE, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_SHM_ASSOCIATE, LOCKED);
+	ep = tsem_event_allocate(TSEM_SHM_ASSOCIATE, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.ipc.in.perm = perm;
+	ep->CELL.ipc.value = shmflg;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_shm_shmctl(struct kern_ipc_perm *perm, int cmd)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "id=%d, mode=%u, cmd=%d",
@@ -1447,13 +1456,21 @@ static int tsem_shm_shmctl(struct kern_ipc_perm *perm, int cmd)
 		return trapped_task(TSEM_SHM_SHMCTL, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_SHM_SHMCTL, LOCKED);
+	ep = tsem_event_allocate(TSEM_SHM_SHMCTL, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.ipc.in.perm = perm;
+	ep->CELL.ipc.value = cmd;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_shm_shmat(struct kern_ipc_perm *perm, char __user *shmaddr,
 			  int shmflg)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "id=%d, mode=%u, flag=%d",
@@ -1461,12 +1478,20 @@ static int tsem_shm_shmat(struct kern_ipc_perm *perm, char __user *shmaddr,
 		return trapped_task(TSEM_SHM_SHMAT, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_SHM_SHMAT, LOCKED);
+	ep = tsem_event_allocate(TSEM_SHM_SHMAT, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.ipc.in.perm = perm;
+	ep->CELL.ipc.value = shmflg;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_sem_associate(struct kern_ipc_perm *perm, int semflg)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "id=%d, mode=%u, flag=%d",
@@ -1474,12 +1499,20 @@ static int tsem_sem_associate(struct kern_ipc_perm *perm, int semflg)
 		return trapped_task(TSEM_SEM_ASSOCIATE, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_SEM_ASSOCIATE, LOCKED);
+	ep = tsem_event_allocate(TSEM_SEM_ASSOCIATE, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.ipc.in.perm = perm;
+	ep->CELL.ipc.value = semflg;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_sem_semctl(struct kern_ipc_perm *perm, int cmd)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg), "id=%d, mode=%u, cmd=%d",
@@ -1487,7 +1520,14 @@ static int tsem_sem_semctl(struct kern_ipc_perm *perm, int cmd)
 		return trapped_task(TSEM_SEM_SEMCTL, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_SEM_SEMCTL, LOCKED);
+	ep = tsem_event_allocate(TSEM_SEM_SEMCTL, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.ipc.in.perm = perm;
+	ep->CELL.ipc.value = cmd;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_sem_semop(struct kern_ipc_perm *perm, struct sembuf *sops,
@@ -1599,16 +1639,23 @@ static int tsem_quota_on(struct dentry *dentry)
 static int tsem_msg_queue_associate(struct kern_ipc_perm *perm, int msqflg)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
 			  "id=%d, mode=%u, msqflg=%d", perm->id, perm->mode,
 			  msqflg);
-		return trapped_task(TSEM_MSG_QUEUE_ASSOCIATE, msg,
-					   LOCKED);
+		return trapped_task(TSEM_MSG_QUEUE_ASSOCIATE, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_MSG_QUEUE_ASSOCIATE, LOCKED);
+	ep = tsem_event_allocate(TSEM_MSG_QUEUE_ASSOCIATE, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.ipc.in.perm = perm;
+	ep->CELL.ipc.value = msqflg;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_msg_queue_msgsnd(struct kern_ipc_perm *perm,
@@ -1630,6 +1677,7 @@ static int tsem_msg_queue_msgsnd(struct kern_ipc_perm *perm,
 static int tsem_msg_queue_msgctl(struct kern_ipc_perm *perm, int cmd)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -1638,7 +1686,14 @@ static int tsem_msg_queue_msgctl(struct kern_ipc_perm *perm, int cmd)
 		return trapped_task(TSEM_MSG_QUEUE_MSGCTL, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_MSG_QUEUE_MSGCTL, LOCKED);
+	ep = tsem_event_allocate(TSEM_MSG_QUEUE_MSGCTL, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.ipc.in.perm = perm;
+	ep->CELL.ipc.value = cmd;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_msg_queue_msgrcv(struct kern_ipc_perm *perm,
