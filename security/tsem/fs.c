@@ -1851,6 +1851,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		show_ipc_shm_value(c, ep, "semflg");
 		break;
 	case TSEM_MSG_QUEUE_ASSOCIATE:
+	case TSEM_MSG_QUEUE_MSGSND:
 		show_ipc_shm_value(c, ep, "msqflg");
 		break;
 	case TSEM_INODE_CREATE:
