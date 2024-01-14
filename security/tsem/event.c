@@ -1026,6 +1026,20 @@ static void get_ipc_permission(struct tsem_ipc_args *args)
 	return;
 }
 
+static void get_msg_queue_msgrcv(struct tsem_ipc_args *args)
+{
+	struct kern_ipc_perm *perm = args->in.perm;
+	struct tsem_task *target = tsem_task(args->in.target);
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	get_ipc_cred(perm, &args->out.perm);
+	memcpy(args->out.owner, tsem_ipc(perm)->owner, tsem_digestsize());
+	memcpy(args->out.target, target->task_id, tsem_digestsize());
+
+	return;
+}
+
 static void get_key_alloc(struct tsem_key_args *args)
 {
 	const struct cred *cred = args->in.cred;
@@ -1161,6 +1175,9 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_MSG_QUEUE_MSGCTL:
 	case TSEM_MSG_QUEUE_MSGSND:
 		get_ipc_permission(&ep->CELL.ipc);
+		break;
+	case TSEM_MSG_QUEUE_MSGRCV:
+		get_msg_queue_msgrcv(&ep->CELL.ipc);
 		break;
 	case TSEM_KEY_ALLOC:
 		get_key_alloc(&ep->CELL.key);

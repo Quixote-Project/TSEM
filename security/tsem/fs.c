@@ -603,6 +603,22 @@ static void show_ipc_shm_value(struct seq_file *c, struct tsem_event *ep,
 	tsem_fs_show_key(c, "}", name, "%d", args->perm_flag);
 }
 
+static void show_msg_queue_msgrcv(struct seq_file *c, struct tsem_event *ep)
+
+{
+	struct tsem_ipc_args *args = &ep->CELL.ipc;
+
+	show_event(c, ep);
+
+	show_ipc_cred(c, args);
+	seq_puts(c, ", ");
+
+	tsem_fs_show_key(c, ",", "target", "%*phN", tsem_digestsize(),
+			 args->out.target);
+	tsem_fs_show_key(c, ",", "type", "%ld", args->type);
+	tsem_fs_show_key(c, "}", "mode", "%d", args->value);
+}
+
 static void show_sem_semop(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_ipc_args *args = &ep->CELL.ipc;
@@ -1853,6 +1869,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 	case TSEM_MSG_QUEUE_ASSOCIATE:
 	case TSEM_MSG_QUEUE_MSGSND:
 		show_ipc_shm_value(c, ep, "msqflg");
+		break;
+	case TSEM_MSG_QUEUE_MSGRCV:
+		show_msg_queue_msgrcv(c, ep);
 		break;
 	case TSEM_INODE_CREATE:
 	case TSEM_INODE_MKDIR:

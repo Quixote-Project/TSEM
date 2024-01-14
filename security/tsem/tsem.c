@@ -305,21 +305,6 @@ static int dispatch_event(struct tsem_event *ep)
 	return retn;
 }
 
-static int dispatch_generic_event(enum tsem_event_type event, bool locked)
-{
-	struct tsem_event *ep;
-
-	if (!tsem_context(current)->id && tsem_mode == NO_ROOT_MODELING)
-		return 0;
-
-	ep = tsem_event_allocate(event, locked);
-	if (!ep)
-		return -ENOMEM;
-	ep->no_params = true;
-
-	return dispatch_event(ep);
-}
-
 static int tsem_file_open(struct file *file)
 {
 	char msg[TRAPPED_MSG_LENGTH];
@@ -1719,6 +1704,7 @@ static int tsem_msg_queue_msgrcv(struct kern_ipc_perm *perm,
 				 int mode)
 {
 	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
 		scnprintf(msg, sizeof(msg),
@@ -1727,7 +1713,16 @@ static int tsem_msg_queue_msgrcv(struct kern_ipc_perm *perm,
 		return trapped_task(TSEM_MSG_QUEUE_MSGRCV, msg, LOCKED);
 	}
 
-	return dispatch_generic_event(TSEM_MSG_QUEUE_MSGRCV, LOCKED);
+	ep = tsem_event_allocate(TSEM_MSG_QUEUE_MSGRCV, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.ipc.in.perm = perm;
+	ep->CELL.ipc.in.target = target;
+	ep->CELL.ipc.type = type;
+	ep->CELL.ipc.value = mode;
+
+	return dispatch_event(ep);
 }
 
 static int tsem_ipc_alloc(struct kern_ipc_perm *kipc)

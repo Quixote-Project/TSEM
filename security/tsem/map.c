@@ -374,6 +374,28 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
+	case TSEM_MSG_QUEUE_MSGRCV:
+		retn = add_ipc_cred(shash, &ep->CELL.ipc);
+		if (retn)
+			goto done;
+
+		p = ep->CELL.ipc.out.target;
+		size = tsem_digestsize();
+		retn = crypto_shash_update(shash, p, size);
+		if (retn)
+			goto done;
+
+		retn = add_u64(shash, ep->CELL.ipc.type);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.ipc.value);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_SEM_SEMOP:
 		retn = add_ipc_cred(shash, &ep->CELL.ipc);
 		if (retn)

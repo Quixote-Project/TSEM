@@ -1745,15 +1745,18 @@ struct tsem_ipc_args {
 	short perm_flag;
 	int value;
 	unsigned int nsops;
+	long type;
 
 	union {
 		struct {
 			struct kern_ipc_perm *perm;
+			struct task_struct *target;
 		} in;
 
 		struct {
 			struct tsem_ipc_perm perm;
 			u8 owner[HASH_MAX_DIGESTSIZE];
+			u8 target[HASH_MAX_DIGESTSIZE];
 		} out;
 	};
 };
