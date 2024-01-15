@@ -684,6 +684,7 @@ static void get_socket(struct sock *sock, struct tsem_socket_create_args *args)
 	args->family = sock->sk_family;
 	args->type = sock->sk_type;
 	args->protocol = sock->sk_protocol;
+	args->kern = sock->sk_kern_sock;
 	memcpy(args->owner, tsem_inode(SOCK_INODE(sock->sk_socket))->owner,
 	       tsem_digestsize());
 }
