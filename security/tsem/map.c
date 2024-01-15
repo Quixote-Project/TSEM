@@ -679,29 +679,23 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_SOCKET_CREATE:
-		p = (u8 *) &ep->CELL.socket_create.family;
-		size = sizeof(ep->CELL.socket_create.family);
-		retn = crypto_shash_update(shash, p, size);
+		retn = add_u32(shash, ep->CELL.socket.out.socka.family);
 		if (retn)
 			goto done;
 
-		p = (u8 *) &ep->CELL.socket_create.type;
-		size = sizeof(ep->CELL.socket_create.type);
-		retn = crypto_shash_update(shash, p, size);
+		retn = add_u32(shash, ep->CELL.socket.out.socka.type);
 		if (retn)
 			goto done;
 
-		p = (u8 *) &ep->CELL.socket_create.protocol;
-		size = sizeof(ep->CELL.socket_create.protocol);
-		retn = crypto_shash_update(shash, p, size);
+		retn = add_u32(shash, ep->CELL.socket.out.socka.protocol);
 		if (retn)
 			goto done;
 
-		p = (u8 *) &ep->CELL.socket_create.kern;
-		size = sizeof(ep->CELL.socket_create.kern);
-		retn = crypto_shash_finup(shash, p, size, mapping);
+		retn = add_u32(shash, ep->CELL.socket.out.socka.kern);
 		if (retn)
 			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_SOCKET_CONNECT:

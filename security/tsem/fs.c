@@ -655,14 +655,14 @@ static void show_socket_pair(struct seq_file *c, struct tsem_event *ep)
 
 static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_socket_create_args *args = &ep->CELL.socket_create;
+	struct tsem_socket_args *args = &ep->CELL.socket;
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "family", "%u", args->family);
-	tsem_fs_show_key(c, ",", "type", "%u", args->type);
-	tsem_fs_show_key(c, ",", "protocol", "%u", args->protocol);
-	tsem_fs_show_key(c, "}", "kern", "%u", args->kern);
+	tsem_fs_show_key(c, ",", "family", "%u", args->out.socka.family);
+	tsem_fs_show_key(c, ",", "type", "%u", args->out.socka.type);
+	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.socka.protocol);
+	tsem_fs_show_key(c, "}", "kern", "%u", args->out.socka.kern);
 }
 
 static void show_socket(struct seq_file *c, struct tsem_event *ep)

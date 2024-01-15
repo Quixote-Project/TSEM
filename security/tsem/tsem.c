@@ -995,10 +995,10 @@ static int tsem_socket_create(int family, int type, int protocol, int kern)
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.socket_create.family = family;
-	ep->CELL.socket_create.type = type;
-	ep->CELL.socket_create.protocol = protocol;
-	ep->CELL.socket_create.kern = kern;
+	ep->CELL.socket.out.socka.family = family;
+	ep->CELL.socket.out.socka.type = type;
+	ep->CELL.socket.out.socka.protocol = protocol;
+	ep->CELL.socket.out.socka.kern = kern;
 
 	return dispatch_event(ep);
 }

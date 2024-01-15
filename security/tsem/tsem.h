@@ -1911,7 +1911,6 @@ struct tsem_event {
 		struct tsem_file_args file;
 		struct tsem_mmap_file_args mmap_file;
 		struct tsem_socket_args socket;
-		struct tsem_socket_create_args socket_create;
 		struct tsem_socket_connect_args socket_connect;
 		struct tsem_socket_accept_args socket_accept;
 		struct tsem_kernel_args kernel;
