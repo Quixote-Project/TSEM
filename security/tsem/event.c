@@ -1022,8 +1022,6 @@ static void get_ipc_permission(struct tsem_ipc_args *args)
 
 	get_ipc_cred(perm, &args->out.perm);
 	memcpy(args->out.owner, tsem_ipc(perm)->owner, tsem_digestsize());
-
-	return;
 }
 
 static void get_msg_queue_msgrcv(struct tsem_ipc_args *args)
@@ -1036,8 +1034,6 @@ static void get_msg_queue_msgrcv(struct tsem_ipc_args *args)
 	get_ipc_cred(perm, &args->out.perm);
 	memcpy(args->out.owner, tsem_ipc(perm)->owner, tsem_digestsize());
 	memcpy(args->out.target, target->task_id, tsem_digestsize());
-
-	return;
 }
 
 static void get_key_alloc(struct tsem_key_args *args)
