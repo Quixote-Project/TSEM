@@ -1021,9 +1021,9 @@ static int tsem_socket_connect(struct socket *sock, struct sockaddr *addr,
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.socket_connect.tsip = tsem_inode(SOCK_INODE(sock));
-	ep->CELL.socket_connect.addr = addr;
-	ep->CELL.socket_connect.addr_len = addr_len;
+	ep->CELL.socket.in.socka = sock->sk;
+	ep->CELL.socket.in.addr = addr;
+	ep->CELL.socket.value = addr_len;
 
 	return dispatch_event(ep);
 }
@@ -1047,9 +1047,9 @@ static int tsem_socket_bind(struct socket *sock, struct sockaddr *addr,
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.socket_connect.tsip = tsem_inode(SOCK_INODE(sock));
-	ep->CELL.socket_connect.addr = addr;
-	ep->CELL.socket_connect.addr_len = addr_len;
+	ep->CELL.socket.in.socka = sock->sk;
+	ep->CELL.socket.in.addr = addr;
+	ep->CELL.socket.value = addr_len;
 
 	return dispatch_event(ep);
 }

@@ -1141,11 +1141,14 @@ struct tsem_socket_create_args {
  * @out.sockjb: The TSEM representation of the second socket argument.
  * @out.have_addr: A boolean flag used to indicate that either the
  *		   ipv6 or ipv6 union members have been populated.
- * @out.ipv4: The IPV4 address of the message if found.
- * @out.ipv6: The IPV6 address of the message if found.
+ * @out.ipv4: The IPV4 address of an AF_INET socket.
+ * @out.ipv6: The IPV6 address of an AF_INET6 socket.
+ * @out.path: The path of an AF_UNIX socket.
+ * @out.mapping: The checksum of the socket address if the socket type
+ *		 is other than AF_INET, AF_INET6 or AF_UNIX.
  *
  * This structure is used to encapsulate arguments provided to LSM
- * hooks that handle generic socket information.
+ * hooks that handle generic socket security events.
  */
 struct tsem_socket_args {
 	int value;
@@ -1165,53 +1168,11 @@ struct tsem_socket_args {
 			union {
 				struct sockaddr_in ipv4;
 				struct sockaddr_in6 ipv6;
+				char path[UNIX_PATH_MAX + 1];
+				u8 mapping[HASH_MAX_DIGESTSIZE];
 			};
 		} out;
 	};
-};
-
-/**
- * struct tsem_socket_connection_args - TSEM socket connection arguments.
- * @tsip: A pointer to the struct tsem_inode structure that describes
- *	  the TSEM inode characteristics of the inode representing
- *	  the socket.
- * @addr: A pointer to the structure describing the socket address
- *	  that is being connected.
- * @addr_len: The length of the socket address description structure.
- * @family: The family number of the socket.
- *
- * @protocol: The protocol family of the socket being created.
- * @kern: A flag variable to indicate whether or not the socket being
- *	  created is kernel or userspace based.
- * @u: A union that is used to hold the family specific address
- *     characteristics of the socket connection.
- * @u.ipv4: If the connection is IPV4 based this structure will be
- *	    populated with the IPV4 address information.
- * @u.ipv6: If the connection is IPV6 based this structure will be
- *	    populated with the IPV6 address information.
- * @u.path: If the socket connection is an AF_UNIX based socket
- *	    address this buffer will contain the pathname of the
- *	    socket address.
- * @u.mapping: If the socket represents an address protocol other
- *	       than IPV4, IPV6 or UNIX domain this buffer will contain
- *	       the cryptographic value of the socket address
- *	       information using the hash function that has been
- *	       specified for the security modeling namespace.
- *
- * This structure is used to encapsulate the arguments provided to the
- * tsem_socket_create security event handler.
- */
-struct tsem_socket_connect_args {
-	struct tsem_inode *tsip;
-	struct sockaddr *addr;
-	int addr_len;
-	u16 family;
-	union {
-		struct sockaddr_in ipv4;
-		struct sockaddr_in6 ipv6;
-		char path[UNIX_PATH_MAX + 1];
-		u8 mapping[HASH_MAX_DIGESTSIZE];
-	} u;
 };
 
 /**
@@ -1809,8 +1770,6 @@ struct tsem_ipc_args {
  *		      handlers.
  * @CELL.socket_create: The structure describing the characteristics
  *			of a socket_create security event.
- * @CELL.socket_connect: The structure describing the characteristics
- *			 of a socket_connect security event.
  * @CELL.socket_accept: The structure describing the characteristics
  *			of a socket accept security event.
  * @CELL.task_kill: The structure describing the characteristics of a
@@ -1911,7 +1870,6 @@ struct tsem_event {
 		struct tsem_file_args file;
 		struct tsem_mmap_file_args mmap_file;
 		struct tsem_socket_args socket;
-		struct tsem_socket_connect_args socket_connect;
 		struct tsem_socket_accept_args socket_accept;
 		struct tsem_kernel_args kernel;
 		struct tsem_task_kill_args task_kill;

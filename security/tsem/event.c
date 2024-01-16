@@ -616,52 +616,6 @@ static int get_socket_accept(struct tsem_socket_accept_args *sap)
 	return retn;
 }
 
-static int get_socket_connect(struct tsem_socket_connect_args *scp)
-{
-	u8 *p;
-	int retn, size;
-	SHASH_DESC_ON_STACK(shash, tfm);
-
-	shash->tfm = tsem_digest();
-	retn = crypto_shash_init(shash);
-	if (retn)
-		goto done;
-
-	p = (u8 *) scp->addr->sa_data;
-	size = scp->addr_len - offsetof(struct sockaddr, sa_data);
-	retn = crypto_shash_digest(shash, p, size, scp->u.mapping);
-
- done:
-	return retn;
-}
-
-static int get_socket_cell(struct tsem_socket_connect_args *scp)
-
-{
-	int size, retn = 0;
-
-	scp->family = scp->addr->sa_family;
-
-	switch (scp->family) {
-	case AF_INET:
-		memcpy(&scp->u.ipv4, scp->addr, sizeof(scp->u.ipv4));
-		break;
-	case AF_INET6:
-		memcpy(&scp->u.ipv6, scp->addr, sizeof(scp->u.ipv6));
-		break;
-	case AF_UNIX:
-		memset(scp->u.path, '\0', sizeof(scp->u.path));
-		size = scp->addr_len - offsetof(struct sockaddr_un, sun_path);
-		strncpy(scp->u.path, scp->addr->sa_data, size);
-		break;
-	default:
-		retn = get_socket_connect(scp);
-		break;
-	}
-
-	return retn;
-}
-
 static void get_prlimit(struct tsem_task_prlimit_args *args)
 {
 	const struct cred *cred = args->in.cred;
@@ -687,6 +641,57 @@ static void get_socket(struct sock *sock, struct tsem_socket_create_args *args)
 	args->kern = sock->sk_kern_sock;
 	memcpy(args->owner, tsem_inode(SOCK_INODE(sock->sk_socket))->owner,
 	       tsem_digestsize());
+}
+
+static int get_socket_address(struct tsem_socket_args *args,
+			      struct sockaddr *addr)
+{
+	u8 *p;
+	int retn, size;
+	SHASH_DESC_ON_STACK(shash, tfm);
+
+	shash->tfm = tsem_digest();
+	retn = crypto_shash_init(shash);
+	if (retn)
+		goto done;
+
+	p = (u8 *) addr->sa_data;
+	size = args->value - offsetof(struct sockaddr, sa_data);
+	retn = crypto_shash_digest(shash, p, size, args->out.mapping);
+
+ done:
+	return retn;
+}
+
+static int get_socket_cell(struct tsem_socket_args *args)
+
+{
+	int size, retn = 0;
+	struct sock *socka = args->in.socka;
+	struct sockaddr *addr = args->in.addr;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	get_socket(socka, &args->out.socka);
+
+	switch (args->out.socka.family) {
+	case AF_INET:
+		memcpy(&args->out.ipv4, addr, sizeof(args->out.ipv4));
+		break;
+	case AF_INET6:
+		memcpy(&args->out.ipv6, addr, sizeof(args->out.ipv6));
+		break;
+	case AF_UNIX:
+		memset(args->out.path, '\0', sizeof(args->out.path));
+		size = args->value - offsetof(struct sockaddr_un, sun_path);
+		strncpy(args->out.path, addr->sa_data, size);
+		break;
+	default:
+		retn = get_socket_address(args, addr);
+		break;
+	}
+
+	return retn;
 }
 
 static void get_socket_pair(struct tsem_socket_args *args)
@@ -1228,7 +1233,7 @@ int tsem_event_init(struct tsem_event *ep)
 		break;
 	case TSEM_SOCKET_CONNECT:
 	case TSEM_SOCKET_BIND:
-		retn = get_socket_cell(&ep->CELL.socket_connect);
+		retn = get_socket_cell(&ep->CELL.socket);
 		break;
 	case TSEM_SOCKET_ACCEPT:
 		retn = get_socket_accept(&ep->CELL.socket_accept);

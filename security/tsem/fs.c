@@ -670,19 +670,21 @@ static void show_socket(struct seq_file *c, struct tsem_event *ep)
 {
 	struct sockaddr_in *ipv4;
 	struct sockaddr_in6 *ipv6;
-	struct tsem_socket_connect_args *scp = &ep->CELL.socket_connect;
+	struct tsem_socket_args *args = &ep->CELL.socket;
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "family", "%u", scp->family);
-	switch (scp->family) {
+	show_socket_info(c, "sock", &args->out.socka);
+	seq_puts(c, ", ");
+
+	switch (args->out.socka.family) {
 	case AF_INET:
-		ipv4 = (struct sockaddr_in *) &scp->u.ipv4;
+		ipv4 = (struct sockaddr_in *) &args->out.ipv4;
 		tsem_fs_show_key(c, ",", "port", "%u", ipv4->sin_port);
 		tsem_fs_show_key(c, "}", "addr", "%u", ipv4->sin_addr.s_addr);
 		break;
 	case AF_INET6:
-		ipv6 = (struct sockaddr_in6 *) &scp->u.ipv6;
+		ipv6 = (struct sockaddr_in6 *) &args->out.ipv6;
 		tsem_fs_show_key(c, ",", "port", "%u", ipv6->sin6_port);
 		tsem_fs_show_key(c, ",", "flow", "%u", ipv6->sin6_flowinfo);
 		tsem_fs_show_key(c, ",", "scope", "%u", ipv6->sin6_scope_id);
@@ -691,11 +693,11 @@ static void show_socket(struct seq_file *c, struct tsem_event *ep)
 			 ipv6->sin6_addr.in6_u.u6_addr8);
 		break;
 	case AF_UNIX:
-		tsem_fs_show_key(c, "}", "addr", "%s", scp->u.path);
+		tsem_fs_show_key(c, "}", "addr", "%s", args->out.path);
 		break;
 	default:
 		tsem_fs_show_key(c, "}", "addr", "%*phN", tsem_digestsize(),
-				 scp->u.mapping);
+				 args->out.mapping);
 		break;
 	}
 }
