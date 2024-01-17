@@ -24,8 +24,6 @@
  * will be facilitated by reviewing the documentation in this file.
  */
 
-#include <uapi/linux/in.h>
-#include <uapi/linux/in6.h>
 #include <linux/wait.h>
 #include <linux/kref.h>
 #include <linux/lsm_hooks.h>
@@ -1176,40 +1174,6 @@ struct tsem_socket_args {
 };
 
 /**
- * struct tsem_socket_accept_args - TSEM socket accept parameters.
- * @family: The socket family identifier for the connection being
- *	    accepted.
- * @type: The type of socket connection being accepted.
- * @port: The port number of the connection being accepted.
- * @ipv4: The IPV4 address of the connection being accepted if the
- *	  socket is representing an IPV4 connection
- * @ipv6: The IPV6 address of the connection being accepted if the
- *	  socket is representing an IPV6 connection.
- * @af_unix: The UNIX domain socket address if the socket is
- *	     representing a UNIX domain connection.
- * @path: The pathname of the UNIX domain socket.
- * @mapping: A cryptographic hash of description of the socket
- *	     connection being accepted if the socket is representing
- *	     a connection other than an IPV4, IPV6 or UNIX domain
- *	     socket.
- *
- * This structure is used to encapsulate the arguments provided to the
- * tsem_socket_accept security event handler.
- */
-struct tsem_socket_accept_args {
-	u16 family;
-	u16 type;
-	__be16 port;
-	union {
-		__be32 ipv4;
-		struct in6_addr ipv6;
-		struct unix_sock *af_unix;
-		char path[UNIX_PATH_MAX + 1];
-		u8 mapping[HASH_MAX_DIGESTSIZE];
-	} u;
-};
-
-/**
  * struct tsem_netlink_args - TSEM netlink event parameters
  * @in.sock: The sock argument to the LSM hook.
  * @in.parms: The pointer to the netlink parameters from the sk_buff
@@ -1870,7 +1834,6 @@ struct tsem_event {
 		struct tsem_file_args file;
 		struct tsem_mmap_file_args mmap_file;
 		struct tsem_socket_args socket;
-		struct tsem_socket_accept_args socket_accept;
 		struct tsem_kernel_args kernel;
 		struct tsem_task_kill_args task_kill;
 		struct tsem_task_prlimit_args task_prlimit;

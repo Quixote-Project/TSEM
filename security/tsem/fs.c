@@ -704,29 +704,35 @@ static void show_socket(struct seq_file *c, struct tsem_event *ep)
 
 static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_socket_accept_args *sap = &ep->CELL.socket_accept;
+	char *p;
+	int size;
+	struct tsem_socket_args *args = &ep->CELL.socket;
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "family", "%u", sap->family);
-	tsem_fs_show_key(c, ",", "type", "%u", sap->type);
-	tsem_fs_show_key(c, ",", "port", "%u", sap->port);
+	show_socket_info(c, "sock", &args->out.socka);
+	seq_puts(c, ", ");
 
-	switch (sap->family) {
+	switch (args->out.socka.family) {
 	case AF_INET:
-		tsem_fs_show_key(c, "}", "addr", "%u", sap->u.ipv4);
+		tsem_fs_show_key(c, ",", "port", "%u",
+				 args->out.ipv4.sin_port);
+		tsem_fs_show_key(c, "}", "addr", "%u",
+				 args->out.ipv4.sin_addr);
 		break;
 	case AF_INET6:
-		tsem_fs_show_key(c, "}", "addr", "%*phN",
-			 (int) sizeof(sap->u.ipv6.in6_u.u6_addr8),
-			 sap->u.ipv6.in6_u.u6_addr8);
+		tsem_fs_show_key(c, ",", "port", "%u",
+				 args->out.ipv6.sin6_port);
+		p = args->out.ipv6.sin6_addr.in6_u.u6_addr8;
+		size = sizeof(args->out.ipv6.sin6_addr.in6_u.u6_addr8);
+		tsem_fs_show_key(c, "}", "addr", "%*phN", size, p);
 		break;
 	case AF_UNIX:
-		tsem_fs_show_key(c, "}", "addr", "%s", sap->u.path);
+		tsem_fs_show_key(c, "}", "addr", "%s", args->out.path);
 		break;
 	default:
 		tsem_fs_show_key(c, "}", "addr", "%*phN", tsem_digestsize(),
-				 sap->u.mapping);
+				 args->out.mapping);
 		break;
 	}
 }

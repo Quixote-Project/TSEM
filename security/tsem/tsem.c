@@ -15,7 +15,6 @@
 #include <linux/mman.h>
 #include <linux/binfmts.h>
 #include <linux/bpf.h>
-#include <linux/ipv6.h>
 #include <linux/mount.h>
 
 #include "tsem.h"
@@ -1057,12 +1056,10 @@ static int tsem_socket_bind(struct socket *sock, struct sockaddr *addr,
 static int tsem_socket_accept(struct socket *sock, struct socket *newsock)
 {
 	char msg[TRAPPED_MSG_LENGTH];
-	struct sock *sk = sock->sk;
-	const struct in6_addr *ipv6;
 	struct tsem_event *ep;
 
 	if (tsem_task_untrusted(current)) {
-		scnprintf(msg, sizeof(msg), "family=%u", sk->sk_family);
+		scnprintf(msg, sizeof(msg), "family=%u", sock->sk->sk_family);
 		return trapped_task(TSEM_SOCKET_ACCEPT, msg, NOLOCK);
 	}
 
@@ -1073,15 +1070,7 @@ static int tsem_socket_accept(struct socket *sock, struct socket *newsock)
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.socket_accept.family = sk->sk_family;
-	ep->CELL.socket_accept.type = sock->type;
-	ep->CELL.socket_accept.port = sk->sk_num;
-	ep->CELL.socket_accept.u.ipv4 = sk->sk_rcv_saddr;
-	if (sk->sk_family == AF_UNIX)
-		ep->CELL.socket_accept.u.af_unix = unix_sk(sk);
-	ipv6 = inet6_rcv_saddr(sk);
-	if (ipv6)
-		ep->CELL.socket_accept.u.ipv6 = *ipv6;
+	ep->CELL.socket.in.socka = sock->sk;
 
 	return dispatch_event(ep);
 }

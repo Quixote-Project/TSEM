@@ -350,13 +350,58 @@ static int add_socket_connect_bind(struct shash_desc *shash,
 	return retn;
 }
 
+static int add_socket_accept(struct shash_desc *shash, struct tsem_event *ep)
+{
+	char *p;
+	int retn, size;
+	struct tsem_socket_args *args = &ep->CELL.socket;
+
+	retn = add_socket(shash, &args->out.socka);
+	if (retn)
+		goto done;
+
+	switch (args->out.socka.family) {
+	case AF_INET:
+		retn = add_u16(shash, args->out.ipv4.sin_port);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, args->out.ipv4.sin_addr.s_addr);
+		break;
+
+	case AF_INET6:
+		retn = add_u16(shash, args->out.ipv6.sin6_port);
+		if (retn)
+			goto done;
+
+		p = (u8 *) args->out.ipv6.sin6_addr.in6_u.u6_addr8;
+		size = sizeof(args->out.ipv6.sin6_addr.in6_u.u6_addr8);
+		retn = crypto_shash_update(shash, p, size);
+		break;
+
+	case AF_UNIX:
+		p = args->out.path;
+		size = strlen(args->out.path);
+		retn = crypto_shash_update(shash, p, size);
+		break;
+
+	default:
+		p = args->out.mapping;
+		size = tsem_digestsize();
+		retn = crypto_shash_update(shash, p, size);
+		break;
+	}
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
 	u8 *p;
 	struct sockaddr_in *ipv4;
 	struct sockaddr_in6 *ipv6;
-	struct tsem_socket_accept_args *sap = &ep->CELL.socket_accept;
 	SHASH_DESC_ON_STACK(shash, tfm);
 
 	shash->tfm = tsem_digest();
@@ -763,57 +808,11 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_SOCKET_ACCEPT:
-		p = (u8 *) &sap->family;
-		size = sizeof(sap->family);
-		retn = crypto_shash_update(shash, p, size);
+		retn = add_socket_accept(shash, ep);
 		if (retn)
 			goto done;
 
-		p = (u8 *) &sap->type;
-		size = sizeof(sap->type);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &sap->port;
-		size = sizeof(sap->port);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		switch (sap->family) {
-		case AF_INET:
-			p = (u8 *) &sap->u.ipv4;
-			size = sizeof(sap->u.ipv4);
-			retn = crypto_shash_finup(shash, p, size, mapping);
-			if (retn)
-				goto done;
-			break;
-
-		case AF_INET6:
-			p = (u8 *) sap->u.ipv6.in6_u.u6_addr8;
-			size = sizeof(sap->u.ipv6.in6_u.u6_addr8);
-			retn = crypto_shash_finup(shash, p, size, mapping);
-			if (retn)
-				goto done;
-			break;
-
-		case AF_UNIX:
-			p = sap->u.path;
-			size = strlen(sap->u.path);
-			retn = crypto_shash_finup(shash, p, size, mapping);
-			if (retn)
-				goto done;
-			break;
-
-		default:
-			p = sap->u.mapping;
-			size = tsem_digestsize();
-			retn = crypto_shash_finup(shash, p, size, mapping);
-			if (retn)
-				goto done;
-			break;
-		}
+		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_SOCKET_LISTEN:

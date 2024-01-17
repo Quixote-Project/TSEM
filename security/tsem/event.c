@@ -10,6 +10,7 @@
 #include <linux/iversion.h>
 #include <linux/user_namespace.h>
 #include <linux/base64.h>
+#include <linux/ipv6.h>
 #include <uapi/linux/prctl.h>
 
 #include "tsem.h"
@@ -592,30 +593,6 @@ static int get_file_cell(struct tsem_file_args *args)
 	return retn;
 }
 
-static int get_socket_accept(struct tsem_socket_accept_args *sap)
-{
-	char *p, path[UNIX_PATH_MAX + 1];
-	int size, retn = 0;
-
-	if (sap->family == AF_INET || sap->family == AF_INET6)
-		return retn;
-
-	if (sap->family != AF_UNIX) {
-		memcpy(sap->u.mapping, tsem_context(current)->zero_digest,
-		       tsem_digestsize());
-		return retn;
-	}
-
-	memset(path, '\0', sizeof(path));
-	p = sap->u.af_unix->addr->name->sun_path;
-	size = sap->u.af_unix->addr->len -
-		offsetof(struct sockaddr_un, sun_path);
-	strncpy(path, p, size);
-	memcpy(sap->u.path, path, sizeof(sap->u.path));
-
-	return retn;
-}
-
 static void get_prlimit(struct tsem_task_prlimit_args *args)
 {
 	const struct cred *cred = args->in.cred;
@@ -692,6 +669,46 @@ static int get_socket_cell(struct tsem_socket_args *args)
 	}
 
 	return retn;
+}
+
+static void get_socket_accept(struct tsem_socket_args *args)
+{
+	char *p;
+	int size;
+	const struct in6_addr *ipv6;
+	struct sock *socka = args->in.socka;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	get_socket(socka, &args->out.socka);
+
+	switch (args->out.socka.family) {
+	case AF_INET:
+		args->out.ipv4.sin_port = socka->sk_num;
+		args->out.ipv4.sin_addr.s_addr = socka->sk_rcv_saddr;
+		break;
+
+	case AF_INET6:
+		ipv6 = inet6_rcv_saddr(socka);
+		if (ipv6) {
+			args->out.ipv6.sin6_port = socka->sk_num;
+			args->out.ipv6.sin6_addr = *ipv6;
+		}
+		break;
+
+	case AF_UNIX:
+		memset(args->out.path, '\0', sizeof(args->out.path));
+		p = unix_sk(socka)->addr->name->sun_path;
+		size = unix_sk(socka)->addr->len -
+			offsetof(struct sockaddr_un, sun_path);
+		strncpy(args->out.path, p, size);
+		break;
+
+	default:
+		memcpy(args->out.mapping, tsem_context(current)->zero_digest,
+		       tsem_digestsize());
+		break;
+	}
 }
 
 static void get_socket_pair(struct tsem_socket_args *args)
@@ -1236,7 +1253,7 @@ int tsem_event_init(struct tsem_event *ep)
 		retn = get_socket_cell(&ep->CELL.socket);
 		break;
 	case TSEM_SOCKET_ACCEPT:
-		retn = get_socket_accept(&ep->CELL.socket_accept);
+		get_socket_accept(&ep->CELL.socket);
 		break;
 	case TSEM_SOCKET_LISTEN:
 	case TSEM_SOCKET_GETSOCKNAME:
