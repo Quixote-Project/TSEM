@@ -778,7 +778,7 @@ static void show_socket_argument(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_socket_info(c, "sock", &ep->CELL.socket.out.socka);
-	seq_puts(c, "}");
+	seq_putc(c, '}');
 }
 
 static void show_socket_setsockopt(struct seq_file *c, struct tsem_event *ep)
@@ -1093,7 +1093,7 @@ static void show_move_mount(struct seq_file *c, struct tsem_event *ep)
 	show_path(c, "path1", &args->out.path);
 	seq_puts(c, ", ");
 	show_path(c, "path2", &args->out.path2);
-	seq_puts(c, "}");
+	seq_putc(c, '}');
 }
 
 static void show_quotactl(struct seq_file *c, struct tsem_event *ep)
@@ -1158,7 +1158,7 @@ static void show_bpf_prog(struct seq_file *c, struct tsem_event *ep)
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
-	seq_puts(c, "}");
+	seq_putc(c, '}');
 }
 
 static void *trajectory_start(struct seq_file *c, loff_t *pos)
