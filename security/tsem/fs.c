@@ -639,19 +639,10 @@ static void show_socket_pair(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_field(c, "socka");
-	tsem_fs_show_key(c, ",", "family", "%u", args->out.socka.family);
-	tsem_fs_show_key(c, ",", "type", "%u", args->out.socka.type);
-	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.socka.protocol);
-	tsem_fs_show_key(c, "}, ", "owner", "%*phN", tsem_digestsize(),
-			 args->out.socka.owner);
-
-	tsem_fs_show_field(c, "sockb");
-	tsem_fs_show_key(c, ",", "family", "%u", args->out.sockb.family);
-	tsem_fs_show_key(c, ",", "type", "%u", args->out.sockb.type);
-	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.sockb.protocol);
-	tsem_fs_show_key(c, "}}", "owner", "%*phN", tsem_digestsize(),
-			 args->out.sockb.owner);
+	show_socket_info(c, "socka", &args->out.socka);
+	seq_puts(c, ", ");
+	show_socket_info(c, "sockb", &args->out.sockb);
+	seq_putc(c, '}');
 }
 
 static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
@@ -744,13 +735,8 @@ static void show_socket_value(struct seq_file *c, struct tsem_event *ep,
 
 	show_event(c, ep);
 
-	tsem_fs_show_field(c, "sock");
-	tsem_fs_show_key(c, ",", "family", "%u", args->out.socka.family);
-	tsem_fs_show_key(c, ",", "type", "%u", args->out.socka.type);
-	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.socka.protocol);
-	tsem_fs_show_key(c, "}, ", "owner", "%*phN", tsem_digestsize(),
-			 args->out.socka.owner);
-
+	show_socket_info(c, "sock", &args->out.socka);
+	seq_puts(c, ", ");
 	tsem_fs_show_key(c, "}", key, "%d", args->value);
 }
 
@@ -763,12 +749,7 @@ static void show_socket_msg(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_field(c, "socka");
-	tsem_fs_show_key(c, ",", "family", "%u", args->out.socka.family);
-	tsem_fs_show_key(c, ",", "type", "%u", args->out.socka.type);
-	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.socka.protocol);
-	tsem_fs_show_key(c, "}", "owner", "%*phN", tsem_digestsize(),
-			 args->out.socka.owner);
+	show_socket_info(c, "sock", &args->out.socka);
 
 	if (args->out.have_addr) {
 		seq_puts(c, ", ");
@@ -796,7 +777,7 @@ static void show_socket_argument(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
 
-	show_socket_info(c, "socka", &ep->CELL.socket.out.socka);
+	show_socket_info(c, "sock", &ep->CELL.socket.out.socka);
 	seq_puts(c, "}");
 }
 
@@ -804,7 +785,7 @@ static void show_socket_setsockopt(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
 
-	show_socket_info(c, "socka", &ep->CELL.socket.out.socka);
+	show_socket_info(c, "sock", &ep->CELL.socket.out.socka);
 	seq_puts(c, ", ");
 
 	tsem_fs_show_key(c, ",", "level", "%d", ep->CELL.socket.value);
