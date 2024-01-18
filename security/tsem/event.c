@@ -610,7 +610,7 @@ static void get_prctl(struct tsem_task_prctl_args *args)
 		args->arg2 = 0;
 }
 
-static void get_socket(struct sock *sock, struct tsem_socket_create_args *args)
+static void get_socket(struct sock *sock, struct tsem_socket *args)
 {
 	args->family = sock->sk_family;
 	args->type = sock->sk_type;

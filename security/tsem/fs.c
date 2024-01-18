@@ -538,7 +538,7 @@ static void show_file_ioctl(struct seq_file *c, struct tsem_event *ep)
 }
 
 static void show_socket_info(struct seq_file *c, const char *key,
-			     struct tsem_socket_create_args *args)
+			     struct tsem_socket *args)
 {
 	tsem_fs_show_field(c, key);
 	tsem_fs_show_key(c, ",", "family", "%d", args->family);

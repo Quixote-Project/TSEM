@@ -241,8 +241,7 @@ static int add_creds(struct shash_desc *shash, struct tsem_COE *cp)
 	return retn;
 }
 
-static int add_socket(struct shash_desc *shash,
-		      struct tsem_socket_create_args *args)
+static int add_socket(struct shash_desc *shash, struct tsem_socket *args)
 {
 	int retn;
 

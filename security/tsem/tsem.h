@@ -1108,18 +1108,18 @@ struct tsem_mmap_file_args {
 };
 
 /**
- * struct tsem_socket_create_args - TSEM socket creation arguments.
+ * struct tsem_socket - TSEM socket information
  * @family: The family name of the socket whose creation is being
  *	    requested.
  * @type: The type of the socket being created.
  * @protocol: The protocol family of the socket being created.
  * @kern: A flag variable to indicate whether or not the socket being
  *	  created is kernel or userspace based.
+ * @owner: The TASK_ID of the task that created the socket.
  *
- * This structure is used to encapsulate the arguments provided to the
- * tsem_socket_create security event handler.
+ * This structure is used to encapsulate common socket information.
  */
-struct tsem_socket_create_args {
+struct tsem_socket {
 	int family;
 	int type;
 	int protocol;
@@ -1160,8 +1160,8 @@ struct tsem_socket_args {
 		} in;
 
 		struct {
-			struct tsem_socket_create_args socka;
-			struct tsem_socket_create_args sockb;
+			struct tsem_socket socka;
+			struct tsem_socket sockb;
 			bool have_addr;
 			union {
 				struct sockaddr_in ipv4;
@@ -1201,7 +1201,7 @@ struct tsem_netlink_args {
 		} in;
 
 		struct {
-			struct tsem_socket_create_args sock;
+			struct tsem_socket sock;
 			uid_t uid;
 			gid_t gid;
 			__u32 portid;
