@@ -1370,10 +1370,9 @@ struct tsem_task_prctl_args {
  *	       whose characteristics will be set.
  * @in.iattr: A pointer to the iattr structure that was passed to the
  *	      inode_setattr handler.
- * @out.path: The structure defining the path to the object that was
- *	      subject of either of the two calls.
- * @out.inode: The structure defining the inode that was the subject
- *	       of either of the two calls.
+ * @out.dentry: A TSEM dentry definition structure that will retain
+ *		the description of either a dentry or path argument
+ *		to a security handler.
  * @out.valid: The ia_valid member from the iattr structure passed to the
  *	       inode_setattr handler
  * @out.mode: The ia_mode member from the iattr structure passed to the
@@ -1401,8 +1400,7 @@ struct tsem_inode_attr_args {
 		} in;
 
 		struct {
-			struct tsem_path path;
-			struct tsem_inode_cell inode;
+			struct tsem_dentry dentry;
 			unsigned int valid;
 			umode_t mode;
 			uid_t uid;

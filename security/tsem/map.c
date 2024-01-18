@@ -1032,25 +1032,13 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 
 	case TSEM_INODE_GETATTR:
-		retn = add_path(shash, &ep->CELL.inode_attr.out.path);
-		if (retn)
-			goto done;
-
-		retn = add_inode(shash, &ep->CELL.inode_attr.out.inode);
-		if (retn)
-			goto done;
+		retn = add_dentry(shash, &ep->CELL.inode_attr.out.dentry);
 
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_INODE_SETATTR:
-		retn = add_path(shash, &ep->CELL.inode_attr.out.path);
-		if (retn)
-			goto done;
-
-		retn = add_inode(shash, &ep->CELL.inode_attr.out.inode);
-		if (retn)
-			goto done;
+		retn = add_dentry(shash, &ep->CELL.inode_attr.out.dentry);
 
 		retn = add_u32(shash, ep->CELL.inode_attr.out.valid);
 		if (retn)

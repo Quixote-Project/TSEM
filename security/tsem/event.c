@@ -434,9 +434,26 @@ static int fill_dentry(struct dentry *dp, struct tsem_dentry *dentry)
 	if (retn)
 		return retn;
 
-	if (d_backing_inode(dp) {
+	if (d_backing_inode(dp)) {
 		dentry->have_inode = true;
 		fill_inode(d_backing_inode(dp), &dentry->inode);
+	}
+
+	return 0;
+}
+
+static int fill_dentry_path(const struct path *path,
+			    struct tsem_dentry *dentry)
+{
+	int retn;
+
+	retn = fill_path(path, &dentry->path);
+	if (retn)
+		return retn;
+
+	if (d_backing_inode(path->dentry)) {
+		dentry->have_inode = true;
+		fill_inode(d_backing_inode(path->dentry), &dentry->inode);
 	}
 
 	return 0;
@@ -763,11 +780,10 @@ static void get_socket_argument(struct tsem_socket_args *args)
 static int get_inode_getattr(struct tsem_inode_attr_args *args)
 {
 	const struct path *path = args->in.path;
-	struct inode *inode = d_backing_inode(path->dentry);
 
 	memset(&args->out, '\0', sizeof(args->out));
-	fill_inode(inode, &args->out.inode);
-	return fill_path(path, &args->out.path);
+
+	return fill_dentry_path(path, &args->out.dentry);
 }
 
 static int get_inode_setattr(struct tsem_inode_attr_args *args)
@@ -779,7 +795,7 @@ static int get_inode_setattr(struct tsem_inode_attr_args *args)
 
 	memset(&args->out, '\0', sizeof(args->out));
 
-	retn = fill_path_dentry(dentry, &args->out.path);
+	retn = fill_dentry(dentry, &args->out.dentry);
 	if (retn)
 		goto done;
 
@@ -787,8 +803,6 @@ static int get_inode_setattr(struct tsem_inode_attr_args *args)
 		ns = current_user_ns();
 	else
 		ns = &init_user_ns;
-
-	fill_inode(d_backing_inode(dentry), &args->out.inode);
 
 	args->out.valid = iattr->ia_valid;
 	if (args->out.valid & ATTR_MODE)
@@ -1372,7 +1386,7 @@ static void free_cell(struct tsem_event *ep)
 		break;
 	case TSEM_INODE_GETATTR:
 	case TSEM_INODE_SETATTR:
-		kfree(ep->CELL.inode_attr.out.path.pathname);
+		kfree(ep->CELL.inode_attr.out.dentry.path.pathname);
 		break;
 	case TSEM_INODE_SETXATTR:
 	case TSEM_INODE_GETXATTR:
