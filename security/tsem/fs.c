@@ -382,6 +382,16 @@ static void show_inode(struct seq_file *c, char *term,
 	seq_puts(c, term);
 }
 
+static void show_dentry(struct seq_file *c, char *key,
+			struct tsem_dentry *dentry)
+{
+	tsem_fs_show_field(c, key);
+	if (dentry->have_inode)
+		show_inode(c, ", ", &dentry->inode);
+	show_path(c, "path", &dentry->path);
+	seq_putc(c, '}');
+}
+
 static void show_file(struct seq_file *c, struct tsem_file_args *args)
 {
 	tsem_fs_show_field(c, "file");
@@ -399,7 +409,7 @@ static void show_inode_create(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 	show_inode(c, ", ", &args->out.dir);
-	show_path(c, "path", &args->out.path);
+	show_dentry(c, "dentry", &args->out.dentry);
 	seq_puts(c, ", ");
 	tsem_fs_show_key(c, "}", "mode", "0%o", args->mode);
 }
@@ -410,7 +420,7 @@ static void show_inode_remove(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 	show_inode(c, ", ", &args->out.dir);
-	show_path(c, "path", &args->out.path);
+	show_dentry(c, "dentry", &args->out.dentry);
 	seq_putc(c, '}');
 }
 
@@ -419,13 +429,13 @@ static void show_inode_link(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
+
 	show_inode(c, ", ", &args->out.dir);
 
-	tsem_fs_show_field(c, "old_direntry");
-	show_inode(c, ", ", &args->out.inode);
-	show_path(c, "path", &args->out.path);
-	seq_puts(c, "}, ");
-	show_path(c, "new_path", &args->out.new_path);
+	show_dentry(c, "old_dentry", &args->out.dentry);
+	seq_puts(c, ", ");
+
+	show_dentry(c, "new_dentry", &args->out.new_dentry);
 	seq_putc(c, '}');
 }
 
@@ -454,7 +464,7 @@ static void show_inode_symlink(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 	show_inode(c, ", ", &args->out.dir);
 
-	show_path(c, "path", &args->out.path);
+	show_dentry(c, "dentry", &args->out.dentry);
 	seq_puts(c, ", ");
 
 	tsem_fs_show_key(c, "}", "old_name", "%s", args->out.old_name);
@@ -465,9 +475,12 @@ static void show_inode_mknod(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
+
 	show_inode(c, ", ", &args->out.dir);
-	show_path(c, "path", &args->out.path);
+
+	show_dentry(c, "dentry", &args->out.dentry);
 	seq_puts(c, ", ");
+
 	tsem_fs_show_key(c, ",", "mode", "0%o", args->mode);
 	tsem_fs_show_key(c, ",", "major", "%u", MAJOR(args->dev));
 	tsem_fs_show_key(c, "}", "minor", "%u", MINOR(args->dev));
@@ -496,9 +509,8 @@ static void show_inode_killpriv(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
-	show_inode(c, ", ", &args->out.inode);
 
-	show_path(c, "path", &args->out.path);
+	show_dentry(c, "dentry", &args->out.dentry);
 	seq_putc(c, '}');
 }
 

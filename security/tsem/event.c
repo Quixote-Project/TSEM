@@ -426,6 +426,22 @@ static void fill_creds(const struct cred *cp, struct tsem_COE *tcp)
 	tcp->securebits = cp->securebits;
 }
 
+static int fill_dentry(struct dentry *dp, struct tsem_dentry *dentry)
+{
+	int retn;
+
+	retn = fill_path_dentry(dp, &dentry->path);
+	if (retn)
+		return retn;
+
+	if (d_backing_inode(dp) {
+		dentry->have_inode = true;
+		fill_inode(d_backing_inode(dp), &dentry->inode);
+	}
+
+	return 0;
+}
+
 static int get_inode_create(struct tsem_inode_args *args)
 {
 	int retn;
@@ -434,7 +450,7 @@ static int get_inode_create(struct tsem_inode_args *args)
 
 	memset(&args->out, '\0', sizeof(args->out));
 
-	retn = fill_path_dentry(dentry, &args->out.path);
+	retn = fill_dentry(dentry, &args->out.dentry);
 	if (retn)
 		return retn;
 
@@ -451,21 +467,20 @@ static int get_inode_link(struct tsem_inode_args *args)
 
 	memset(&args->out, '\0', sizeof(args->out));
 
-	retn = fill_path_dentry(dentry, &args->out.path);
+	retn = fill_dentry(dentry, &args->out.dentry);
 	if (retn)
 		goto done;
 
-	retn = fill_path_dentry(new_dentry, &args->out.new_path);
+	retn = fill_dentry(new_dentry, &args->out.new_dentry);
 	if (retn)
 		goto done;
 
 	fill_inode(dir, &args->out.dir);
-	fill_inode(d_backing_inode(dentry), &args->out.inode);
 
  done:
 	if (retn) {
-		kfree(args->out.path.pathname);
-		kfree(args->out.new_path.pathname);
+		kfree(args->out.dentry.path.pathname);
+		kfree(args->out.new_dentry.path.pathname);
 	}
 
 	return retn;
@@ -480,7 +495,7 @@ static int get_inode_symlink(struct tsem_inode_args *args)
 
 	memset(&args->out, '\0', sizeof(args->out));
 
-	retn = fill_path_dentry(dentry, &args->out.path);
+	retn = fill_dentry(dentry, &args->out.dentry);
 	if (retn)
 		return retn;
 
@@ -488,7 +503,7 @@ static int get_inode_symlink(struct tsem_inode_args *args)
 
 	args->out.old_name = kstrdup(old_name, GFP_KERNEL);
 	if (!args->out.old_name) {
-		kfree(args->out.path.pathname);
+		kfree(args->out.dentry.path.pathname);
 		retn = -ENOMEM;
 	}
 
@@ -503,7 +518,7 @@ static int get_inode_mknod(struct tsem_inode_args *args)
 
 	memset(&args->out, '\0', sizeof(args->out));
 
-	retn = fill_path_dentry(dentry, &args->out.path);
+	retn = fill_dentry(dentry, &args->out.dentry);
 	if (retn)
 		return retn;
 
@@ -551,18 +566,11 @@ static int get_inode_rename(struct tsem_inode_rename_args *args)
 
 static int get_inode_killpriv(struct tsem_inode_args *args)
 {
-	int retn;
 	struct dentry *dentry = args->in.dentry;
 
 	memset(&args->out, '\0', sizeof(args->out));
 
-	retn = fill_path_dentry(dentry, &args->out.path);
-	if (retn)
-		return retn;
-
-	fill_inode(d_backing_inode(dentry), &args->out.inode);
-	return 0;
-
+	return fill_dentry(dentry, &args->out.dentry);
 }
 
 static int get_file_cell(struct tsem_file_args *args)
@@ -1339,15 +1347,15 @@ static void free_cell(struct tsem_event *ep)
 	case TSEM_INODE_UNLINK:
 	case TSEM_INODE_MKNOD:
 	case TSEM_INODE_KILLPRIV:
-		kfree(ep->CELL.inode.out.path.pathname);
+		kfree(ep->CELL.inode.out.dentry.path.pathname);
 		break;
 	case TSEM_INODE_LINK:
-		kfree(ep->CELL.inode.out.path.pathname);
-		kfree(ep->CELL.inode.out.new_path.pathname);
+		kfree(ep->CELL.inode.out.dentry.path.pathname);
+		kfree(ep->CELL.inode.out.new_dentry.path.pathname);
 		break;
 	case TSEM_INODE_SYMLINK:
 		kfree(ep->CELL.inode.out.old_name);
-		kfree(ep->CELL.inode.out.path.pathname);
+		kfree(ep->CELL.inode.out.dentry.path.pathname);
 		break;
 	case TSEM_INODE_RENAME:
 		kfree(ep->CELL.inode_rename.out.old_path.pathname);

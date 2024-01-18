@@ -960,32 +960,45 @@ struct tsem_path {
 };
 
 /**
+ * struct tsem_dentry - TSEM dentry definition.
+ * @inode: The characteristics of the inode associated with a dentry.
+ * @path: The path definition for the dentry.
+ *
+ * This structure is used to contain the TSEM representation of a
+ * dentry.
+ */
+struct tsem_dentry {
+	bool have_inode;
+	struct tsem_inode_cell inode;
+	struct tsem_path path;
+};
+
+/**
  * struct tsem_inode_args - Arguments for inode security handlers.
- * @mode: The access mode requested for the inode being created.
- * @dev: The device major/minor number in the case of where this
- *	 structure is being used to represent the arguments passed
- *	 to the inode_mknod LSM hook.
- * @in.dir: The inode of the parent directory for which the inode is being
- *	    created.
+ * @mode: The access mode requested for an inode being created.
+ * @dev: For the inode_mknod LSM hook the device specification for
+ *	 which the device node is being created.
  * @in.old_name: In the case of the tsem_inode_symlink handler, this
  *		 member contains a pointer to the filename of the target
  *		 of the symbolic link.
- * @in.dentry: The description of the inode being created.
+ * @in.dir: The inode argument to an inode security handler.
+ * @in.dentry: The dentry argument to inode event handlers that take
+ *	       a dentry.
  * @in.new_dentry: In the case of the tsem_inode_link handler this
  *		   member contains a pointer to the dentry describing
  *		   the location of the link being created.
  * @out.old_name: In the case of the tsem_inode_symlink handler this
  *		  member contains a pointer to a copy of the name of
  *		  the target of symbolic link.  This second
- *		  representation is use to avoid warnings about the
+ *		  representation is used to avoid warnings about the
  *		  use of a constant character pointer in the arguments
  *		  to the handler.
- * @out.inode: The TSEM representation of the parent directory.
- * @out.dentry: The TSEM representation of the inode represented by
- *		the input dentry.
- * @out.path: The path description for the dentry.
- * @out.new_path: In the case of the inode_link directory the
- *		  representation of the path to the link.
+ * @out.dir: The TSEM representation of the inode represent a directory
+ *	     that the security handler is acting on.
+ * @out.dentry: The TSEM representation of the dentry argument to a
+ *		security handler.
+ * @out.new_dentry: In the case of the inode_link handler the
+ *		    representation of the new location of the inode.
  *
  * This structure is used to carry input parameters and their
  * retained and translated TSEM equivalent for most of the LSM hooks
@@ -1007,9 +1020,8 @@ struct tsem_inode_args {
 		struct {
 			char *old_name;
 			struct tsem_inode_cell dir;
-			struct tsem_inode_cell inode;
-			struct tsem_path path;
-			struct tsem_path new_path;
+			struct tsem_dentry dentry;
+			struct tsem_dentry new_dentry;
 		} out;
 	};
 };

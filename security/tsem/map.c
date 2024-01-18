@@ -173,6 +173,28 @@ static int add_inode(struct shash_desc *shash, struct tsem_inode_cell *inode)
 	return retn;
 }
 
+static int add_dentry(struct shash_desc *shash, struct tsem_dentry *dentry)
+{
+	int retn;
+
+	if (dentry->have_inode)
+		retn = add_inode(shash, &dentry->inode);
+
+	if (dentry->path.dev) {
+		retn = add_u32(shash, MAJOR(dentry->path.dev));
+		if (retn)
+			goto done;
+		retn = add_u32(shash, MINOR(dentry->path.dev));
+		if (retn)
+			goto done;
+	}
+
+	retn = add_str(shash, dentry->path.pathname);
+
+ done:
+	return retn;
+}
+
 static int add_file(struct shash_desc *shash, struct tsem_file_args *args)
 {
 	int retn;
@@ -557,7 +579,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode.out.path);
+		retn = add_dentry(shash, &ep->CELL.inode.out.dentry);
 		if (retn)
 			goto done;
 
@@ -574,7 +596,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode.out.path);
+		retn = add_dentry(shash, &ep->CELL.inode.out.dentry);
 		if (retn)
 			goto done;
 
@@ -614,15 +636,11 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		if (retn)
 			goto done;
 
-		retn = add_inode(shash, &ep->CELL.inode.out.inode);
+		retn = add_dentry(shash, &ep->CELL.inode.out.dentry);
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode.out.path);
-		if (retn)
-			goto done;
-
-		retn = add_path(shash, &ep->CELL.inode.out.new_path);
+		retn = add_dentry(shash, &ep->CELL.inode.out.new_dentry);
 		if (retn)
 			goto done;
 
@@ -634,7 +652,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode.out.path);
+		retn = add_dentry(shash, &ep->CELL.inode.out.dentry);
 		if (retn)
 			goto done;
 
@@ -650,7 +668,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		if (retn)
 			goto done;
 
-		retn = add_path(shash, &ep->CELL.inode.out.path);
+		retn = add_dentry(shash, &ep->CELL.inode.out.dentry);
 		if (retn)
 			goto done;
 
@@ -690,11 +708,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_KILLPRIV:
-		retn = add_inode(shash, &ep->CELL.inode.out.inode);
-		if (retn)
-			goto done;
-
-		retn = add_path(shash, &ep->CELL.inode.out.path);
+		retn = add_dentry(shash, &ep->CELL.inode.out.dentry);
 		if (retn)
 			goto done;
 
