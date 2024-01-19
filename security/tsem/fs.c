@@ -368,10 +368,10 @@ static void show_path(struct seq_file *c, char *key, struct tsem_path *path)
 	tsem_fs_show_key(c, "}", "pathname", "%s", path->pathname);
 }
 
-static void show_inode(struct seq_file *c, char *term,
+static void show_inode(struct seq_file *c, char *key, char *term,
 		       struct tsem_inode_cell *inode)
 {
-	tsem_fs_show_field(c, "inode");
+	tsem_fs_show_field(c, key);
 	tsem_fs_show_key(c, ",", "uid", "%u", inode->uid);
 	tsem_fs_show_key(c, ",", "gid", "%u", inode->gid);
 	tsem_fs_show_key(c, ",", "mode", "0%o", inode->mode);
@@ -387,7 +387,7 @@ static void show_dentry(struct seq_file *c, char *key,
 {
 	tsem_fs_show_field(c, key);
 	if (dentry->have_inode)
-		show_inode(c, ", ", &dentry->inode);
+		show_inode(c, "inode", ", ", &dentry->inode);
 	show_path(c, "path", &dentry->path);
 	seq_putc(c, '}');
 }
@@ -396,7 +396,7 @@ static void show_file(struct seq_file *c, struct tsem_file_args *args)
 {
 	tsem_fs_show_field(c, "file");
 	tsem_fs_show_key(c, ",", "flags", "%u", args->out.flags);
-	show_inode(c, ", ", &args->out.inode);
+	show_inode(c, "inode", ", ", &args->out.inode);
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
 	tsem_fs_show_key(c, "}", "digest", "%*phN", tsem_digestsize(),
@@ -408,7 +408,7 @@ static void show_inode_create(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
-	show_inode(c, ", ", &args->out.dir);
+	show_inode(c, "dir", ", ", &args->out.dir);
 	show_dentry(c, "dentry", &args->out.dentry);
 	seq_puts(c, ", ");
 	tsem_fs_show_key(c, "}", "mode", "0%o", args->mode);
@@ -419,7 +419,7 @@ static void show_inode_remove(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
-	show_inode(c, ", ", &args->out.dir);
+	show_inode(c, "dir", ", ", &args->out.dir);
 	show_dentry(c, "dentry", &args->out.dentry);
 	seq_putc(c, '}');
 }
@@ -430,7 +430,7 @@ static void show_inode_link(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_inode(c, ", ", &args->out.dir);
+	show_inode(c, "dir", ", ", &args->out.dir);
 
 	show_dentry(c, "old_dentry", &args->out.dentry);
 	seq_puts(c, ", ");
@@ -462,7 +462,7 @@ static void show_inode_symlink(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
-	show_inode(c, ", ", &args->out.dir);
+	show_inode(c, "dir", ", ", &args->out.dir);
 
 	show_dentry(c, "dentry", &args->out.dentry);
 	seq_puts(c, ", ");
@@ -476,7 +476,7 @@ static void show_inode_mknod(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_inode(c, ", ", &args->out.dir);
+	show_inode(c, "dir", ", ", &args->out.dir);
 
 	show_dentry(c, "dentry", &args->out.dentry);
 	seq_puts(c, ", ");
@@ -492,11 +492,11 @@ static void show_inode_rename(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_inode(c, ", ", &args->out.dir);
+	show_inode(c, "old_dir", ", ", &args->out.dir);
 	show_dentry(c, "old_dentry", &args->out.dentry);
 	seq_puts(c, ", ");
 
-	show_inode(c, ", ", &args->out.new_dir);
+	show_inode(c, "new_dir", ", ", &args->out.new_dir);
 	show_dentry(c, "new_dentry", &args->out.new_dentry);
 	seq_putc(c, '}');
 }
@@ -1057,7 +1057,7 @@ static void show_sb_umount(struct seq_file *c, struct tsem_event *ep)
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
 
-	show_inode(c, ", ", &args->out.inode);
+	show_inode(c, "inode", ", ", &args->out.inode);
 
 	tsem_fs_show_key(c, "}", "flags", "%d", args->flags);
 }
@@ -1071,7 +1071,7 @@ static void show_sb_remount(struct seq_file *c, struct tsem_event *ep)
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
 
-	show_inode(c, ", ", &args->out.inode);
+	show_inode(c, "inode", ", ", &args->out.inode);
 
 	tsem_fs_show_key(c, ",", "type", "%s", args->out.type);
 	tsem_fs_show_key(c, "}", "sb_flags", "%lu", args->flags);
@@ -1085,7 +1085,7 @@ static void show_sb_statfs(struct seq_file *c, struct tsem_event *ep)
 
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
-	show_inode(c, "}", &args->out.inode);
+	show_inode(c, "inode", "}", &args->out.inode);
 }
 
 static void show_move_mount(struct seq_file *c, struct tsem_event *ep)
@@ -1113,7 +1113,7 @@ static void show_quotactl(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, ",", "s_flags", "%d", args->out.s_flags);
 	tsem_fs_show_key(c, ",", "fstype", "%s", args->out.fstype);
 
-	show_inode(c, ", ", &args->out.inode);
+	show_inode(c, "inode", ", ", &args->out.inode);
 	show_path(c, "path", &args->out.path);
 	seq_putc(c, '}');
 }
@@ -1124,7 +1124,7 @@ static void show_quotaon(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_inode(c, ", ", &args->out.inode);
+	show_inode(c, "inode", ", ", &args->out.inode);
 	show_path(c, "path", &args->out.path);
 	seq_putc(c, '}');
 }
