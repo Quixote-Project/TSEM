@@ -982,6 +982,8 @@ struct tsem_dentry {
  *		 member contains a pointer to the filename of the target
  *		 of the symbolic link.
  * @in.dir: The inode argument to an inode security handler.
+ * @in.new_dir: For the tsem_inode_rename handler, the new_dir inode
+ *		argument to the handler.
  * @in.dentry: The dentry argument to inode event handlers that take
  *	       a dentry.
  * @in.new_dentry: In the case of the tsem_inode_link handler this
@@ -995,6 +997,8 @@ struct tsem_dentry {
  *		  to the handler.
  * @out.dir: The TSEM representation of the inode represent a directory
  *	     that the security handler is acting on.
+ * @out.new_dir: For the tsem_inode_rename handler, the TSEM representation
+ *		 of the new_dir argument.
  * @out.dentry: The TSEM representation of the dentry argument to a
  *		security handler.
  * @out.new_dentry: In the case of the inode_link handler the
@@ -1013,6 +1017,7 @@ struct tsem_inode_args {
 		struct {
 			const char *old_name;
 			struct inode *dir;
+			struct inode *new_dir;
 			struct dentry *dentry;
 			struct dentry *new_dentry;
 		} in;
@@ -1020,44 +1025,9 @@ struct tsem_inode_args {
 		struct {
 			char *old_name;
 			struct tsem_inode_cell dir;
+			struct tsem_inode_cell new_dir;
 			struct tsem_dentry dentry;
 			struct tsem_dentry new_dentry;
-		} out;
-	};
-};
-
-/**
- * struct tsem_inode_rename_args - Arguments for inode_rename.
- * @in.old_dir: The parent directory argument of the old file.
- * @in.new_dir: The parent directory argument of the new file.
- * @in.old_dentry: The old filename argument.
- * @in.new_dentry: The new filename argument.
- * @out.old_dir: The TSEM description of the old parent directory.
- * @out.new_dir: The TSEM description of the new parent directory.
- * @out.old_inode: The TSEM description of the old filename.
- * @out.new_inode: The TSEM description of the new filename.
- * @out.old_path: The TSEM path description of the old file.
- * @out.new_path: The TSEM path description of the new file.
- *
- * The tsem_inode_rename_args structure is used to carry the input
- * parameters and their retained and translated TSEM equivalents
- * for the renaming of a file.
- */
-struct tsem_inode_rename_args {
-	union {
-		struct {
-			struct inode *old_dir;
-			struct inode *new_dir;
-			struct dentry *old_dentry;
-			struct dentry *new_dentry;
-		} in;
-
-		struct {
-			struct tsem_inode_cell old_dir;
-			struct tsem_inode_cell new_dir;
-			struct tsem_inode_cell inode;
-			struct tsem_path old_path;
-			struct tsem_path new_path;
 		} out;
 	};
 };
@@ -1838,7 +1808,6 @@ struct tsem_event {
 		int value;
 		struct tsem_netlink_args netlink;
 		struct tsem_inode_args inode;
-		struct tsem_inode_rename_args inode_rename;
 		struct tsem_file_args file;
 		struct tsem_mmap_file_args mmap_file;
 		struct tsem_socket_args socket;

@@ -2199,10 +2199,10 @@ static int tsem_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.inode_rename.in.old_dir = old_dir;
-	ep->CELL.inode_rename.in.new_dir = new_dir;
-	ep->CELL.inode_rename.in.old_dentry = old_dentry;
-	ep->CELL.inode_rename.in.new_dentry = new_dentry;
+	ep->CELL.inode.in.dir = old_dir;
+	ep->CELL.inode.in.new_dir = new_dir;
+	ep->CELL.inode.in.dentry = old_dentry;
+	ep->CELL.inode.in.new_dentry = new_dentry;
 
 	return dispatch_event(ep);
 }

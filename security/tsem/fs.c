@@ -488,20 +488,17 @@ static void show_inode_mknod(struct seq_file *c, struct tsem_event *ep)
 
 static void show_inode_rename(struct seq_file *c, struct tsem_event *ep)
 {
-	struct tsem_inode_rename_args *args = &ep->CELL.inode_rename;
+	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
-	show_inode(c, ", ", &args->out.inode);
 
-	tsem_fs_show_field(c, "old_entry");
-	show_inode(c, ", ", &args->out.old_dir);
-	show_path(c, "path", &args->out.old_path);
-	seq_puts(c, "}, ");
+	show_inode(c, ", ", &args->out.dir);
+	show_dentry(c, "old_dentry", &args->out.dentry);
+	seq_puts(c, ", ");
 
-	tsem_fs_show_field(c, "new_entry");
 	show_inode(c, ", ", &args->out.new_dir);
-	show_path(c, "path", &args->out.new_path);
-	seq_puts(c, "}}");
+	show_dentry(c, "new_dentry", &args->out.new_dentry);
+	seq_putc(c, '}');
 }
 
 static void show_inode_killpriv(struct seq_file *c, struct tsem_event *ep)

@@ -554,29 +554,28 @@ static int get_inode_mknod(struct tsem_inode_args *args)
 	return 0;
 }
 
-static int get_inode_rename(struct tsem_inode_rename_args *args)
+static int get_inode_rename(struct tsem_inode_args *args)
 {
 	int retn;
-	struct inode *old_dir = args->in.old_dir;
+	struct inode *old_dir = args->in.dir;
 	struct inode *new_dir = args->in.new_dir;
-	struct dentry *old_dentry = args->in.old_dentry;
+	struct dentry *dentry = args->in.dentry;
 	struct dentry *new_dentry = args->in.new_dentry;
 
 	memset(&args->out, '\0', sizeof(args->out));
 
-	retn = fill_path_dentry(old_dentry, &args->out.old_path);
+	retn = fill_dentry(dentry, &args->out.dentry);
 	if (retn)
 		return retn;
 
-	retn = fill_path_dentry(new_dentry, &args->out.new_path);
+	retn = fill_dentry(new_dentry, &args->out.new_dentry);
 	if (retn) {
-		kfree(args->out.old_path.pathname);
+		kfree(args->out.dentry.path.pathname);
 		return retn;
 	}
 
-	fill_inode(old_dir, &args->out.old_dir);
+	fill_inode(old_dir, &args->out.dir);
 	fill_inode(new_dir, &args->out.new_dir);
-	fill_inode(d_backing_inode(old_dentry), &args->out.inode);
 
 	return 0;
 }
@@ -1232,7 +1231,7 @@ int tsem_event_init(struct tsem_event *ep)
 		retn = get_inode_mknod(&ep->CELL.inode);
 		break;
 	case TSEM_INODE_RENAME:
-		retn = get_inode_rename(&ep->CELL.inode_rename);
+		retn = get_inode_rename(&ep->CELL.inode);
 		break;
 	case TSEM_INODE_KILLPRIV:
 		retn = get_inode_killpriv(&ep->CELL.inode);
@@ -1362,8 +1361,8 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.inode.out.dentry.path.pathname);
 		break;
 	case TSEM_INODE_RENAME:
-		kfree(ep->CELL.inode_rename.out.old_path.pathname);
-		kfree(ep->CELL.inode_rename.out.new_path.pathname);
+		kfree(ep->CELL.inode.out.dentry.path.pathname);
+		kfree(ep->CELL.inode.out.new_dentry.path.pathname);
 		break;
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
