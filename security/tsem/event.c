@@ -832,11 +832,9 @@ static int get_inode_setxattr(struct tsem_inode_xattr_args *args)
 	args->out.size = size;
 	args->out.flags = flags;
 
-	retn = fill_path_dentry(dentry, &args->out.path);
+	retn = fill_dentry(dentry, &args->out.dentry);
 	if (retn)
 		return retn;
-
-	fill_inode(dentry->d_inode, &args->out.inode);
 
 	args->out.name = kstrdup(name, GFP_KERNEL);
 	if (!args->out.name) {
@@ -873,11 +871,9 @@ static int get_inode_getxattr(struct tsem_inode_xattr_args *args)
 
 	memset(&args->out, '\0', sizeof(args->out));
 
-	retn = fill_path_dentry(dentry, &args->out.path);
+	retn = fill_dentry(dentry, &args->out.dentry);
 	if (retn)
 		return retn;
-
-	fill_inode(dentry->d_inode, &args->out.inode);
 
 	args->out.name = kstrdup(name, GFP_KERNEL);
 	if (!args->out.name)
@@ -890,17 +886,11 @@ static int get_inode_getxattr(struct tsem_inode_xattr_args *args)
 
 static int get_inode_listxattr(struct tsem_inode_xattr_args *args)
 {
-	int retn;
 	struct dentry *dentry = args->in.dentry;
 
 	memset(&args->out, '\0', sizeof(args->out));
 
-	retn = fill_path_dentry(dentry, &args->out.path);
-	if (retn)
-		return retn;
-
-	fill_inode(dentry->d_inode, &args->out.inode);
-	return 0;
+	return fill_dentry(dentry, &args->out.dentry);
 }
 
 static int get_kernel_module(struct tsem_kernel_args *args)
@@ -1392,7 +1382,7 @@ static void free_cell(struct tsem_event *ep)
 	case TSEM_INODE_GETXATTR:
 	case TSEM_INODE_REMOVEXATTR:
 	case TSEM_INODE_LISTXATTR:
-		kfree(ep->CELL.inode_xattr.out.path.pathname);
+		kfree(ep->CELL.inode_xattr.out.dentry.path.pathname);
 		kfree(ep->CELL.inode_xattr.out.name);
 		kfree(ep->CELL.inode_xattr.out.value);
 		kfree(ep->CELL.inode_xattr.out.encoded_value);

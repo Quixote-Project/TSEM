@@ -1439,7 +1439,6 @@ struct tsem_inode_attr_args {
  * converted form that will be held for the lifetime of the modeling
  * namespace.
  */
-
 struct tsem_inode_xattr_args {
 	union {
 		struct {
@@ -1451,8 +1450,7 @@ struct tsem_inode_xattr_args {
 		} in;
 
 		struct {
-			struct tsem_path path;
-			struct tsem_inode_cell inode;
+			struct tsem_dentry dentry;
 			char *name;
 			char *value;
 			char *encoded_value;

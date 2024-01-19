@@ -975,9 +975,8 @@ static void show_inode_setxattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_path(c, "path", &args->out.path);
+	show_dentry(c, "dentry", &args->out.dentry);
 	seq_puts(c, ", ");
-	show_inode(c, ", ", &args->out.inode);
 
 	tsem_fs_show_key(c, ",", "name", "%s", args->out.name);
 	tsem_fs_show_key(c, ",", "value", "%s", args->out.encoded_value);
@@ -990,9 +989,8 @@ static void show_inode_getxattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_path(c, "path", &args->out.path);
+	show_dentry(c, "dentry", &args->out.dentry);
 	seq_puts(c, ", ");
-	show_inode(c, ", ", &args->out.inode);
 
 	tsem_fs_show_key(c, "}", "name", "%s", args->out.name);
 }
@@ -1003,9 +1001,8 @@ static void show_inode_listxattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_path(c, "path", &args->out.path);
-	seq_puts(c, ", ");
-	show_inode(c, "}", &args->out.inode);
+	show_dentry(c, "dentry", &args->out.dentry);
+	seq_putc(c, '}');
 }
 
 static void show_key_alloc(struct seq_file *c, struct tsem_event *ep)

@@ -459,6 +459,33 @@ static int add_socket_msg(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_xattr(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_inode_xattr_args *args = &ep->CELL.inode_xattr;
+
+	retn = add_dentry(shash, &args->out.dentry);
+	if (retn)
+		return retn;
+
+	if (ep->event == TSEM_INODE_LISTXATTR)
+		return 0;
+
+	retn = add_str(shash, args->out.name);
+	if (retn)
+		return retn;
+
+	if (ep->event == TSEM_INODE_GETXATTR ||
+	    ep->event == TSEM_INODE_REMOVEXATTR)
+		return 0;
+
+	retn = crypto_shash_update(shash, args->out.value, args->out.size);
+	if (retn)
+		return retn;
+
+	return add_u32(shash, args->out.flags);
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -1030,7 +1057,6 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
-
 	case TSEM_INODE_GETATTR:
 		retn = add_dentry(shash, &ep->CELL.inode_attr.out.dentry);
 
@@ -1064,37 +1090,10 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_SETXATTR:
-		retn = add_path(shash, &ep->CELL.inode_xattr.out.path);
-		if (retn)
-			goto done;
-
-		retn = add_str(shash, ep->CELL.inode_xattr.out.name);
-		if (retn)
-			goto done;
-
-		retn = crypto_shash_update(shash,
-					   ep->CELL.inode_xattr.out.value,
-					   ep->CELL.inode_xattr.out.size);
-		if (retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.inode_xattr.out.flags);
-		if (retn)
-			goto done;
-
-		retn = crypto_shash_final(shash, mapping);
-		break;
-
 	case TSEM_INODE_GETXATTR:
-		retn = add_path(shash, &ep->CELL.inode_xattr.out.path);
-		if (retn)
-			goto done;
-
-		retn = add_inode(shash, &ep->CELL.inode_xattr.out.inode);
-		if (retn)
-			goto done;
-
-		retn = add_str(shash, ep->CELL.inode_xattr.out.name);
+	case TSEM_INODE_REMOVEXATTR:
+	case TSEM_INODE_LISTXATTR:
+		retn = add_xattr(shash, ep);
 		if (retn)
 			goto done;
 
@@ -1202,7 +1201,6 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_SB_STATFS:
-	case TSEM_INODE_LISTXATTR:
 		retn = add_path(shash, &ep->CELL.sb.out.path);
 		if (retn)
 			goto done;
