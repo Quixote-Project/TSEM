@@ -1096,15 +1096,11 @@ static void get_key_perm(struct tsem_key_args *args)
 
 static int get_sb_statfs(struct tsem_sb_args *args)
 {
-	int retn;
 	struct dentry *dentry = args->in.dentry;
 
-	retn = fill_path_dentry(dentry, &args->out.path);
-	if (retn)
-		return -ENOMEM;
+	memset(&args->out, '\0', sizeof(args->out));
 
-	fill_inode(dentry->d_inode, &args->out.inode);
-	return 0;
+	return fill_dentry(dentry, &args->out.dentry);
 }
 
 static int get_move_mount(struct tsem_sb_args *args)
@@ -1404,7 +1400,7 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.quota.out.path.pathname);
 		break;
 	case TSEM_SB_STATFS:
-		kfree(ep->CELL.sb.out.path.pathname);
+		kfree(ep->CELL.sb.out.dentry.path.pathname);
 		break;
 	default:
 		break;

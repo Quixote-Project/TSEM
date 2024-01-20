@@ -1043,8 +1043,7 @@ static void show_sb_statfs(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_path(c, "path", ", ", &args->out.path);
-	show_inode(c, "inode", "}", &args->out.inode);
+	show_dentry(c, "dentry", "}", &args->out.dentry);
 }
 
 static void show_move_mount(struct seq_file *c, struct tsem_event *ep)
