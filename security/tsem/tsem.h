@@ -1524,6 +1524,7 @@ struct tsem_quota_args {
 		} in;
 
 		struct {
+			struct tsem_dentry dentry;
 			struct tsem_path path;
 			struct tsem_inode_cell inode;
 			unsigned long s_flags;

@@ -1146,8 +1146,7 @@ static int get_quotaon(struct tsem_quota_args *args)
 
 	memset(&args->out, '\0', sizeof(args->out));
 
-	fill_inode(d_backing_inode(dentry), &args->out.inode);
-	return fill_path_dentry(dentry, &args->out.path);
+	return fill_dentry(dentry, &args->out.dentry);
 }
 
 /**
@@ -1397,7 +1396,7 @@ static void free_cell(struct tsem_event *ep)
 		kfree(ep->CELL.quota.out.path.pathname);
 		break;
 	case TSEM_QUOTA_ON:
-		kfree(ep->CELL.quota.out.path.pathname);
+		kfree(ep->CELL.quota.out.dentry.path.pathname);
 		break;
 	case TSEM_SB_STATFS:
 		kfree(ep->CELL.sb.out.dentry.path.pathname);

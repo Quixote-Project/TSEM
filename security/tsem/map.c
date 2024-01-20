@@ -1286,11 +1286,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_QUOTA_ON:
-		retn = add_path(shash, &ep->CELL.quota.out.path);
-		if (retn)
-			goto done;
-
-		retn = add_inode(shash, &ep->CELL.quota.out.inode);
+		retn = add_dentry(shash, &ep->CELL.quota.out.dentry);
 		if (retn)
 			goto done;
 

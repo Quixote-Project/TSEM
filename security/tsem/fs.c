@@ -1079,8 +1079,7 @@ static void show_quotaon(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_inode(c, "inode", ", ", &args->out.inode);
-	show_path(c, "path", "}", &args->out.path);
+	show_dentry(c, "dentry", "}", &args->out.dentry);
 }
 
 static void show_bpf(struct seq_file *c, struct tsem_event *ep)
