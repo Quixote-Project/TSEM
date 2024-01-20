@@ -379,23 +379,26 @@ static void show_inode(struct seq_file *c, char *key, char *term,
 	tsem_fs_show_key(c, ",", "s_id", "%s", inode->s_id);
 	tsem_fs_show_key(c, "}", "s_uuid", "%*phN", sizeof(inode->s_uuid),
 			 inode->s_uuid);
+
 	seq_puts(c, term);
 }
 
-static void show_dentry(struct seq_file *c, char *key,
+static void show_dentry(struct seq_file *c, char *key, char *term,
 			struct tsem_dentry *dentry)
 {
 	tsem_fs_show_field(c, key);
 	if (dentry->have_inode)
 		show_inode(c, "inode", ", ", &dentry->inode);
+
 	show_path(c, "path", &dentry->path);
-	seq_putc(c, '}');
+	seq_printf(c, "}%s", term);
 }
 
 static void show_file(struct seq_file *c, struct tsem_file_args *args)
 {
 	tsem_fs_show_field(c, "file");
 	tsem_fs_show_key(c, ",", "flags", "%u", args->out.flags);
+
 	show_inode(c, "inode", ", ", &args->out.inode);
 	show_path(c, "path", &args->out.path);
 	seq_puts(c, ", ");
@@ -408,9 +411,9 @@ static void show_inode_create(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
+
 	show_inode(c, "dir", ", ", &args->out.dir);
-	show_dentry(c, "dentry", &args->out.dentry);
-	seq_puts(c, ", ");
+	show_dentry(c, "dentry", ", ", &args->out.dentry);
 	tsem_fs_show_key(c, "}", "mode", "0%o", args->mode);
 }
 
@@ -419,9 +422,9 @@ static void show_inode_remove(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
+
 	show_inode(c, "dir", ", ", &args->out.dir);
-	show_dentry(c, "dentry", &args->out.dentry);
-	seq_putc(c, '}');
+	show_dentry(c, "dentry", "}", &args->out.dentry);
 }
 
 static void show_inode_link(struct seq_file *c, struct tsem_event *ep)
@@ -430,13 +433,9 @@ static void show_inode_link(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_dentry(c, "old_dentry", &args->out.dentry);
-	seq_puts(c, ", ");
-
+	show_dentry(c, "old_dentry", ", ", &args->out.dentry);
 	show_inode(c, "dir", ", ", &args->out.dir);
-
-	show_dentry(c, "new_dentry", &args->out.new_dentry);
-	seq_putc(c, '}');
+	show_dentry(c, "new_dentry", "}", &args->out.new_dentry);
 }
 
 static void show_syslog(struct seq_file *c, struct tsem_event *ep)
@@ -462,11 +461,9 @@ static void show_inode_symlink(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_inode_args *args = &ep->CELL.inode;
 
 	show_event(c, ep);
+
 	show_inode(c, "dir", ", ", &args->out.dir);
-
-	show_dentry(c, "dentry", &args->out.dentry);
-	seq_puts(c, ", ");
-
+	show_dentry(c, "dentry", ", ", &args->out.dentry);
 	tsem_fs_show_key(c, "}", "old_name", "%s", args->out.old_name);
 }
 
@@ -478,9 +475,7 @@ static void show_inode_mknod(struct seq_file *c, struct tsem_event *ep)
 
 	show_inode(c, "dir", ", ", &args->out.dir);
 
-	show_dentry(c, "dentry", &args->out.dentry);
-	seq_puts(c, ", ");
-
+	show_dentry(c, "dentry", ", ", &args->out.dentry);
 	tsem_fs_show_key(c, ",", "mode", "0%o", args->mode);
 	tsem_fs_show_key(c, ",", "major", "%u", MAJOR(args->dev));
 	tsem_fs_show_key(c, "}", "minor", "%u", MINOR(args->dev));
@@ -493,12 +488,9 @@ static void show_inode_rename(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_inode(c, "old_dir", ", ", &args->out.dir);
-	show_dentry(c, "old_dentry", &args->out.dentry);
-	seq_puts(c, ", ");
-
+	show_dentry(c, "old_dentry", ", ", &args->out.dentry);
 	show_inode(c, "new_dir", ", ", &args->out.new_dir);
-	show_dentry(c, "new_dentry", &args->out.new_dentry);
-	seq_putc(c, '}');
+	show_dentry(c, "new_dentry", "}", &args->out.new_dentry);
 }
 
 static void show_inode_killpriv(struct seq_file *c, struct tsem_event *ep)
@@ -507,8 +499,7 @@ static void show_inode_killpriv(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_dentry(c, "dentry", &args->out.dentry);
-	seq_putc(c, '}');
+	show_dentry(c, "dentry", "}", &args->out.dentry);
 }
 
 static void show_file_open(struct seq_file *c, struct tsem_event *ep)
@@ -946,8 +937,7 @@ static void show_inode_getattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_dentry(c, "path", &args->out.dentry);
-	seq_putc(c, '}');
+	show_dentry(c, "path", "}", &args->out.dentry);
 }
 
 static void show_inode_setattr(struct seq_file *c, struct tsem_event *ep)
@@ -956,9 +946,7 @@ static void show_inode_setattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_dentry(c, "dentry", &args->out.dentry);
-	seq_puts(c, ", ");
-
+	show_dentry(c, "dentry", ", ", &args->out.dentry);
 	tsem_fs_show_key(c, ",", "valid", "%u", args->out.valid);
 	tsem_fs_show_key(c, ",", "mode", "0%o", args->out.mode);
 	tsem_fs_show_key(c, ",", "uid", "%u", args->out.uid);
@@ -972,9 +960,7 @@ static void show_inode_setxattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_dentry(c, "dentry", &args->out.dentry);
-	seq_puts(c, ", ");
-
+	show_dentry(c, "dentry", ", ", &args->out.dentry);
 	tsem_fs_show_key(c, ",", "name", "%s", args->out.name);
 	tsem_fs_show_key(c, ",", "value", "%s", args->out.encoded_value);
 	tsem_fs_show_key(c, "}", "flags", "%d", args->out.flags);
@@ -986,9 +972,7 @@ static void show_inode_getxattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_dentry(c, "dentry", &args->out.dentry);
-	seq_puts(c, ", ");
-
+	show_dentry(c, "dentry", ", ", &args->out.dentry);
 	tsem_fs_show_key(c, "}", "name", "%s", args->out.name);
 }
 
@@ -998,8 +982,7 @@ static void show_inode_listxattr(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_dentry(c, "dentry", &args->out.dentry);
-	seq_putc(c, '}');
+	show_dentry(c, "dentry", "}", &args->out.dentry);
 }
 
 static void show_key_alloc(struct seq_file *c, struct tsem_event *ep)
