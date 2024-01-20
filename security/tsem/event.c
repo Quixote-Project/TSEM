@@ -1131,8 +1131,7 @@ static int get_quotactl(struct tsem_quota_args *args)
 	if (!args->out.fstype)
 		goto done;
 
-	fill_inode(d_backing_inode(sb->s_root), &args->out.inode);
-	retn = fill_path_dentry(sb->s_root, &args->out.path);
+	retn = fill_dentry(sb->s_root, &args->out.dentry);
 
  done:
 	if (retn)
@@ -1393,7 +1392,7 @@ static void free_cell(struct tsem_event *ep)
 		break;
 	case TSEM_QUOTACTL:
 		kfree(ep->CELL.quota.out.fstype);
-		kfree(ep->CELL.quota.out.path.pathname);
+		kfree(ep->CELL.quota.out.dentry.path.pathname);
 		break;
 	case TSEM_QUOTA_ON:
 		kfree(ep->CELL.quota.out.dentry.path.pathname);

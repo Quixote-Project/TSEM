@@ -1519,14 +1519,12 @@ struct tsem_quota_args {
 
 	union {
 		struct {
-			struct super_block *sb;
 			struct dentry *dentry;
+			struct super_block *sb;
 		} in;
 
 		struct {
 			struct tsem_dentry dentry;
-			struct tsem_path path;
-			struct tsem_inode_cell inode;
 			unsigned long s_flags;
 			char *fstype;
 		} out;

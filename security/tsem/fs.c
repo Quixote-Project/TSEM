@@ -1066,11 +1066,11 @@ static void show_quotactl(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "type", ",", "%d", args->type);
 	tsem_fs_show_key(c, "id", ",", "%d", args->id);
 
-	tsem_fs_show_key(c, "s_flags", ",", "%d", args->out.s_flags);
+	tsem_fs_show_field(c, "sb");
+	show_dentry(c, "dentry", ", ", &args->out.dentry);
 	tsem_fs_show_key(c, "fstype", ",", "%s", args->out.fstype);
-
-	show_inode(c, "inode", ", ", &args->out.inode);
-	show_path(c, "path", "}", &args->out.path);
+	tsem_fs_show_key(c, "s_flags", "}", "%d", args->out.s_flags);
+	seq_putc(c, '}');
 }
 
 static void show_quotaon(struct seq_file *c, struct tsem_event *ep)

@@ -562,6 +562,37 @@ static int add_inode_link(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_quotactl(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_quota_args *args = &ep->CELL.quota;
+
+	retn = add_u32(shash, args->cmds);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->type);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->id);
+	if (retn)
+		goto done;
+
+	retn = add_dentry(shash, &args->out.dentry);
+	if (retn)
+		goto done;
+
+	retn = add_str(shash, args->out.fstype);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, args->out.s_flags);
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -1254,31 +1285,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_QUOTACTL:
-		retn = add_u32(shash, ep->CELL.quota.cmds);
-		if (retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.quota.type);
-		if (retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.quota.id);
-		if (retn)
-			goto done;
-
-		retn = add_u64(shash, ep->CELL.quota.out.s_flags);
-		if (retn)
-			goto done;
-
-		retn = add_str(shash, ep->CELL.quota.out.fstype);
-		if (retn)
-			goto done;
-
-		retn = add_path(shash, &ep->CELL.quota.out.path);
-		if (retn)
-			goto done;
-
-		retn = add_inode(shash, &ep->CELL.quota.out.inode);
+		retn = add_quotactl(shash, ep);
 		if (retn)
 			goto done;
 
