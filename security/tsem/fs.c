@@ -544,7 +544,7 @@ static void show_file_ioctl(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "cmd", "%u", args->cmd);
 }
 
-static void show_socket_info(struct seq_file *c, const char *key,
+static void show_socket_info(struct seq_file *c, const char *key, char *term,
 			     struct tsem_socket *args)
 {
 	tsem_fs_show_field(c, key);
@@ -554,6 +554,8 @@ static void show_socket_info(struct seq_file *c, const char *key,
 	tsem_fs_show_key(c, ",", "kern", "%d", args->kern);
 	tsem_fs_show_key(c, "}", "owner", "%*phN", tsem_digestsize(),
 			 args->owner);
+
+	seq_puts(c, term);
 }
 
 static void show_netlink(struct seq_file *c, struct tsem_event *ep)
@@ -562,9 +564,7 @@ static void show_netlink(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_socket_info(c, "sock", &args->out.sock);
-	seq_puts(c, ", ");
-
+	show_socket_info(c, "sock", ", ", &args->out.sock);
 	tsem_fs_show_key(c, ",", "uid", "%u", args->out.uid);
 	tsem_fs_show_key(c, ",", "gid", "%u", args->out.gid);
 	tsem_fs_show_key(c, ",", "portid", "%u", args->out.portid);
@@ -646,10 +646,8 @@ static void show_socket_pair(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_socket_info(c, "socka", &args->out.socka);
-	seq_puts(c, ", ");
-	show_socket_info(c, "sockb", &args->out.sockb);
-	seq_putc(c, '}');
+	show_socket_info(c, "socka", ", ", &args->out.socka);
+	show_socket_info(c, "sockb", "}", &args->out.sockb);
 }
 
 static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
@@ -672,8 +670,7 @@ static void show_socket(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_socket_info(c, "sock", &args->out.socka);
-	seq_puts(c, ", ");
+	show_socket_info(c, "sock", ", ", &args->out.socka);
 
 	switch (args->out.socka.family) {
 	case AF_INET:
@@ -708,8 +705,7 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_socket_info(c, "sock", &args->out.socka);
-	seq_puts(c, ", ");
+	show_socket_info(c, "sock", ", ", &args->out.socka);
 
 	switch (args->out.socka.family) {
 	case AF_INET:
@@ -742,8 +738,7 @@ static void show_socket_value(struct seq_file *c, struct tsem_event *ep,
 
 	show_event(c, ep);
 
-	show_socket_info(c, "sock", &args->out.socka);
-	seq_puts(c, ", ");
+	show_socket_info(c, "sock", ", ", &args->out.socka);
 	tsem_fs_show_key(c, "}", key, "%d", args->value);
 }
 
@@ -756,10 +751,10 @@ static void show_socket_msg(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_socket_info(c, "sock", &args->out.socka);
+	show_socket_info(c, "sock", args->out.have_addr ? ", " : "}",
+			 &args->out.socka);
 
 	if (args->out.have_addr) {
-		seq_puts(c, ", ");
 		switch (args->out.socka.family) {
 		case AF_INET:
 			ipv4 = &args->out.ipv4;
@@ -776,25 +771,21 @@ static void show_socket_msg(struct seq_file *c, struct tsem_event *ep)
 					 ipv6->sin6_addr.in6_u.u6_addr8);
 			break;
 		}
-	} else
-		seq_putc(c, '}');
+	}
 }
 
 static void show_socket_argument(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
 
-	show_socket_info(c, "sock", &ep->CELL.socket.out.socka);
-	seq_putc(c, '}');
+	show_socket_info(c, "sock", "}", &ep->CELL.socket.out.socka);
 }
 
 static void show_socket_setsockopt(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
 
-	show_socket_info(c, "sock", &ep->CELL.socket.out.socka);
-	seq_puts(c, ", ");
-
+	show_socket_info(c, "sock", ", ", &ep->CELL.socket.out.socka);
 	tsem_fs_show_key(c, ",", "level", "%d", ep->CELL.socket.value);
 	tsem_fs_show_key(c, "}", "optname", "%d", ep->CELL.socket.optname);
 }
