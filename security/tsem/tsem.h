@@ -1237,17 +1237,16 @@ struct tsem_sb_args {
 			struct super_block *sb;
 			struct dentry *dentry;
 			const char *dev_name;
-			const struct path *path;
 			const char *type;
+			const struct path *path;
 			const struct path *path2;
 		} in;
 
 		struct {
 			struct tsem_dentry dentry;
-			struct tsem_inode_cell inode;
-			struct tsem_path path;
 			char *dev_name;
 			char *type;
+			struct tsem_path path;
 			struct tsem_path path2;
 		} out;
 	};
