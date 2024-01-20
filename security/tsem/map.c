@@ -524,6 +524,25 @@ static int add_sb_umount(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_sb_remount(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_sb_args *args = &ep->CELL.sb;
+
+	retn = add_dentry(shash, &args->out.dentry);
+	if (retn)
+		goto done;
+
+	retn = add_str(shash, ep->CELL.sb.out.type);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, ep->CELL.sb.flags);
+
+ done:
+	return retn;
+}
+
 static int add_inode_link(struct shash_desc *shash, struct tsem_event *ep)
 {
 	int retn;
@@ -1206,19 +1225,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_SB_REMOUNT:
-		retn = add_path(shash, &ep->CELL.sb.out.path);
-		if (retn)
-			goto done;
-
-		retn = add_inode(shash, &ep->CELL.sb.out.inode);
-		if (retn)
-			goto done;
-
-		retn = add_str(shash, ep->CELL.sb.out.type);
-		if (retn)
-			goto done;
-
-		retn = add_u64(shash, ep->CELL.sb.flags);
+		retn = add_sb_remount(shash, ep);
 		if (retn)
 			goto done;
 

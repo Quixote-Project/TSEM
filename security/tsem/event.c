@@ -991,13 +991,12 @@ static int get_sb_remount(struct tsem_sb_args *args)
 	if (!args->out.type)
 		goto done;
 
-	fill_inode(d_backing_inode(sb->s_root), &args->out.inode);
-	retn = fill_path_dentry(sb->s_root, &args->out.path);
+	retn = fill_dentry(sb->s_root, &args->out.dentry);
 
  done:
 	if (retn) {
 		kfree(args->out.type);
-		kfree(args->out.path.pathname);
+		kfree(args->out.dentry.path.pathname);
 	}
 
 	return retn;
@@ -1390,7 +1389,7 @@ static void free_cell(struct tsem_event *ep)
 		break;
 	case TSEM_SB_REMOUNT:
 		kfree(ep->CELL.sb.out.type);
-		kfree(ep->CELL.sb.out.path.pathname);
+		kfree(ep->CELL.sb.out.dentry.path.pathname);
 		break;
 	case TSEM_SB_PIVOTROOT:
 	case TSEM_MOVE_MOUNT:

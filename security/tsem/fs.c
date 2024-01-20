@@ -1030,10 +1030,11 @@ static void show_sb_remount(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_path(c, "path", ", ", &args->out.path);
-	show_inode(c, "inode", ", ", &args->out.inode);
+	tsem_fs_show_field(c, "sb");
+	show_dentry(c, "dentry", ", ", &args->out.dentry);
 	tsem_fs_show_key(c, "type", ",", "%s", args->out.type);
 	tsem_fs_show_key(c, "sb_flags", "}", "%lu", args->flags);
+	seq_putc(c, '}');
 }
 
 static void show_sb_statfs(struct seq_file *c, struct tsem_event *ep)
