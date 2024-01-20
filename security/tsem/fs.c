@@ -316,16 +316,16 @@ static void show_creds(struct seq_file *c, char *key, char *term,
 		       struct tsem_COE *cp)
 {
 	tsem_fs_show_field(c, key);
-	tsem_fs_show_key(c, ",", "uid", "%u", cp->uid);
-	tsem_fs_show_key(c, ",", "euid", "%u", cp->euid);
-	tsem_fs_show_key(c, ",", "suid", "%u", cp->suid);
-	tsem_fs_show_key(c, ",", "gid", "%u", cp->gid);
-	tsem_fs_show_key(c, ",", "egid", "%u", cp->egid);
-	tsem_fs_show_key(c, ",", "sgid", "%u", cp->sgid);
-	tsem_fs_show_key(c, ",", "fsuid", "%u", cp->fsuid);
-	tsem_fs_show_key(c, ",", "fsgid", "%u", cp->fsgid);
-	tsem_fs_show_key(c, ",", "capeff", "0x%llx", cp->capeff.value);
-	tsem_fs_show_key(c, "}", "securebits", "%u", cp->securebits);
+	tsem_fs_show_key(c, "uid", ",", "%u", cp->uid);
+	tsem_fs_show_key(c, "euid", ",", "%u", cp->euid);
+	tsem_fs_show_key(c, "suid", ",", "%u", cp->suid);
+	tsem_fs_show_key(c, "gid", ",", "%u", cp->gid);
+	tsem_fs_show_key(c, "egid", ",", "%u", cp->egid);
+	tsem_fs_show_key(c, "sgid", ",", "%u", cp->sgid);
+	tsem_fs_show_key(c, "fsuid", ",", "%u", cp->fsuid);
+	tsem_fs_show_key(c, "fsgid", ",", "%u", cp->fsgid);
+	tsem_fs_show_key(c, "capeff", ",", "0x%llx", cp->capeff.value);
+	tsem_fs_show_key(c, "securebits", "}", "%u", cp->securebits);
 
 	seq_puts(c, term);
 }
@@ -334,27 +334,27 @@ static void show_event(struct seq_file *c, struct tsem_event *ep)
 {
 	tsem_fs_show_field(c, "event");
 	if (ep->pid)
-		tsem_fs_show_key(c, ",", "pid", "%u", ep->pid);
-	tsem_fs_show_key(c, ",", "process", "%s", ep->comm);
-	tsem_fs_show_key(c, ",", "type", "%s", tsem_names[ep->event]);
-	tsem_fs_show_key(c, ",", "ttd", "%llu", ep->instance);
-	tsem_fs_show_key(c, ",", "p_ttd", "%llu", ep->p_instance);
-	tsem_fs_show_key(c, ",", "task_id", "%*phN", tsem_digestsize(),
+		tsem_fs_show_key(c, "pid", ",", "%u", ep->pid);
+	tsem_fs_show_key(c, "process", ",", "%s", ep->comm);
+	tsem_fs_show_key(c, "type", ",", "%s", tsem_names[ep->event]);
+	tsem_fs_show_key(c, "ttd", ",", "%llu", ep->instance);
+	tsem_fs_show_key(c, "p_ttd", ",", "%llu", ep->p_instance);
+	tsem_fs_show_key(c, "task_id", ",", "%*phN", tsem_digestsize(),
 			 ep->task_id);
-	tsem_fs_show_key(c, ",", "p_task_id", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "p_task_id", ",", "%*phN", tsem_digestsize(),
 			 ep->p_task_id);
-	tsem_fs_show_key(c, "}, ", "ts", "%llu", ep->timestamp);
+	tsem_fs_show_key(c, "ts", "}, ", "%llu", ep->timestamp);
 
 	tsem_fs_show_field(c, "COE");
-	tsem_fs_show_key(c, ",", "uid", "%u", ep->COE.uid);
-	tsem_fs_show_key(c, ",", "euid", "%u", ep->COE.euid);
-	tsem_fs_show_key(c, ",", "suid", "%u", ep->COE.suid);
-	tsem_fs_show_key(c, ",", "gid", "%u", ep->COE.gid);
-	tsem_fs_show_key(c, ",", "egid", "%u", ep->COE.egid);
-	tsem_fs_show_key(c, ",", "sgid", "%u", ep->COE.sgid);
-	tsem_fs_show_key(c, ",", "fsuid", "%u", ep->COE.fsuid);
-	tsem_fs_show_key(c, ",", "fsgid", "%u", ep->COE.fsgid);
-	tsem_fs_show_key(c, "}, ", "capeff", "0x%llx", ep->COE.capeff.value);
+	tsem_fs_show_key(c, "uid", ",", "%u", ep->COE.uid);
+	tsem_fs_show_key(c, "euid", ",", "%u", ep->COE.euid);
+	tsem_fs_show_key(c, "suid", ",", "%u", ep->COE.suid);
+	tsem_fs_show_key(c, "gid", ",", "%u", ep->COE.gid);
+	tsem_fs_show_key(c, "egid", ",", "%u", ep->COE.egid);
+	tsem_fs_show_key(c, "sgid", ",", "%u", ep->COE.sgid);
+	tsem_fs_show_key(c, "fsuid", ",", "%u", ep->COE.fsuid);
+	tsem_fs_show_key(c, "fsgid", ",", "%u", ep->COE.fsgid);
+	tsem_fs_show_key(c, "capeff", "}, ", "0x%llx", ep->COE.capeff.value);
 
 	tsem_fs_show_field(c, tsem_names[ep->event]);
 }
@@ -366,10 +366,10 @@ static void show_path(struct seq_file *c, char *key, char *term,
 
 	if (path->dev) {
 		tsem_fs_show_field(c, "dev");
-		tsem_fs_show_key(c, ",", "major", "%u", MAJOR(path->dev));
-		tsem_fs_show_key(c, "}, ", "minor", "%u", MINOR(path->dev));
+		tsem_fs_show_key(c, "major", ",", "%u", MAJOR(path->dev));
+		tsem_fs_show_key(c, "minor", "}, ", "%u", MINOR(path->dev));
 	}
-	tsem_fs_show_key(c, "}", "pathname", "%s", path->pathname);
+	tsem_fs_show_key(c, "pathname", "}", "%s", path->pathname);
 
 	seq_puts(c, term);
 }
@@ -378,12 +378,12 @@ static void show_inode(struct seq_file *c, char *key, char *term,
 		       struct tsem_inode_cell *inode)
 {
 	tsem_fs_show_field(c, key);
-	tsem_fs_show_key(c, ",", "uid", "%u", inode->uid);
-	tsem_fs_show_key(c, ",", "gid", "%u", inode->gid);
-	tsem_fs_show_key(c, ",", "mode", "0%o", inode->mode);
-	tsem_fs_show_key(c, ",", "s_magic", "0x%0x", inode->s_magic);
-	tsem_fs_show_key(c, ",", "s_id", "%s", inode->s_id);
-	tsem_fs_show_key(c, "}", "s_uuid", "%*phN", sizeof(inode->s_uuid),
+	tsem_fs_show_key(c, "uid", ",", "%u", inode->uid);
+	tsem_fs_show_key(c, "gid", ",", "%u", inode->gid);
+	tsem_fs_show_key(c, "mode", ",", "0%o", inode->mode);
+	tsem_fs_show_key(c, "s_magic", ",", "0x%0x", inode->s_magic);
+	tsem_fs_show_key(c, "s_id", ",", "%s", inode->s_id);
+	tsem_fs_show_key(c, "s_uuid", "}", "%*phN", sizeof(inode->s_uuid),
 			 inode->s_uuid);
 
 	seq_puts(c, term);
@@ -405,11 +405,11 @@ static void show_file(struct seq_file *c, char *term,
 		      struct tsem_file_args *args)
 {
 	tsem_fs_show_field(c, "file");
-	tsem_fs_show_key(c, ",", "flags", "%u", args->out.flags);
+	tsem_fs_show_key(c, "flags", ",", "%u", args->out.flags);
 
 	show_inode(c, "inode", ", ", &args->out.inode);
 	show_path(c, "path", ", ", &args->out.path);
-	tsem_fs_show_key(c, "}", "digest", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "digest", "}", "%*phN", tsem_digestsize(),
 			 args->out.digest);
 
 	seq_puts(c, term);
@@ -423,7 +423,7 @@ static void show_inode_create(struct seq_file *c, struct tsem_event *ep)
 
 	show_inode(c, "dir", ", ", &args->out.dir);
 	show_dentry(c, "dentry", ", ", &args->out.dentry);
-	tsem_fs_show_key(c, "}", "mode", "0%o", args->mode);
+	tsem_fs_show_key(c, "mode", "}", "0%o", args->mode);
 }
 
 static void show_inode_remove(struct seq_file *c, struct tsem_event *ep)
@@ -450,7 +450,7 @@ static void show_inode_link(struct seq_file *c, struct tsem_event *ep)
 static void show_syslog(struct seq_file *c, struct tsem_event *ep)
 {
 	show_event(c, ep);
-	tsem_fs_show_key(c, "}", "type", "%d", ep->CELL.value);
+	tsem_fs_show_key(c, "type", "}", "%d", ep->CELL.value);
 }
 
 static void show_settime(struct seq_file *c, struct tsem_event *ep)
@@ -459,10 +459,10 @@ static void show_settime(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "seconds", "%d", args->seconds);
-	tsem_fs_show_key(c, ",", "nsecs", "%d", args->nsecs);
-	tsem_fs_show_key(c, ",", "minuteswest", "%d", args->minuteswest);
-	tsem_fs_show_key(c, "}", "dsttime", "%d", args->dsttime);
+	tsem_fs_show_key(c, "seconds", ",", "%d", args->seconds);
+	tsem_fs_show_key(c, "nsecs", ",", "%d", args->nsecs);
+	tsem_fs_show_key(c, "minuteswest", ",", "%d", args->minuteswest);
+	tsem_fs_show_key(c, "dsttime", "}", "%d", args->dsttime);
 }
 
 static void show_inode_symlink(struct seq_file *c, struct tsem_event *ep)
@@ -473,7 +473,7 @@ static void show_inode_symlink(struct seq_file *c, struct tsem_event *ep)
 
 	show_inode(c, "dir", ", ", &args->out.dir);
 	show_dentry(c, "dentry", ", ", &args->out.dentry);
-	tsem_fs_show_key(c, "}", "old_name", "%s", args->out.old_name);
+	tsem_fs_show_key(c, "old_name", "}", "%s", args->out.old_name);
 }
 
 static void show_inode_mknod(struct seq_file *c, struct tsem_event *ep)
@@ -485,9 +485,9 @@ static void show_inode_mknod(struct seq_file *c, struct tsem_event *ep)
 	show_inode(c, "dir", ", ", &args->out.dir);
 
 	show_dentry(c, "dentry", ", ", &args->out.dentry);
-	tsem_fs_show_key(c, ",", "mode", "0%o", args->mode);
-	tsem_fs_show_key(c, ",", "major", "%u", MAJOR(args->dev));
-	tsem_fs_show_key(c, "}", "minor", "%u", MINOR(args->dev));
+	tsem_fs_show_key(c, "mode", ",", "0%o", args->mode);
+	tsem_fs_show_key(c, "major", ",", "%u", MAJOR(args->dev));
+	tsem_fs_show_key(c, "minor", "}", "%u", MINOR(args->dev));
 }
 
 static void show_inode_rename(struct seq_file *c, struct tsem_event *ep)
@@ -524,14 +524,14 @@ static void show_mmap(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "type", "%u", args->anonymous);
-	tsem_fs_show_key(c, ",", "reqprot", "%u", args->reqprot);
-	tsem_fs_show_key(c, ",", "prot", "%u", args->prot);
+	tsem_fs_show_key(c, "type", ",", "%u", args->anonymous);
+	tsem_fs_show_key(c, "reqprot", ",", "%u", args->reqprot);
+	tsem_fs_show_key(c, "prot", ",", "%u", args->prot);
 
 	if (!args->anonymous)
 		show_file(c, "}", &args->file);
 	else
-		tsem_fs_show_key(c, "}", "flags", "%u", args->flags);
+		tsem_fs_show_key(c, "flags", "}", "%u", args->flags);
 }
 
 static void show_file_ioctl(struct seq_file *c, struct tsem_event *ep)
@@ -541,18 +541,18 @@ static void show_file_ioctl(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_file(c, ", ", args);
-	tsem_fs_show_key(c, "}", "cmd", "%u", args->cmd);
+	tsem_fs_show_key(c, "cmd", "}", "%u", args->cmd);
 }
 
 static void show_socket_info(struct seq_file *c, const char *key, char *term,
 			     struct tsem_socket *args)
 {
 	tsem_fs_show_field(c, key);
-	tsem_fs_show_key(c, ",", "family", "%d", args->family);
-	tsem_fs_show_key(c, ",", "type", "%d", args->type);
-	tsem_fs_show_key(c, ",", "protocol", "%d", args->protocol);
-	tsem_fs_show_key(c, ",", "kern", "%d", args->kern);
-	tsem_fs_show_key(c, "}", "owner", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "family", ",", "%d", args->family);
+	tsem_fs_show_key(c, "type", ",", "%d", args->type);
+	tsem_fs_show_key(c, "protocol", ",", "%d", args->protocol);
+	tsem_fs_show_key(c, "kern", ",", "%d", args->kern);
+	tsem_fs_show_key(c, "owner", "}", "%*phN", tsem_digestsize(),
 			 args->owner);
 
 	seq_puts(c, term);
@@ -565,25 +565,25 @@ static void show_netlink(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_socket_info(c, "sock", ", ", &args->out.sock);
-	tsem_fs_show_key(c, ",", "uid", "%u", args->out.uid);
-	tsem_fs_show_key(c, ",", "gid", "%u", args->out.gid);
-	tsem_fs_show_key(c, ",", "portid", "%u", args->out.portid);
-	tsem_fs_show_key(c, ",", "dst_group", "%u", args->out.dst_group);
-	tsem_fs_show_key(c, ",", "flags", "%u", args->out.flags);
-	tsem_fs_show_key(c, ",", "nsid_set", "%u", args->out.nsid_set);
-	tsem_fs_show_key(c, "}", "nsid", "%d", args->out.nsid);
+	tsem_fs_show_key(c, "uid", ",", "%u", args->out.uid);
+	tsem_fs_show_key(c, "gid", ",", "%u", args->out.gid);
+	tsem_fs_show_key(c, "portid", ",", "%u", args->out.portid);
+	tsem_fs_show_key(c, "dst_group", ",", "%u", args->out.dst_group);
+	tsem_fs_show_key(c, "flags", ",", "%u", args->out.flags);
+	tsem_fs_show_key(c, "nsid_set", ",", "%u", args->out.nsid_set);
+	tsem_fs_show_key(c, "nsid", "}", "%d", args->out.nsid);
 }
 
 static void show_ipc_cred(struct seq_file *c, char *key, char *term,
 			  struct tsem_ipc_args *args)
 {
 	tsem_fs_show_field(c, key);
-	tsem_fs_show_key(c, ",", "uid", "%u", args->out.perm.uid);
-	tsem_fs_show_key(c, ",", "gid", "%u", args->out.perm.gid);
-	tsem_fs_show_key(c, ",", "cuid", "%u", args->out.perm.cuid);
-	tsem_fs_show_key(c, ",", "cgid", "%u", args->out.perm.cgid);
-	tsem_fs_show_key(c, ",", "mode", "0%o", args->out.perm.mode);
-	tsem_fs_show_key(c, "}", "owner", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "uid", ",", "%u", args->out.perm.uid);
+	tsem_fs_show_key(c, "gid", ",", "%u", args->out.perm.gid);
+	tsem_fs_show_key(c, "cuid", ",", "%u", args->out.perm.cuid);
+	tsem_fs_show_key(c, "cgid", ",", "%u", args->out.perm.cgid);
+	tsem_fs_show_key(c, "mode", ",", "0%o", args->out.perm.mode);
+	tsem_fs_show_key(c, "owner", "}", "%*phN", tsem_digestsize(),
 			 args->out.owner);
 
 	seq_puts(c, term);
@@ -596,7 +596,7 @@ static void show_ipc_permission(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_ipc_cred(c, "ipcp", ", ", args);
-	tsem_fs_show_key(c, "}", "flag", "%u", args->perm_flag);
+	tsem_fs_show_key(c, "flag", "}", "%u", args->perm_flag);
 }
 
 static void show_ipc_shm_value(struct seq_file *c, struct tsem_event *ep,
@@ -607,7 +607,7 @@ static void show_ipc_shm_value(struct seq_file *c, struct tsem_event *ep,
 	show_event(c, ep);
 
 	show_ipc_cred(c, "perm", ", ", args);
-	tsem_fs_show_key(c, "}", name, "%d", args->perm_flag);
+	tsem_fs_show_key(c, name, "}", "%d", args->perm_flag);
 }
 
 static void show_msg_queue_msgrcv(struct seq_file *c, struct tsem_event *ep)
@@ -618,10 +618,10 @@ static void show_msg_queue_msgrcv(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_ipc_cred(c, "perm", ", ", args);
-	tsem_fs_show_key(c, ",", "target", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "target", ",", "%*phN", tsem_digestsize(),
 			 args->out.target);
-	tsem_fs_show_key(c, ",", "type", "%ld", args->type);
-	tsem_fs_show_key(c, "}", "mode", "%d", args->value);
+	tsem_fs_show_key(c, "type", ",", "%ld", args->type);
+	tsem_fs_show_key(c, "mode", "}", "%d", args->value);
 }
 
 static void show_sem_semop(struct seq_file *c, struct tsem_event *ep)
@@ -631,8 +631,8 @@ static void show_sem_semop(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_ipc_cred(c, "perm", ", ", args);
-	tsem_fs_show_key(c, ",", "nsops", "%u", args->nsops);
-	tsem_fs_show_key(c, "}", "alter", "%d", args->value);
+	tsem_fs_show_key(c, "nsops", ",", "%u", args->nsops);
+	tsem_fs_show_key(c, "alter", "}", "%d", args->value);
 }
 
 static void show_socket_pair(struct seq_file *c, struct tsem_event *ep)
@@ -651,10 +651,10 @@ static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "family", "%u", args->out.socka.family);
-	tsem_fs_show_key(c, ",", "type", "%u", args->out.socka.type);
-	tsem_fs_show_key(c, ",", "protocol", "%u", args->out.socka.protocol);
-	tsem_fs_show_key(c, "}", "kern", "%u", args->out.socka.kern);
+	tsem_fs_show_key(c, "family", ",", "%u", args->out.socka.family);
+	tsem_fs_show_key(c, "type", ",", "%u", args->out.socka.type);
+	tsem_fs_show_key(c, "protocol", ",", "%u", args->out.socka.protocol);
+	tsem_fs_show_key(c, "kern", "}", "%u", args->out.socka.kern);
 }
 
 static void show_socket(struct seq_file *c, struct tsem_event *ep)
@@ -670,23 +670,23 @@ static void show_socket(struct seq_file *c, struct tsem_event *ep)
 	switch (args->out.socka.family) {
 	case AF_INET:
 		ipv4 = (struct sockaddr_in *) &args->out.ipv4;
-		tsem_fs_show_key(c, ",", "port", "%u", ipv4->sin_port);
-		tsem_fs_show_key(c, "}", "addr", "%u", ipv4->sin_addr.s_addr);
+		tsem_fs_show_key(c, "port", ",", "%u", ipv4->sin_port);
+		tsem_fs_show_key(c, "addr", "}", "%u", ipv4->sin_addr.s_addr);
 		break;
 	case AF_INET6:
 		ipv6 = (struct sockaddr_in6 *) &args->out.ipv6;
-		tsem_fs_show_key(c, ",", "port", "%u", ipv6->sin6_port);
-		tsem_fs_show_key(c, ",", "flow", "%u", ipv6->sin6_flowinfo);
-		tsem_fs_show_key(c, ",", "scope", "%u", ipv6->sin6_scope_id);
-		tsem_fs_show_key(c, "}", "addr", "%*phN",
+		tsem_fs_show_key(c, "port", ",", "%u", ipv6->sin6_port);
+		tsem_fs_show_key(c, "flow", ",", "%u", ipv6->sin6_flowinfo);
+		tsem_fs_show_key(c, "scope", ",", "%u", ipv6->sin6_scope_id);
+		tsem_fs_show_key(c, "addr", "}", "%*phN",
 			 (int) sizeof(ipv6->sin6_addr.in6_u.u6_addr8),
 			 ipv6->sin6_addr.in6_u.u6_addr8);
 		break;
 	case AF_UNIX:
-		tsem_fs_show_key(c, "}", "addr", "%s", args->out.path);
+		tsem_fs_show_key(c, "addr", "}", "%s", args->out.path);
 		break;
 	default:
-		tsem_fs_show_key(c, "}", "addr", "%*phN", tsem_digestsize(),
+		tsem_fs_show_key(c, "addr", "}", "%*phN", tsem_digestsize(),
 				 args->out.mapping);
 		break;
 	}
@@ -704,23 +704,23 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 
 	switch (args->out.socka.family) {
 	case AF_INET:
-		tsem_fs_show_key(c, ",", "port", "%u",
+		tsem_fs_show_key(c, "port", ",", "%u",
 				 args->out.ipv4.sin_port);
-		tsem_fs_show_key(c, "}", "addr", "%u",
+		tsem_fs_show_key(c, "addr", "}", "%u",
 				 args->out.ipv4.sin_addr);
 		break;
 	case AF_INET6:
-		tsem_fs_show_key(c, ",", "port", "%u",
+		tsem_fs_show_key(c, "port", ",", "%u",
 				 args->out.ipv6.sin6_port);
 		p = args->out.ipv6.sin6_addr.in6_u.u6_addr8;
 		size = sizeof(args->out.ipv6.sin6_addr.in6_u.u6_addr8);
-		tsem_fs_show_key(c, "}", "addr", "%*phN", size, p);
+		tsem_fs_show_key(c, "addr", "}", "%*phN", size, p);
 		break;
 	case AF_UNIX:
-		tsem_fs_show_key(c, "}", "addr", "%s", args->out.path);
+		tsem_fs_show_key(c, "addr", "}", "%s", args->out.path);
 		break;
 	default:
-		tsem_fs_show_key(c, "}", "addr", "%*phN", tsem_digestsize(),
+		tsem_fs_show_key(c, "addr", "}", "%*phN", tsem_digestsize(),
 				 args->out.mapping);
 		break;
 	}
@@ -734,7 +734,7 @@ static void show_socket_value(struct seq_file *c, struct tsem_event *ep,
 	show_event(c, ep);
 
 	show_socket_info(c, "sock", ", ", &args->out.socka);
-	tsem_fs_show_key(c, "}", key, "%d", args->value);
+	tsem_fs_show_key(c, key, "}", "%d", args->value);
 }
 
 static void show_socket_msg(struct seq_file *c, struct tsem_event *ep)
@@ -753,16 +753,16 @@ static void show_socket_msg(struct seq_file *c, struct tsem_event *ep)
 		switch (args->out.socka.family) {
 		case AF_INET:
 			ipv4 = &args->out.ipv4;
-			tsem_fs_show_key(c, ",", "port", "%u", ipv4->sin_port);
-			tsem_fs_show_key(c, "}", "addr", "%u",
+			tsem_fs_show_key(c, "port", ",", "%u", ipv4->sin_port);
+			tsem_fs_show_key(c, "addr", "}", "%u",
 					 ipv4->sin_addr.s_addr);
 			break;
 		case AF_INET6:
 			ipv6 = &args->out.ipv6;
 			size = sizeof(ipv6->sin6_addr.in6_u.u6_addr8);
-			tsem_fs_show_key(c, ",", "port", "%u",
+			tsem_fs_show_key(c, "port", ",", "%u",
 					 ipv6->sin6_port);
-			tsem_fs_show_key(c, "}", "addr", "%*phN", size,
+			tsem_fs_show_key(c, "addr", "}", "%*phN", size,
 					 ipv6->sin6_addr.in6_u.u6_addr8);
 			break;
 		}
@@ -781,8 +781,8 @@ static void show_socket_setsockopt(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_socket_info(c, "sock", ", ", &ep->CELL.socket.out.socka);
-	tsem_fs_show_key(c, ",", "level", "%d", ep->CELL.socket.value);
-	tsem_fs_show_key(c, "}", "optname", "%d", ep->CELL.socket.optname);
+	tsem_fs_show_key(c, "level", ",", "%d", ep->CELL.socket.value);
+	tsem_fs_show_key(c, "optname", "}", "%d", ep->CELL.socket.optname);
 }
 
 static void show_kernel_module_request(struct seq_file *c,
@@ -791,7 +791,7 @@ static void show_kernel_module_request(struct seq_file *c,
 	struct tsem_kernel_args *args = &ep->CELL.kernel;
 
 	show_event(c, ep);
-	tsem_fs_show_key(c, "}", "kmod_name", "%s", args->out.kmod_name);
+	tsem_fs_show_key(c, "kmod_name", "}", "%s", args->out.kmod_name);
 }
 
 static void show_kernel_load_data(struct seq_file *c, struct tsem_event *ep)
@@ -799,8 +799,8 @@ static void show_kernel_load_data(struct seq_file *c, struct tsem_event *ep)
 	struct tsem_kernel_args *args = &ep->CELL.kernel;
 
 	show_event(c, ep);
-	tsem_fs_show_key(c, ",", "id", "%d", args->id);
-	tsem_fs_show_key(c, "}", "contents", "%d", args->contents);
+	tsem_fs_show_key(c, "id", ",", "%d", args->id);
+	tsem_fs_show_key(c, "contents", "}", "%d", args->contents);
 }
 
 static void show_kernel_read_file(struct seq_file *c, struct tsem_event *ep)
@@ -810,8 +810,8 @@ static void show_kernel_read_file(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_file(c, ", ", &args->out.file);
-	tsem_fs_show_key(c, ",", "id", "%d", args->id);
-	tsem_fs_show_key(c, "}", "contents", "%d", args->contents);
+	tsem_fs_show_key(c, "id", ",", "%d", args->id);
+	tsem_fs_show_key(c, "contents", "}", "%d", args->contents);
 }
 
 static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
@@ -820,9 +820,9 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "cross", "%u", args->cross_model);
-	tsem_fs_show_key(c, ",", "signal", "%u", args->signal);
-	tsem_fs_show_key(c, "}", "target", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "cross", ",", "%u", args->cross_model);
+	tsem_fs_show_key(c, "signal", ",", "%u", args->signal);
+	tsem_fs_show_key(c, "target", "}", "%*phN", tsem_digestsize(),
 			 args->target);
 }
 
@@ -832,7 +832,7 @@ static void show_task_ptraceme(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, "}", "source", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "source", "}", "%*phN", tsem_digestsize(),
 			 args->source);
 }
 
@@ -842,9 +842,9 @@ static void show_task_setpgid(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "task", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "task", ",", "%*phN", tsem_digestsize(),
 			 args->target);
-	tsem_fs_show_key(c, "}", "source", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "source", "}", "%*phN", tsem_digestsize(),
 			 args->source);
 }
 
@@ -854,7 +854,7 @@ static void show_task_getpgid(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, "}", "task", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "task", "}", "%*phN", tsem_digestsize(),
 			 args->target);
 }
 
@@ -864,9 +864,9 @@ static void show_task_nice(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "task", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "task", ",", "%*phN", tsem_digestsize(),
 			 args->target);
-	tsem_fs_show_key(c, "}", "nice", "%d", args->u.value);
+	tsem_fs_show_key(c, "nice", "}", "%d", args->u.value);
 }
 
 static void show_task_prlimit(struct seq_file *c, struct tsem_event *ep)
@@ -877,7 +877,7 @@ static void show_task_prlimit(struct seq_file *c, struct tsem_event *ep)
 
 	show_creds(c, "cred", ", ", &args->out.cred);
 	show_creds(c, "tcred", ", ", &args->out.tcred);
-	tsem_fs_show_key(c, "}", "flags", "%d", args->flags);
+	tsem_fs_show_key(c, "flags", "}", "%d", args->flags);
 }
 
 static void show_task_setrlimit(struct seq_file *c, struct tsem_event *ep)
@@ -886,11 +886,11 @@ static void show_task_setrlimit(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "task", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "task", ",", "%*phN", tsem_digestsize(),
 			 args->target);
-	tsem_fs_show_key(c, ",", "resource", "%u", args->u.resource);
-	tsem_fs_show_key(c, ",", "current", "%llu", args->cur);
-	tsem_fs_show_key(c, "}", "max", "%llu", args->max);
+	tsem_fs_show_key(c, "resource", ",", "%u", args->u.resource);
+	tsem_fs_show_key(c, "current", ",", "%llu", args->cur);
+	tsem_fs_show_key(c, "max", "}", "%llu", args->max);
 }
 
 static void show_task_prctl(struct seq_file *c, struct tsem_event *ep)
@@ -899,11 +899,11 @@ static void show_task_prctl(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "option", "%d", args->option);
-	tsem_fs_show_key(c, ",", "arg2", "%llu", args->arg2);
-	tsem_fs_show_key(c, ",", "arg3", "%llu", args->arg3);
-	tsem_fs_show_key(c, ",", "arg4", "%llu", args->arg4);
-	tsem_fs_show_key(c, "}", "arg5", "%llu", args->arg5);
+	tsem_fs_show_key(c, "option", ",", "%d", args->option);
+	tsem_fs_show_key(c, "arg2", ",", "%llu", args->arg2);
+	tsem_fs_show_key(c, "arg3", ",", "%llu", args->arg3);
+	tsem_fs_show_key(c, "arg4", ",", "%llu", args->arg4);
+	tsem_fs_show_key(c, "arg5", "}", "%llu", args->arg5);
 }
 
 static void show_task_value(struct seq_file *c, struct tsem_event *ep,
@@ -913,9 +913,9 @@ static void show_task_value(struct seq_file *c, struct tsem_event *ep,
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "task", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "task", ",", "%*phN", tsem_digestsize(),
 			 args->target);
-	tsem_fs_show_key(c, "}", key, "%d", args->u.value);
+	tsem_fs_show_key(c, key, "}", "%d", args->u.value);
 }
 
 static void show_inode_getattr(struct seq_file *c, struct tsem_event *ep)
@@ -934,11 +934,11 @@ static void show_inode_setattr(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_dentry(c, "dentry", ", ", &args->out.dentry);
-	tsem_fs_show_key(c, ",", "valid", "%u", args->out.valid);
-	tsem_fs_show_key(c, ",", "mode", "0%o", args->out.mode);
-	tsem_fs_show_key(c, ",", "uid", "%u", args->out.uid);
-	tsem_fs_show_key(c, ",", "gid", "%u", args->out.gid);
-	tsem_fs_show_key(c, "}", "size", "%lu", args->out.size);
+	tsem_fs_show_key(c, "valid", ",", "%u", args->out.valid);
+	tsem_fs_show_key(c, "mode", ",", "0%o", args->out.mode);
+	tsem_fs_show_key(c, "uid", ",", "%u", args->out.uid);
+	tsem_fs_show_key(c, "gid", ",", "%u", args->out.gid);
+	tsem_fs_show_key(c, "size", "}", "%lu", args->out.size);
 }
 
 static void show_inode_setxattr(struct seq_file *c, struct tsem_event *ep)
@@ -948,9 +948,9 @@ static void show_inode_setxattr(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_dentry(c, "dentry", ", ", &args->out.dentry);
-	tsem_fs_show_key(c, ",", "name", "%s", args->out.name);
-	tsem_fs_show_key(c, ",", "value", "%s", args->out.encoded_value);
-	tsem_fs_show_key(c, "}", "flags", "%d", args->out.flags);
+	tsem_fs_show_key(c, "name", ",", "%s", args->out.name);
+	tsem_fs_show_key(c, "value", ",", "%s", args->out.encoded_value);
+	tsem_fs_show_key(c, "flags", "}", "%d", args->out.flags);
 }
 
 static void show_inode_getxattr(struct seq_file *c, struct tsem_event *ep)
@@ -960,7 +960,7 @@ static void show_inode_getxattr(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_dentry(c, "dentry", ", ", &args->out.dentry);
-	tsem_fs_show_key(c, "}", "name", "%s", args->out.name);
+	tsem_fs_show_key(c, "name", "}", "%s", args->out.name);
 }
 
 static void show_inode_listxattr(struct seq_file *c, struct tsem_event *ep)
@@ -979,7 +979,7 @@ static void show_key_alloc(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_creds(c, "cred", ", ", &args->out.cred);
-	tsem_fs_show_key(c, "}", "flags", "%llu", args->flags);
+	tsem_fs_show_key(c, "flags", "}", "%llu", args->flags);
 }
 
 static void show_key_permission(struct seq_file *c, struct tsem_event *ep)
@@ -988,13 +988,13 @@ static void show_key_permission(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "possessed", "%u", args->out.possessed);
-	tsem_fs_show_key(c, ",", "uid", "%u", args->out.uid);
-	tsem_fs_show_key(c, ",", "gid", "%u", args->out.gid);
-	tsem_fs_show_key(c, ", ", "flags", "%lu", args->out.flags);
+	tsem_fs_show_key(c, "possessed", ",", "%u", args->out.possessed);
+	tsem_fs_show_key(c, "uid", ",", "%u", args->out.uid);
+	tsem_fs_show_key(c, "gid", ",", "%u", args->out.gid);
+	tsem_fs_show_key(c, "flags", ", ", "%lu", args->out.flags);
 
 	show_creds(c, "cred", ", ", &args->out.cred);
-	tsem_fs_show_key(c, "}", "perm", "%u", args->out.perm);
+	tsem_fs_show_key(c, "perm", "}", "%u", args->out.perm);
 }
 
 static void show_sb_mount(struct seq_file *c, struct tsem_event *ep)
@@ -1004,14 +1004,14 @@ static void show_sb_mount(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	if (args->out.dev_name)
-		tsem_fs_show_key(c, ",", "dev_name", "%s", args->out.dev_name);
+		tsem_fs_show_key(c, "dev_name", ",", "%s", args->out.dev_name);
 
 	show_path(c, "path", ", ", &args->out.path);
 
 	if (args->out.type)
-		tsem_fs_show_key(c, ",", "type", "%s", args->out.type);
+		tsem_fs_show_key(c, "type", ",", "%s", args->out.type);
 
-	tsem_fs_show_key(c, "}", "flags", "%lu", args->flags);
+	tsem_fs_show_key(c, "flags", "}", "%lu", args->flags);
 }
 
 static void show_sb_umount(struct seq_file *c, struct tsem_event *ep)
@@ -1022,7 +1022,7 @@ static void show_sb_umount(struct seq_file *c, struct tsem_event *ep)
 
 	show_path(c, "path", ", ", &args->out.path);
 	show_inode(c, "inode", ", ", &args->out.inode);
-	tsem_fs_show_key(c, "}", "flags", "%d", args->flags);
+	tsem_fs_show_key(c, "flags", "}", "%d", args->flags);
 }
 
 static void show_sb_remount(struct seq_file *c, struct tsem_event *ep)
@@ -1033,8 +1033,8 @@ static void show_sb_remount(struct seq_file *c, struct tsem_event *ep)
 
 	show_path(c, "path", ", ", &args->out.path);
 	show_inode(c, "inode", ", ", &args->out.inode);
-	tsem_fs_show_key(c, ",", "type", "%s", args->out.type);
-	tsem_fs_show_key(c, "}", "sb_flags", "%lu", args->flags);
+	tsem_fs_show_key(c, "type", ",", "%s", args->out.type);
+	tsem_fs_show_key(c, "sb_flags", "}", "%lu", args->flags);
 }
 
 static void show_sb_statfs(struct seq_file *c, struct tsem_event *ep)
@@ -1063,12 +1063,12 @@ static void show_quotactl(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "cmds", "%d", args->cmds);
-	tsem_fs_show_key(c, ",", "type", "%d", args->type);
-	tsem_fs_show_key(c, ",", "id", "%d", args->id);
+	tsem_fs_show_key(c, "cmds", ",", "%d", args->cmds);
+	tsem_fs_show_key(c, "type", ",", "%d", args->type);
+	tsem_fs_show_key(c, "id", ",", "%d", args->id);
 
-	tsem_fs_show_key(c, ",", "s_flags", "%d", args->out.s_flags);
-	tsem_fs_show_key(c, ",", "fstype", "%s", args->out.fstype);
+	tsem_fs_show_key(c, "s_flags", ",", "%d", args->out.s_flags);
+	tsem_fs_show_key(c, "fstype", ",", "%s", args->out.fstype);
 
 	show_inode(c, "inode", ", ", &args->out.inode);
 	show_path(c, "path", "}", &args->out.path);
@@ -1090,8 +1090,8 @@ static void show_bpf(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "cmd", "%d", args->bpf.cmd);
-	tsem_fs_show_key(c, "}", "size", "%u", args->bpf.size);
+	tsem_fs_show_key(c, "cmd", ",", "%d", args->bpf.cmd);
+	tsem_fs_show_key(c, "size", "}", "%u", args->bpf.size);
 }
 
 static void show_bpf_map(struct seq_file *c, struct tsem_event *ep)
@@ -1100,8 +1100,8 @@ static void show_bpf_map(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "map_type", "%d", args->map.map_type);
-	tsem_fs_show_key(c, "}", "fmode", "%u", args->map.fmode);
+	tsem_fs_show_key(c, "map_type", ",", "%d", args->map.map_type);
+	tsem_fs_show_key(c, "fmode", "}", "%u", args->map.fmode);
 }
 
 static void show_bpf_prog(struct seq_file *c, struct tsem_event *ep)
@@ -1110,8 +1110,8 @@ static void show_bpf_prog(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, ",", "type", "%d", args->prog.type);
-	tsem_fs_show_key(c, "}", "attach_type", "%d", args->prog.attach_type);
+	tsem_fs_show_key(c, "type", ",", "%d", args->prog.type);
+	tsem_fs_show_key(c, "attach_type", "}", "%d", args->prog.attach_type);
 }
 
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
@@ -2008,11 +2008,11 @@ void tsem_fs_show_field(struct seq_file *c, const char *field)
  * tesm_fs_tsem_fs_show_key() - Output a JSON key/value pair
  * @sf: A pointer to the seq_file structure that the field description
  *	is to be written to.
+ * @key: A pointer to the null-terminated character buffer containing
+ *	 the key description.
  * @term: A pointer to a null-terminated character buffer containing
  *	  the string that is to be used for terminating the key/value
  *	  pair.
- * @key: A pointer to the null-terminated character buffer containing
- *	 the key description.
  * @fmt: The printf format that is to be used for formatting the
  *	 value of the key.
  *
@@ -2020,8 +2020,8 @@ void tsem_fs_show_field(struct seq_file *c, const char *field)
  * JSON key/value pair that provides one of characteristics of an
  * event description field.
  */
-void tsem_fs_show_key(struct seq_file *c, char *term, char *key,
-		      char *fmt, ...)
+void tsem_fs_show_key(struct seq_file *c, char *key, char *term, char *fmt,
+		      ...)
 {
 	va_list args;
 
