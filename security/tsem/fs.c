@@ -430,10 +430,10 @@ static void show_inode_link(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_inode(c, "dir", ", ", &args->out.dir);
-
 	show_dentry(c, "old_dentry", &args->out.dentry);
 	seq_puts(c, ", ");
+
+	show_inode(c, "dir", ", ", &args->out.dir);
 
 	show_dentry(c, "new_dentry", &args->out.new_dentry);
 	seq_putc(c, '}');

@@ -509,6 +509,25 @@ static int add_inode_rename(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_inode_link(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_inode_args *args = &ep->CELL.inode;
+
+	retn = add_dentry(shash, &args->out.dentry);
+	if (retn)
+		goto done;
+
+	retn = add_inode(shash, &args->out.dir);
+	if (retn)
+		goto done;
+
+	retn = add_dentry(shash, &args->out.new_dentry);
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -682,15 +701,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_LINK:
-		retn = add_inode(shash, &ep->CELL.inode.out.dir);
-		if (retn)
-			goto done;
-
-		retn = add_dentry(shash, &ep->CELL.inode.out.dentry);
-		if (retn)
-			goto done;
-
-		retn = add_dentry(shash, &ep->CELL.inode.out.new_dentry);
+		retn = add_inode_link(shash, ep);
 		if (retn)
 			goto done;
 
