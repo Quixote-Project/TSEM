@@ -1209,6 +1209,8 @@ struct tsem_netlink_args {
  *	     by the superblock security handlers.
  * @in.path2: The second path argument passed to the move_mount and
  *	      sb_pivotroot security handlers.
+ * @out.dentry: The TSEM representation of the dentry argument to the
+ *		handler.
  * @out.inode: The TSEM representation of the inode backing the dentry
  *	       argument to an LSM handler.
  * @out.path: The TSEM representation of the incoming path argument.
@@ -1241,6 +1243,7 @@ struct tsem_sb_args {
 		} in;
 
 		struct {
+			struct tsem_dentry dentry;
 			struct tsem_inode_cell inode;
 			struct tsem_path path;
 			char *dev_name;

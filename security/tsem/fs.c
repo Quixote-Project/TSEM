@@ -1020,8 +1020,7 @@ static void show_sb_umount(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_path(c, "path", ", ", &args->out.path);
-	show_inode(c, "inode", ", ", &args->out.inode);
+	show_dentry(c, "mnt", ", ", &args->out.dentry);
 	tsem_fs_show_key(c, "flags", "}", "%d", args->flags);
 }
 
