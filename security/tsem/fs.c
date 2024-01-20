@@ -312,7 +312,8 @@ static int config_namespace(enum tsem_control_type type, const char *arg)
 	return retn;
 }
 
-static void show_creds(struct seq_file *c, char *key, struct tsem_COE *cp)
+static void show_creds(struct seq_file *c, char *key, char *term,
+		       struct tsem_COE *cp)
 {
 	tsem_fs_show_field(c, key);
 	tsem_fs_show_key(c, ",", "uid", "%u", cp->uid);
@@ -325,6 +326,8 @@ static void show_creds(struct seq_file *c, char *key, struct tsem_COE *cp)
 	tsem_fs_show_key(c, ",", "fsgid", "%u", cp->fsgid);
 	tsem_fs_show_key(c, ",", "capeff", "0x%llx", cp->capeff.value);
 	tsem_fs_show_key(c, "}", "securebits", "%u", cp->securebits);
+
+	seq_puts(c, term);
 }
 
 static void show_event(struct seq_file *c, struct tsem_event *ep)
@@ -884,12 +887,8 @@ static void show_task_prlimit(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_creds(c, "cred", &args->out.cred);
-	seq_puts(c, ", ");
-
-	show_creds(c, "tcred", &args->out.tcred);
-	seq_puts(c, ", ");
-
+	show_creds(c, "cred", ", ", &args->out.cred);
+	show_creds(c, "tcred", ", ", &args->out.tcred);
 	tsem_fs_show_key(c, "}", "flags", "%d", args->flags);
 }
 
@@ -991,9 +990,7 @@ static void show_key_alloc(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_creds(c, "cred", &args->out.cred);
-	seq_puts(c, ", ");
-
+	show_creds(c, "cred", ", ", &args->out.cred);
 	tsem_fs_show_key(c, "}", "flags", "%llu", args->flags);
 }
 
@@ -1008,9 +1005,7 @@ static void show_key_permission(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, ",", "gid", "%u", args->out.gid);
 	tsem_fs_show_key(c, ", ", "flags", "%lu", args->out.flags);
 
-	show_creds(c, "cred", &args->out.cred);
-	seq_puts(c, ", ");
-
+	show_creds(c, "cred", ", ", &args->out.cred);
 	tsem_fs_show_key(c, "}", "perm", "%u", args->out.perm);
 }
 
