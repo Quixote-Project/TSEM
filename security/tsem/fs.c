@@ -574,10 +574,10 @@ static void show_netlink(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "}", "nsid", "%d", args->out.nsid);
 }
 
-static void show_ipc_cred(struct seq_file *c, char *term,
+static void show_ipc_cred(struct seq_file *c, char *key, char *term,
 			  struct tsem_ipc_args *args)
 {
-	tsem_fs_show_field(c, "ipccred");
+	tsem_fs_show_field(c, key);
 	tsem_fs_show_key(c, ",", "uid", "%u", args->out.perm.uid);
 	tsem_fs_show_key(c, ",", "gid", "%u", args->out.perm.gid);
 	tsem_fs_show_key(c, ",", "cuid", "%u", args->out.perm.cuid);
@@ -595,7 +595,7 @@ static void show_ipc_permission(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_ipc_cred(c, ", ", args);
+	show_ipc_cred(c, "ipcp", ", ", args);
 	tsem_fs_show_key(c, "}", "flag", "%u", args->perm_flag);
 }
 
@@ -606,7 +606,7 @@ static void show_ipc_shm_value(struct seq_file *c, struct tsem_event *ep,
 
 	show_event(c, ep);
 
-	show_ipc_cred(c, ", ", args);
+	show_ipc_cred(c, "perm", ", ", args);
 	tsem_fs_show_key(c, "}", name, "%d", args->perm_flag);
 }
 
@@ -617,7 +617,7 @@ static void show_msg_queue_msgrcv(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_ipc_cred(c, ", ", args);
+	show_ipc_cred(c, "perm", ", ", args);
 	tsem_fs_show_key(c, ",", "target", "%*phN", tsem_digestsize(),
 			 args->out.target);
 	tsem_fs_show_key(c, ",", "type", "%ld", args->type);
@@ -630,7 +630,7 @@ static void show_sem_semop(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	show_ipc_cred(c, ", ", args);
+	show_ipc_cred(c, "perm", ", ", args);
 	tsem_fs_show_key(c, ",", "nsops", "%u", args->nsops);
 	tsem_fs_show_key(c, "}", "alter", "%d", args->value);
 }
