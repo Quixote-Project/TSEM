@@ -593,6 +593,31 @@ static int add_quotactl(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_mmap_file(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_mmap_file_args *args = &ep->CELL.mmap_file;
+
+	if (!args->anonymous) {
+		retn = add_file(shash, &args->file);
+		if (retn)
+			goto done;
+	}
+
+	retn = add_u32(shash, args->reqprot);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->prot);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->flags);
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -859,23 +884,9 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_MMAP_FILE:
-		retn = add_u32(shash, ep->CELL.mmap_file.reqprot);
+		retn = add_mmap_file(shash, ep);
 		if (retn)
 			goto done;
-
-		retn = add_u32(shash, ep->CELL.mmap_file.prot);
-		if (retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.mmap_file.flags);
-		if (retn)
-			goto done;
-
-		if (!ep->CELL.mmap_file.anonymous) {
-			retn = add_file(shash, &ep->CELL.mmap_file.file);
-			if (retn)
-				goto done;
-		}
 
 		retn = crypto_shash_final(shash, mapping);
 		break;

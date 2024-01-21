@@ -524,14 +524,11 @@ static void show_mmap(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, "type", ",", "%u", args->anonymous);
+	if (!args->anonymous)
+		show_file(c, ", ", &args->file);
 	tsem_fs_show_key(c, "reqprot", ",", "%u", args->reqprot);
 	tsem_fs_show_key(c, "prot", ",", "%u", args->prot);
-
-	if (!args->anonymous)
-		show_file(c, "}", &args->file);
-	else
-		tsem_fs_show_key(c, "flags", "}", "%u", args->flags);
+	tsem_fs_show_key(c, "flags", "}", "%u", args->flags);
 }
 
 static void show_file_ioctl(struct seq_file *c, struct tsem_event *ep)
