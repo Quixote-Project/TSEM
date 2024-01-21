@@ -138,33 +138,33 @@ int tsem_export_show(struct seq_file *sf, void *v)
 
 	switch (exp->type) {
 	case AGGREGATE_EVENT:
-		tsem_fs_show_key(sf, "}, ", "type", "%s", "aggregate");
+		tsem_fs_show_key(sf, "type", "}, ", "%s", "aggregate");
 		tsem_fs_show_field(sf, "aggregate");
-		tsem_fs_show_key(sf, "}", "value", "%*phN", tsem_digestsize(),
+		tsem_fs_show_key(sf, "value", "}", "%*phN", tsem_digestsize(),
 				 exp->u.aggregate);
 		break;
 
 	case EXPORT_EVENT:
-		tsem_fs_show_key(sf, "}, ", "type", "%s", "event");
+		tsem_fs_show_key(sf, "type", "}, ", "%s", "event");
 		tsem_fs_show_trajectory(sf, exp->u.ep);
 		locked = exp->u.ep->locked;
 		tsem_event_put(exp->u.ep);
 		break;
 
 	case EXPORT_ASYNC_EVENT:
-		tsem_fs_show_key(sf, "}, ", "type", "%s", "async_event");
+		tsem_fs_show_key(sf, "type", "}, ", "%s", "async_event");
 		tsem_fs_show_trajectory(sf, exp->u.ep);
 		locked = exp->u.ep->locked;
 		tsem_event_put(exp->u.ep);
 		break;
 
 	case LOG_EVENT:
-		tsem_fs_show_key(sf, "}, ", "type", "%s", "log");
+		tsem_fs_show_key(sf, "type", "}, ", "%s", "log");
 		tsem_fs_show_field(sf, "log");
-		tsem_fs_show_key(sf, ",", "process", "%s", exp->u.action.comm);
-		tsem_fs_show_key(sf, ",", "event", "%s",
+		tsem_fs_show_key(sf, "process", ",", "%s", exp->u.action.comm);
+		tsem_fs_show_key(sf, "event", ",", "%s",
 				 tsem_names[exp->u.action.type]);
-		tsem_fs_show_key(sf, "}", "action", "%s",
+		tsem_fs_show_key(sf, "action", "}", "%s",
 				 tsem_actions[exp->u.action.action]);
 		break;
 	}
