@@ -635,14 +635,15 @@ static void show_sem_semop(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "alter", "}", "%d", args->value);
 }
 
-static void show_socket_pair(struct seq_file *c, struct tsem_event *ep)
+static void show_socket_pair(struct seq_file *c, struct tsem_event *ep,
+			     char *first, char *second)
 {
 	struct tsem_socket_args *args = &ep->CELL.socket;
 
 	show_event(c, ep);
 
-	show_socket_info(c, "socka", ", ", &args->out.socka);
-	show_socket_info(c, "sockb", "}", &args->out.sockb);
+	show_socket_info(c, first, ", ", &args->out.socka);
+	show_socket_info(c, second, "}", &args->out.sockb);
 }
 
 static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
@@ -1857,8 +1858,10 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_UNIX_STREAM_CONNECT:
 	case TSEM_UNIX_MAY_SEND:
+		show_socket_pair(c, ep, "sock", "other");
+		break;
 	case TSEM_SOCKET_SOCKETPAIR:
-		show_socket_pair(c, ep);
+		show_socket_pair(c, ep, "socka", "sockb");
 		break;
 	case TSEM_SOCKET_CREATE:
 		show_socket_create(c, ep);
