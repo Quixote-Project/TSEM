@@ -285,6 +285,11 @@ static int add_socket(struct shash_desc *shash, struct tsem_socket *args)
 	return retn;
 }
 
+static int add_task(struct shash_desc *shash, u8 *task_id)
+{
+	return crypto_shash_update(shash, task_id, tsem_digestsize());
+}
+
 static int add_ipc_cred(struct shash_desc *shash, struct tsem_ipc_args *args)
 {
 	int retn;
@@ -613,6 +618,29 @@ static int add_mmap_file(struct shash_desc *shash, struct tsem_event *ep)
 		goto done;
 
 	retn = add_u32(shash, args->flags);
+
+ done:
+	return retn;
+}
+
+static int add_task_setrlimit(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
+
+	retn = add_task(shash, args->target);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->u.resource);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, args->cur);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, args->max);
 
  done:
 	return retn;
@@ -1106,21 +1134,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_TASK_SETRLIMIT:
-		p = ep->CELL.task_kill.target;
-		size = sizeof(ep->CELL.task_kill.target);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.task_kill.u.resource);
-		if (retn)
-			goto done;
-
-		retn = add_u64(shash, ep->CELL.task_kill.cur);
-		if (retn)
-			goto done;
-
-		retn = add_u64(shash, ep->CELL.task_kill.max);
+		retn = add_task_setrlimit(shash, ep);
 		if (retn)
 			goto done;
 

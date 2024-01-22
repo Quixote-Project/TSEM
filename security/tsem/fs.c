@@ -886,9 +886,11 @@ static void show_task_setrlimit(struct seq_file *c, struct tsem_event *ep)
 
 	tsem_fs_show_key(c, "task", ",", "%*phN", tsem_digestsize(),
 			 args->target);
+	tsem_fs_show_field(c, "new_rlim");
 	tsem_fs_show_key(c, "resource", ",", "%u", args->u.resource);
 	tsem_fs_show_key(c, "current", ",", "%llu", args->cur);
 	tsem_fs_show_key(c, "max", "}", "%llu", args->max);
+	seq_putc(c, '}');
 }
 
 static void show_task_prctl(struct seq_file *c, struct tsem_event *ep)
