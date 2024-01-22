@@ -646,6 +646,21 @@ static int add_task_setrlimit(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_move_path(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_sb_args *args = &ep->CELL.sb;
+
+	retn = add_path(shash, &args->out.path);
+	if (retn)
+		goto done;
+
+	add_path(shash, &args->out.path2);
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -1298,11 +1313,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 	case TSEM_SB_PIVOTROOT:
 	case TSEM_MOVE_MOUNT:
-		retn = add_path(shash, &ep->CELL.sb.out.path);
-		if (retn)
-			goto done;
-
-		retn = add_path(shash, &ep->CELL.sb.out.path2);
+		retn = add_move_path(shash, ep);
 		if (retn)
 			goto done;
 

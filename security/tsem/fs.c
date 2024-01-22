@@ -1046,14 +1046,15 @@ static void show_sb_statfs(struct seq_file *c, struct tsem_event *ep)
 	show_dentry(c, "dentry", "}", &args->out.dentry);
 }
 
-static void show_move_mount(struct seq_file *c, struct tsem_event *ep)
+static void show_move_path(struct seq_file *c, struct tsem_event *ep,
+			   char *path1, char *path2)
 {
 	struct tsem_sb_args *args = &ep->CELL.sb;
 
 	show_event(c, ep);
 
-	show_path(c, "path1", ", ", &args->out.path);
-	show_path(c, "path2", "}", &args->out.path2);
+	show_path(c, path1, ", ", &args->out.path);
+	show_path(c, path2, "}", &args->out.path2);
 }
 
 static void show_quotactl(struct seq_file *c, struct tsem_event *ep)
@@ -1965,8 +1966,10 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		show_sb_statfs(c, ep);
 		break;
 	case TSEM_SB_PIVOTROOT:
+		show_move_path(c, ep, "old_path", "new_path");
+		break;
 	case TSEM_MOVE_MOUNT:
-		show_move_mount(c, ep);
+		show_move_path(c, ep, "from_path", "to_path");
 		break;
 	case TSEM_QUOTACTL:
 		show_quotactl(c, ep);
