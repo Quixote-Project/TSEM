@@ -661,6 +661,25 @@ static int add_move_path(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_task_kill(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
+
+	retn = add_task(shash, args->target);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->signal);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->cross_model);
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -1070,23 +1089,11 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_TASK_KILL:
-		p = (u8 *) &ep->CELL.task_kill.cross_model;
-		size = sizeof(ep->CELL.task_kill.cross_model);
-		retn = crypto_shash_update(shash, p, size);
+		retn = add_task_kill(shash, ep);
 		if (retn)
 			goto done;
 
-		p = (u8 *) &ep->CELL.task_kill.signal;
-		size = sizeof(ep->CELL.task_kill.signal);
-		retn = crypto_shash_update(shash, p, size);
-		if (retn)
-			goto done;
-
-		p = (u8 *) &ep->CELL.task_kill.target;
-		size = sizeof(ep->CELL.task_kill.target);
-		retn = crypto_shash_finup(shash, p, size, mapping);
-		if (retn)
-			goto done;
+		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_PTRACE_TRACEME:

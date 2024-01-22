@@ -818,10 +818,10 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, "cross", ",", "%u", args->cross_model);
-	tsem_fs_show_key(c, "signal", ",", "%u", args->signal);
-	tsem_fs_show_key(c, "target", "}", "%*phN", tsem_digestsize(),
+	tsem_fs_show_key(c, "target", ",", "%*phN", tsem_digestsize(),
 			 args->target);
+	tsem_fs_show_key(c, "sig", ",", "%u", args->signal);
+	tsem_fs_show_key(c, "cross_ns", "}", "%u", args->cross_model);
 }
 
 static void show_task_ptraceme(struct seq_file *c, struct tsem_event *ep)
