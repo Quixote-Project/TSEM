@@ -742,6 +742,51 @@ static int add_inode_setattr(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_bpf(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_bpf_args *args = &ep->CELL.bpf;
+
+	retn = add_u32(shash, args->bpf.cmd);
+	if (!retn)
+		goto done;
+
+	retn = add_u32(shash, args->bpf.size);
+
+ done:
+	return retn;
+}
+
+static int add_bpf_map(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_bpf_args *args = &ep->CELL.bpf;
+
+	retn = add_u32(shash, args->map.map_type);
+	if (!retn)
+		goto done;
+
+	retn = add_u32(shash, args->map.fmode);
+
+ done:
+	return retn;
+}
+
+static int add_bpf_prog(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_bpf_args *args = &ep->CELL.bpf;
+
+	retn = add_u32(shash, args->prog.type);
+	if (!retn)
+		goto done;
+
+	retn = add_u32(shash, args->prog.attach_type);
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -1368,36 +1413,24 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_BPF:
-		retn = add_u32(shash, ep->CELL.bpf.bpf.cmd);
-		if (!retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.bpf.bpf.size);
-		if (!retn)
+		retn = add_bpf(shash, ep);
+		if (retn)
 			goto done;
 
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_BPF_MAP:
-		retn = add_u32(shash, ep->CELL.bpf.map.map_type);
-		if (!retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.bpf.map.fmode);
-		if (!retn)
+		retn = add_bpf_map(shash, ep);
+		if (retn)
 			goto done;
 
 		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_BPF_PROG:
-		retn = add_u32(shash, ep->CELL.bpf.prog.type);
-		if (!retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.bpf.prog.attach_type);
-		if (!retn)
+		retn = add_bpf_prog(shash, ep);
+		if (retn)
 			goto done;
 
 		retn = crypto_shash_final(shash, mapping);

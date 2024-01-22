@@ -1092,7 +1092,9 @@ static void show_bpf(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	tsem_fs_show_key(c, "cmd", ",", "%d", args->bpf.cmd);
+	tsem_fs_show_field(c, "attr");
 	tsem_fs_show_key(c, "size", "}", "%u", args->bpf.size);
+	seq_putc(c, '}');
 }
 
 static void show_bpf_map(struct seq_file *c, struct tsem_event *ep)
@@ -1101,7 +1103,8 @@ static void show_bpf_map(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, "map_type", ",", "%d", args->map.map_type);
+	tsem_fs_show_field(c, "map");
+	tsem_fs_show_key(c, "map_type", "}, ", "%d", args->map.map_type);
 	tsem_fs_show_key(c, "fmode", "}", "%u", args->map.fmode);
 }
 
@@ -1111,8 +1114,10 @@ static void show_bpf_prog(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
+	tsem_fs_show_field(c, "bpf_prog");
 	tsem_fs_show_key(c, "type", ",", "%d", args->prog.type);
 	tsem_fs_show_key(c, "attach_type", "}", "%d", args->prog.attach_type);
+	seq_putc(c, '}');
 }
 
 static void show_event_generic(struct seq_file *c, struct tsem_event *ep)
