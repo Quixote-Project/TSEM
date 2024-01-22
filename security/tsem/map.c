@@ -711,6 +711,37 @@ static int add_key_permission(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_inode_setattr(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_inode_attr_args *args = &ep->CELL.inode_attr;
+
+	retn = add_dentry(shash, &args->out.dentry);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->out.valid);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->out.mode);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->out.uid);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->out.gid);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, args->out.size);
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -1225,25 +1256,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_SETATTR:
-		retn = add_dentry(shash, &ep->CELL.inode_attr.out.dentry);
-
-		retn = add_u32(shash, ep->CELL.inode_attr.out.valid);
-		if (retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.inode_attr.out.mode);
-		if (retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.inode_attr.out.uid);
-		if (retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.inode_attr.out.gid);
-		if (retn)
-			goto done;
-
-		retn = add_u64(shash, ep->CELL.inode_attr.out.size);
+		retn = add_inode_setattr(shash, ep);
 		if (retn)
 			goto done;
 

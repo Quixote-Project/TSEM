@@ -934,11 +934,13 @@ static void show_inode_setattr(struct seq_file *c, struct tsem_event *ep)
 	show_event(c, ep);
 
 	show_dentry(c, "dentry", ", ", &args->out.dentry);
+	tsem_fs_show_field(c, "attr");
 	tsem_fs_show_key(c, "valid", ",", "%u", args->out.valid);
 	tsem_fs_show_key(c, "mode", ",", "0%o", args->out.mode);
 	tsem_fs_show_key(c, "uid", ",", "%u", args->out.uid);
 	tsem_fs_show_key(c, "gid", ",", "%u", args->out.gid);
 	tsem_fs_show_key(c, "size", "}", "%lu", args->out.size);
+	seq_putc(c, '}');
 }
 
 static void show_inode_setxattr(struct seq_file *c, struct tsem_event *ep)
