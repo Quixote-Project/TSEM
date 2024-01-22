@@ -988,11 +988,11 @@ static void show_key_permission(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
+	tsem_fs_show_field(c, "key_ref");
 	tsem_fs_show_key(c, "possessed", ",", "%u", args->out.possessed);
 	tsem_fs_show_key(c, "uid", ",", "%u", args->out.uid);
 	tsem_fs_show_key(c, "gid", ",", "%u", args->out.gid);
-	tsem_fs_show_key(c, "flags", ", ", "%lu", args->out.flags);
-
+	tsem_fs_show_key(c, "flags", "}, ", "%lu", args->out.flags);
 	show_creds(c, "cred", ", ", &args->out.cred);
 	tsem_fs_show_key(c, "perm", "}", "%u", args->out.perm);
 }

@@ -680,6 +680,37 @@ static int add_task_kill(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_key_permission(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_key_args *args = &ep->CELL.key;
+
+	retn = add_u32(shash, args->out.possessed);
+	if (retn)
+		goto done;
+
+	retn = add_u16(shash, args->out.uid);
+	if (retn)
+		goto done;
+
+	retn = add_u16(shash, args->out.gid);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, args->out.flags);
+	if (retn)
+		goto done;
+
+	retn = add_creds(shash, &args->out.cred);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->out.perm);
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -1243,27 +1274,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_KEY_PERMISSION:
-		retn = add_u32(shash, ep->CELL.key.out.possessed);
-		if (retn)
-			goto done;
-
-		retn = add_u16(shash, ep->CELL.key.out.uid);
-		if (retn)
-			goto done;
-
-		retn = add_u16(shash, ep->CELL.key.out.gid);
-		if (retn)
-			goto done;
-
-		retn = add_u64(shash, ep->CELL.key.out.flags);
-		if (retn)
-			goto done;
-
-		retn = add_creds(shash, &ep->CELL.key.out.cred);
-		if (retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.key.out.perm);
+		retn = add_key_permission(shash, ep);
 		if (retn)
 			goto done;
 
