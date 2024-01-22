@@ -1296,6 +1296,8 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 	case TSEM_INODE_GETATTR:
 		retn = add_dentry(shash, &ep->CELL.inode_attr.out.dentry);
+		if (retn)
+			goto done;
 
 		retn = crypto_shash_final(shash, mapping);
 		break;
