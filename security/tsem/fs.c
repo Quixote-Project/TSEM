@@ -497,8 +497,9 @@ static void show_inode_mknod(struct seq_file *c, struct tsem_event *ep)
 
 	show_dentry(c, "dentry", ", ", &args->out.dentry);
 	tsem_fs_show_key(c, "mode", ",", "0%o", args->mode);
+	tsem_fs_show_field(c, "dev");
 	tsem_fs_show_key(c, "major", ",", "%u", MAJOR(args->dev));
-	tsem_fs_show_key(c, "minor", "}", "%u", MINOR(args->dev));
+	tsem_fs_show_key(c, "minor", "}}", "%u", MINOR(args->dev));
 }
 
 static void show_inode_rename(struct seq_file *c, struct tsem_event *ep)
