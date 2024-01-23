@@ -655,7 +655,7 @@ static void show_socket_create(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "kern", "}", "%u", args->out.socka.kern);
 }
 
-static void show_socket(struct seq_file *c, struct tsem_event *ep)
+static void show_socket_connect_bind(struct seq_file *c, struct tsem_event *ep)
 {
 	struct sockaddr_in *ipv4;
 	struct sockaddr_in6 *ipv6;
@@ -665,27 +665,33 @@ static void show_socket(struct seq_file *c, struct tsem_event *ep)
 
 	show_socket_info(c, "sock", ", ", &args->out.socka);
 
+	tsem_fs_show_field(c, "addr");
 	switch (args->out.socka.family) {
 	case AF_INET:
 		ipv4 = (struct sockaddr_in *) &args->out.ipv4;
+		tsem_fs_show_field(c, "af_inet");
 		tsem_fs_show_key(c, "port", ",", "%u", ipv4->sin_port);
-		tsem_fs_show_key(c, "addr", "}", "%u", ipv4->sin_addr.s_addr);
+		tsem_fs_show_key(c, "address", "}}}", "%u",
+				 ipv4->sin_addr.s_addr);
 		break;
 	case AF_INET6:
 		ipv6 = (struct sockaddr_in6 *) &args->out.ipv6;
+		tsem_fs_show_field(c, "af_inet6");
 		tsem_fs_show_key(c, "port", ",", "%u", ipv6->sin6_port);
 		tsem_fs_show_key(c, "flow", ",", "%u", ipv6->sin6_flowinfo);
 		tsem_fs_show_key(c, "scope", ",", "%u", ipv6->sin6_scope_id);
-		tsem_fs_show_key(c, "addr", "}", "%*phN",
+		tsem_fs_show_key(c, "address", "}}}", "%*phN",
 			 (int) sizeof(ipv6->sin6_addr.in6_u.u6_addr8),
 			 ipv6->sin6_addr.in6_u.u6_addr8);
 		break;
 	case AF_UNIX:
-		tsem_fs_show_key(c, "addr", "}", "%s", args->out.path);
+		tsem_fs_show_field(c, "af_unix");
+		tsem_fs_show_key(c, "address", "}}}", "%s", args->out.path);
 		break;
 	default:
-		tsem_fs_show_key(c, "addr", "}", "%*phN", tsem_digestsize(),
-				 args->out.mapping);
+		tsem_fs_show_field(c, "af_other");
+		tsem_fs_show_key(c, "address", "}}}", "%*phN",
+				 tsem_digestsize(), args->out.mapping);
 		break;
 	}
 }
@@ -700,26 +706,31 @@ static void show_socket_accept(struct seq_file *c, struct tsem_event *ep)
 
 	show_socket_info(c, "sock", ", ", &args->out.socka);
 
+	tsem_fs_show_field(c, "addr");
 	switch (args->out.socka.family) {
 	case AF_INET:
+		tsem_fs_show_field(c, "af_inet");
 		tsem_fs_show_key(c, "port", ",", "%u",
 				 args->out.ipv4.sin_port);
-		tsem_fs_show_key(c, "addr", "}", "%u",
+		tsem_fs_show_key(c, "address", "}}}", "%u",
 				 args->out.ipv4.sin_addr);
 		break;
 	case AF_INET6:
+		tsem_fs_show_field(c, "af_inet6");
 		tsem_fs_show_key(c, "port", ",", "%u",
 				 args->out.ipv6.sin6_port);
 		p = args->out.ipv6.sin6_addr.in6_u.u6_addr8;
 		size = sizeof(args->out.ipv6.sin6_addr.in6_u.u6_addr8);
-		tsem_fs_show_key(c, "addr", "}", "%*phN", size, p);
+		tsem_fs_show_key(c, "address", "}}}", "%*phN", size, p);
 		break;
 	case AF_UNIX:
-		tsem_fs_show_key(c, "addr", "}", "%s", args->out.path);
+		tsem_fs_show_field(c, "af_unix");
+		tsem_fs_show_key(c, "addr", "}}}", "%s", args->out.path);
 		break;
 	default:
-		tsem_fs_show_key(c, "addr", "}", "%*phN", tsem_digestsize(),
-				 args->out.mapping);
+		tsem_fs_show_field(c, "af_other");
+		tsem_fs_show_key(c, "address", "}}}", "%*phN",
+				 tsem_digestsize(), args->out.mapping);
 		break;
 	}
 }
@@ -748,19 +759,22 @@ static void show_socket_msg(struct seq_file *c, struct tsem_event *ep)
 			 &args->out.socka);
 
 	if (args->out.have_addr) {
+		tsem_fs_show_field(c, "addr");
 		switch (args->out.socka.family) {
 		case AF_INET:
 			ipv4 = &args->out.ipv4;
+			tsem_fs_show_field(c, "af_inet");
 			tsem_fs_show_key(c, "port", ",", "%u", ipv4->sin_port);
-			tsem_fs_show_key(c, "addr", "}", "%u",
+			tsem_fs_show_key(c, "addrress", "}}}", "%u",
 					 ipv4->sin_addr.s_addr);
 			break;
 		case AF_INET6:
 			ipv6 = &args->out.ipv6;
 			size = sizeof(ipv6->sin6_addr.in6_u.u6_addr8);
+			tsem_fs_show_field(c, "af_inet6");
 			tsem_fs_show_key(c, "port", ",", "%u",
 					 ipv6->sin6_port);
-			tsem_fs_show_key(c, "addr", "}", "%*phN", size,
+			tsem_fs_show_key(c, "address", "}}}", "%*phN", size,
 					 ipv6->sin6_addr.in6_u.u6_addr8);
 			break;
 		}
@@ -1875,7 +1889,7 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_SOCKET_CONNECT:
 	case TSEM_SOCKET_BIND:
-		show_socket(c, ep);
+		show_socket_connect_bind(c, ep);
 		break;
 	case TSEM_SOCKET_SENDMSG:
 	case TSEM_SOCKET_RECVMSG:
