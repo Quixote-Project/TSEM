@@ -459,10 +459,21 @@ static void show_settime(struct seq_file *c, struct tsem_event *ep)
 
 	show_event(c, ep);
 
-	tsem_fs_show_key(c, "seconds", ",", "%d", args->seconds);
-	tsem_fs_show_key(c, "nsecs", ",", "%d", args->nsecs);
-	tsem_fs_show_key(c, "minuteswest", ",", "%d", args->minuteswest);
-	tsem_fs_show_key(c, "dsttime", "}", "%d", args->dsttime);
+	if (args->have_ts) {
+		tsem_fs_show_field(c, "ts");
+		tsem_fs_show_key(c, "seconds", ",", "%d", args->seconds);
+		tsem_fs_show_key(c, "nsecs", args->have_tz ? "}, " : "}",
+				 "%d", args->nsecs);
+	}
+
+	if (args->have_tz) {
+		tsem_fs_show_field(c, "ts");
+		tsem_fs_show_key(c, "minuteswest", ",", "%d",
+				 args->minuteswest);
+		tsem_fs_show_key(c, "dsttime", "}", "%d", args->dsttime);
+	}
+
+	seq_putc(c, '}');
 }
 
 static void show_inode_symlink(struct seq_file *c, struct tsem_event *ep)

@@ -787,6 +787,35 @@ static int add_bpf_prog(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_settime(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_time_args *args = &ep->CELL.time;
+
+	if (args->have_ts) {
+		retn = add_u64(shash, ep->CELL.time.seconds);
+		if (retn)
+			goto done;
+
+		retn = add_u64(shash, ep->CELL.time.nsecs);
+		if (retn)
+			goto done;
+	}
+
+	if (args->have_tz) {
+		retn = add_u32(shash, ep->CELL.time.minuteswest);
+		if (retn)
+			goto done;
+
+		retn = add_u32(shash, ep->CELL.time.dsttime);
+		if (retn)
+			goto done;
+	}
+
+ done:
+	return retn;
+}
+
 static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 {
 	int retn = 0, size;
@@ -940,19 +969,7 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_SETTIME:
-		retn = add_u64(shash, ep->CELL.time.seconds);
-		if (retn)
-			goto done;
-
-		retn = add_u64(shash, ep->CELL.time.nsecs);
-		if (retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.time.minuteswest);
-		if (retn)
-			goto done;
-
-		retn = add_u32(shash, ep->CELL.time.dsttime);
+		retn = add_settime(shash, ep);
 		if (retn)
 			goto done;
 

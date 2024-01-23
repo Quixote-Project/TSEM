@@ -1482,8 +1482,11 @@ struct tsem_kernel_args {
  * the TSEM_SETTIME handler.
  */
 struct tsem_time_args {
+	bool have_ts;
 	long seconds;
 	long nsecs;
+
+	bool have_tz;
 	int minuteswest;
 	int dsttime;
 };

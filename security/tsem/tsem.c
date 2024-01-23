@@ -1704,10 +1704,12 @@ static int tsem_settime(const struct timespec64 *ts, const struct timezone *tz)
 		return -ENOMEM;
 
 	if (ts) {
+		ep->CELL.time.have_ts = true;
 		ep->CELL.time.seconds = ts->tv_sec;
 		ep->CELL.time.nsecs = ts->tv_nsec;
 	}
 	if (tz) {
+		ep->CELL.time.have_tz = true;
 		ep->CELL.time.minuteswest = tz->tz_minuteswest;
 		ep->CELL.time.dsttime = tz->tz_dsttime;
 	}
