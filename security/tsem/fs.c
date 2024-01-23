@@ -538,7 +538,6 @@ static void show_mmap(struct seq_file *c, struct tsem_event *ep)
 
 	if (!args->anonymous)
 		show_file(c, ", ", &args->file);
-	tsem_fs_show_key(c, "reqprot", ",", "%u", args->reqprot);
 	tsem_fs_show_key(c, "prot", ",", "%u", args->prot);
 	tsem_fs_show_key(c, "flags", "}", "%u", args->flags);
 }

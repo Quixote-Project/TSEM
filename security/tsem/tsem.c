@@ -328,8 +328,8 @@ static int tsem_file_open(struct file *file)
 	return dispatch_event(ep);
 }
 
-static int tsem_mmap_file(struct file *file, unsigned long reqprot,
-			  unsigned long prot, unsigned long flags)
+static int tsem_mmap_file(struct file *file, unsigned long prot,
+			  unsigned long flags, unsigned long extra)
 {
 	const char *p;
 	char msg[TRAPPED_MSG_LENGTH];
@@ -344,8 +344,8 @@ static int tsem_mmap_file(struct file *file, unsigned long reqprot,
 		if (file)
 			p = file->f_path.dentry->d_name.name;
 		scnprintf(msg, sizeof(msg),
-			  "filename=%s, rprot=0x%lx, prot=0x%lx, flags=0x%lx",
-			  p, reqprot, prot, flags);
+			  "filename=%s, prot=0x%lx, flags=0x%lx", p, prot,
+			  flags);
 		return trapped_task(TSEM_MMAP_FILE, msg, NOLOCK);
 	}
 
@@ -366,9 +366,8 @@ static int tsem_mmap_file(struct file *file, unsigned long reqprot,
 	if (!ep)
 		return -ENOMEM;
 
-	ep->CELL.mmap_file.file.in.file = file;
 	ep->CELL.mmap_file.anonymous = file == NULL ? 1 : 0;
-	ep->CELL.mmap_file.reqprot = reqprot;
+	ep->CELL.mmap_file.file.in.file = file;
 	ep->CELL.mmap_file.prot = prot;
 	ep->CELL.mmap_file.flags = flags;
 

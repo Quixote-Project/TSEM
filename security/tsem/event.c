@@ -1353,12 +1353,14 @@ static void free_cell(struct tsem_event *ep)
 		break;
 	case TSEM_FILE_OPEN:
 	case TSEM_BPRM_COMMITTING_CREDS:
-	case TSEM_MMAP_FILE:
 	case TSEM_FILE_IOCTL:
 	case TSEM_FILE_LOCK:
 	case TSEM_FILE_FCNTL:
 	case TSEM_FILE_RECEIVE:
 		kfree(ep->CELL.file.out.path.pathname);
+		break;
+	case TSEM_MMAP_FILE:
+		kfree(ep->CELL.mmap_file.file.out.path.pathname);
 		break;
 	case TSEM_INODE_GETATTR:
 	case TSEM_INODE_SETATTR:

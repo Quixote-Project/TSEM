@@ -609,10 +609,6 @@ static int add_mmap_file(struct shash_desc *shash, struct tsem_event *ep)
 			goto done;
 	}
 
-	retn = add_u32(shash, args->reqprot);
-	if (retn)
-		goto done;
-
 	retn = add_u32(shash, args->prot);
 	if (retn)
 		goto done;

@@ -1067,24 +1067,24 @@ struct tsem_file_args {
 };
 
 /**
- * struct tsem_COE - TSEM memory mapped file characteristics.
- * @file: The struct file definition for the file that is being
- *	  mapped.  This pointer will be null in the case of an
- *	  anonymous mapping.
+ * struct tsem_mmap_file_args - TSEM memory memory mapping arguments.
  * @anonymous: A flag variable to indicate whether or not the mapping
  *	       is file backed or anonymous.
- * @reqprot: The memory protection flags that are requested by the
- *	     memory mapping system call.
- * @prot: The protections that will be applied to the mapping.
- * @flags: The control flags of the memory mapping call.
+ * @file: If the handler is being called for a file backed mapping this
+ *	  structure will be populated with the TSEM description of the
+ *	  file.
+ * @prot: The protections that are being requested for the mapping.
+ * @flags: The control flags to memory mapping call.
  *
  * This structure is used to encapsulate the arguments provided to the
- * tsem_mmap_file security event handler.
+ * tsem_mmap_file security event handler.  The anonymous member of
+ * this structure is used internally by TSEM to indicate that the
+ * file pointer to the call was NULL, thus indicating that the mapping
+ * is for anonymous memory.
  */
 struct tsem_mmap_file_args {
-	struct tsem_file_args file;
 	u32 anonymous;
-	u32 reqprot;
+	struct tsem_file_args file;
 	u32 prot;
 	u32 flags;
 };
