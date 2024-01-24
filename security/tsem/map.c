@@ -676,6 +676,22 @@ static int add_task_kill(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_ptrace_access_check(struct shash_desc *shash,
+				   struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
+
+	retn = add_task(shash, args->target);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->u.resource);
+
+ done:
+	return retn;
+}
+
 static int add_key_permission(struct shash_desc *shash, struct tsem_event *ep)
 {
 	int retn;
@@ -1210,6 +1226,14 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 	case TSEM_TASK_KILL:
 		retn = add_task_kill(shash, ep);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
+	case TSEM_PTRACE_ACCESS_CHECK:
+		retn = add_ptrace_access_check(shash, ep);
 		if (retn)
 			goto done;
 

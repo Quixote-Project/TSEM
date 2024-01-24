@@ -148,7 +148,8 @@ const char * const tsem_names[TSEM_EVENT_CNT] = {
 	"tun_dev_open",
 	"bpf",
 	"bpf_map",
-	"bpf_prog"
+	"bpf_prog",
+	"ptrace_access_check"
 };
 
 static const unsigned long pseudo_filesystems[] = {
@@ -549,6 +550,32 @@ static int tsem_task_kill(struct task_struct *target,
 	ep->CELL.task_kill.signal = sig;
 	ep->CELL.task_kill.cross_model = cross_model;
 	memcpy(ep->CELL.task_kill.target, tsem_task(target)->task_id,
+	       tsem_digestsize());
+
+	return dispatch_event(ep);
+}
+
+static int tsem_ptrace_access_check(struct task_struct *child,
+				    unsigned int mode)
+{
+	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
+
+	if (tsem_task_untrusted(current)) {
+		scnprintf(msg, sizeof(msg), "child=%s, mode=%u",
+			  child->comm, mode);
+		return trapped_task(TSEM_PTRACE_ACCESS_CHECK, msg, LOCKED);
+	}
+
+	if (bypass_event())
+		return 0;
+
+	ep = tsem_event_allocate(TSEM_PTRACE_ACCESS_CHECK, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.task_kill.u.resource = mode;
+	memcpy(ep->CELL.task_kill.target, tsem_task(child)->task_id,
 	       tsem_digestsize());
 
 	return dispatch_event(ep);
@@ -2600,7 +2627,9 @@ static struct security_hook_list tsem_hooks[] __ro_after_init = {
 	LSM_HOOK_INIT(task_getscheduler, tsem_task_getscheduler),
 	LSM_HOOK_INIT(task_prctl, tsem_task_prctl),
 
+	LSM_HOOK_INIT(ptrace_access_check, tsem_ptrace_access_check),
 	LSM_HOOK_INIT(ptrace_traceme, tsem_ptrace_traceme),
+
 	LSM_HOOK_INIT(bprm_committing_creds, tsem_bprm_committing_creds),
 	LSM_HOOK_INIT(inode_alloc_security, tsem_inode_alloc_security),
 	LSM_HOOK_INIT(inode_free_security, tsem_inode_free_security),

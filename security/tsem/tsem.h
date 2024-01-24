@@ -149,6 +149,7 @@ enum tsem_event_type {
 	TSEM_BPF,
 	TSEM_BPF_MAP,
 	TSEM_BPF_PROG,
+	TSEM_PTRACE_ACCESS_CHECK,
 	TSEM_EVENT_CNT
 };
 
@@ -1067,7 +1068,7 @@ struct tsem_file_args {
 };
 
 /**
- * struct tsem_mmap_file_args - TSEM memory memory mapping arguments.
+ * struct tsem_mmap_file_args - TSEM memory mapping arguments.
  * @anonymous: A flag variable to indicate whether or not the mapping
  *	       is file backed or anonymous.
  * @file: If the handler is being called for a file backed mapping this

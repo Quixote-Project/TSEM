@@ -849,6 +849,18 @@ static void show_task_kill(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "cross_ns", "}", "%u", args->cross_model);
 }
 
+static void show_ptrace_access_check(struct seq_file *c,
+				     struct tsem_event *ep)
+{
+	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
+
+	show_event(c, ep);
+
+	tsem_fs_show_key(c, "child", ", ", "%*phN", tsem_digestsize(),
+			 args->target);
+	tsem_fs_show_key(c, "mode", "}", "%u", args->u.resource);
+}
+
 static void show_task_ptraceme(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
@@ -1934,6 +1946,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_TASK_KILL:
 		show_task_kill(c, ep);
+		break;
+	case TSEM_PTRACE_ACCESS_CHECK:
+		show_ptrace_access_check(c, ep);
 		break;
 	case TSEM_PTRACE_TRACEME:
 		show_task_ptraceme(c, ep);
