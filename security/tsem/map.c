@@ -1241,9 +1241,11 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_PTRACE_TRACEME:
-		p = ep->CELL.task_kill.source;
-		size = sizeof(ep->CELL.task_kill.source);
-		retn = crypto_shash_finup(shash, p, size, mapping);
+		retn = add_task(shash, ep->CELL.task_kill.source);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
 		break;
 
 	case TSEM_TASK_SETPGID:
