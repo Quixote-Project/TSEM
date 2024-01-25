@@ -150,6 +150,7 @@ enum tsem_event_type {
 	TSEM_BPF_MAP,
 	TSEM_BPF_PROG,
 	TSEM_PTRACE_ACCESS_CHECK,
+	TSEM_CAPABLE,
 	TSEM_EVENT_CNT
 };
 
@@ -1670,6 +1671,20 @@ struct tsem_ipc_args {
 };
 
 /**
+ * struct tsem_capability_args - TSEM arguments for capability handling.
+ * @cap: A capability being specified.
+ * @opts: Capability check options.
+ *
+ * This structure is an encapsulation of the arguments to be retained
+ * for security event descriptions that describe security events
+ * involving process capabilities.
+ */
+struct tsem_capability_args {
+	int cap;
+	unsigned int opts;
+};
+
+/**
  * struct tsem_event - TSEM security event description.
  * @index: The index number of the slot in the structure magazine that
  *	   is being refilled.
@@ -1828,6 +1843,8 @@ struct tsem_event {
 		struct tsem_time_args time;
 		struct tsem_bpf_args bpf;
 		struct tsem_ipc_args ipc;
+		struct tsem_capability_args capability;
+
 	} CELL;
 };
 

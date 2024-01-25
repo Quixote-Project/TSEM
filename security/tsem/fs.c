@@ -871,6 +871,16 @@ static void show_task_ptraceme(struct seq_file *c, struct tsem_event *ep)
 			 args->source);
 }
 
+static void show_capable(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_capability_args *args = &ep->CELL.capability;
+
+	show_event(c, ep);
+
+	tsem_fs_show_key(c, "cap", ",", "%d", args->cap);
+	tsem_fs_show_key(c, "opts", "}", "%u", args->opts);
+}
+
 static void show_task_setpgid(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_task_kill_args *args = &ep->CELL.task_kill;
@@ -1952,6 +1962,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_PTRACE_TRACEME:
 		show_task_ptraceme(c, ep);
+		break;
+	case TSEM_CAPABLE:
+		show_capable(c, ep);
 		break;
 	case TSEM_TASK_SETPGID:
 		show_task_setpgid(c, ep);

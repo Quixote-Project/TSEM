@@ -692,6 +692,21 @@ static int add_ptrace_access_check(struct shash_desc *shash,
 	return retn;
 }
 
+static int add_capable(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_capability_args *args = &ep->CELL.capability;
+
+	retn = add_u32(shash, args->cap);
+	if (retn)
+		goto done;
+
+	retn = add_u32(shash, args->opts);
+
+ done:
+	return retn;
+}
+
 static int add_key_permission(struct shash_desc *shash, struct tsem_event *ep)
 {
 	int retn;
@@ -1242,6 +1257,14 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 	case TSEM_PTRACE_TRACEME:
 		retn = add_task(shash, ep->CELL.task_kill.source);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
+	case TSEM_CAPABLE:
+		retn = add_capable(shash, ep);
 		if (retn)
 			goto done;
 

@@ -149,7 +149,8 @@ const char * const tsem_names[TSEM_EVENT_CNT] = {
 	"bpf",
 	"bpf_map",
 	"bpf_prog",
-	"ptrace_access_check"
+	"ptrace_access_check",
+	"capable"
 };
 
 static const unsigned long pseudo_filesystems[] = {
@@ -600,6 +601,36 @@ static int tsem_ptrace_traceme(struct task_struct *parent)
 
 	memcpy(ep->CELL.task_kill.source, tsem_task(parent)->task_id,
 	       tsem_digestsize());
+
+	return dispatch_event(ep);
+}
+
+static int tsem_capable(const struct cred *cred, struct user_namespace *ns,
+			int cap, unsigned int opts)
+{
+	char msg[TRAPPED_MSG_LENGTH];
+	struct tsem_event *ep;
+
+	if (unlikely(!tsem_ready))
+		return 0;
+
+	if (tsem_task_untrusted(current)) {
+		scnprintf(msg, sizeof(msg),
+			  "Untrusted %s: comm=%s, pid=%d\n",
+			  tsem_names[TSEM_CAPABLE], current->comm,
+			  task_pid_nr(current));
+		return trapped_task(TSEM_CAPABLE, msg, LOCKED);
+	}
+
+	if (bypass_event())
+		return 0;
+
+	ep = tsem_event_allocate(TSEM_CAPABLE, LOCKED);
+	if (!ep)
+		return -ENOMEM;
+
+	ep->CELL.capability.cap = cap;
+	ep->CELL.capability.opts = opts;
 
 	return dispatch_event(ep);
 }
@@ -2629,6 +2660,8 @@ static struct security_hook_list tsem_hooks[] __ro_after_init = {
 
 	LSM_HOOK_INIT(ptrace_access_check, tsem_ptrace_access_check),
 	LSM_HOOK_INIT(ptrace_traceme, tsem_ptrace_traceme),
+
+	LSM_HOOK_INIT(capable, tsem_capable),
 
 	LSM_HOOK_INIT(bprm_committing_creds, tsem_bprm_committing_creds),
 	LSM_HOOK_INIT(inode_alloc_security, tsem_inode_alloc_security),
