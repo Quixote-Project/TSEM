@@ -715,6 +715,25 @@ static int add_capget(struct shash_desc *shash, struct tsem_event *ep)
 	return retn;
 }
 
+static int add_capset(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_capability_args *args = &ep->CELL.capability;
+
+	retn = add_u64(shash, args->effective.val);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, args->inheritable.val);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, args->permitted.val);
+
+ done:
+	return retn;
+}
+
 static int add_capable(struct shash_desc *shash, struct tsem_event *ep)
 {
 	int retn;
@@ -1288,6 +1307,14 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 	case TSEM_CAPGET:
 		retn = add_capget(shash, ep);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
+	case TSEM_CAPSET:
+		retn = add_capset(shash, ep);
 		if (retn)
 			goto done;
 

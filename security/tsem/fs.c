@@ -884,6 +884,17 @@ static void show_capget(struct seq_file *c, struct tsem_event *ep)
 	tsem_fs_show_key(c, "permitted", "}", "0x%llx", args->permitted);
 }
 
+static void show_capset(struct seq_file *c, struct tsem_event *ep)
+{
+	struct tsem_capability_args *args = &ep->CELL.capability;
+
+	show_event(c, ep);
+
+	tsem_fs_show_key(c, "effective", ",", "0x%llx", args->effective);
+	tsem_fs_show_key(c, "inheritable", ",", "0x%llx", args->inheritable);
+	tsem_fs_show_key(c, "permitted", "}", "0x%llx", args->permitted);
+}
+
 static void show_capable(struct seq_file *c, struct tsem_event *ep)
 {
 	struct tsem_capability_args *args = &ep->CELL.capability;
@@ -1978,6 +1989,9 @@ void tsem_fs_show_trajectory(struct seq_file *c, struct tsem_event *ep)
 		break;
 	case TSEM_CAPGET:
 		show_capget(c, ep);
+		break;
+	case TSEM_CAPSET:
+		show_capset(c, ep);
 		break;
 	case TSEM_CAPABLE:
 		show_capable(c, ep);
