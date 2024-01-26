@@ -692,6 +692,29 @@ static int add_ptrace_access_check(struct shash_desc *shash,
 	return retn;
 }
 
+static int add_capget(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn;
+	struct tsem_capability_args *args = &ep->CELL.capability;
+
+	retn = add_task(shash, args->target);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, args->effective.val);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, args->inheritable.val);
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, args->permitted.val);
+
+ done:
+	return retn;
+}
+
 static int add_capable(struct shash_desc *shash, struct tsem_event *ep)
 {
 	int retn;
@@ -1257,6 +1280,14 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 
 	case TSEM_PTRACE_TRACEME:
 		retn = add_task(shash, ep->CELL.task_kill.source);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
+	case TSEM_CAPGET:
+		retn = add_capget(shash, ep);
 		if (retn)
 			goto done;
 

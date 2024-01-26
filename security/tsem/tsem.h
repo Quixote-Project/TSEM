@@ -151,6 +151,7 @@ enum tsem_event_type {
 	TSEM_BPF_PROG,
 	TSEM_PTRACE_ACCESS_CHECK,
 	TSEM_CAPABLE,
+	TSEM_CAPGET,
 	TSEM_EVENT_CNT
 };
 
@@ -1674,6 +1675,11 @@ struct tsem_ipc_args {
  * struct tsem_capability_args - TSEM arguments for capability handling.
  * @cap: A capability being specified.
  * @opts: Capability check options.
+ * @effective: The effective capability that is being manipulated.
+ * @inheritable: The inheritable capability that is being manipulated.
+ * @permitted: The permitted capability that is being manipulated.
+ * @target: The TASK_ID of the process whose capabilities are being
+ *	    requested.
  *
  * This structure is an encapsulation of the arguments to be retained
  * for security event descriptions that describe security events
@@ -1682,6 +1688,12 @@ struct tsem_ipc_args {
 struct tsem_capability_args {
 	int cap;
 	unsigned int opts;
+
+	kernel_cap_t effective;
+	kernel_cap_t inheritable;
+	kernel_cap_t permitted;
+
+	u8 target[HASH_MAX_DIGESTSIZE];
 };
 
 /**
