@@ -677,16 +677,6 @@ static int get_inode_mknod(struct tsem_inode_args *args)
 
 	fill_inode(dir, &args->out.dir);
 
-	/*
-	 * Set the UUID type of a RAMFS based filesystem to a common
-	 * value in order to prevent the random generation of a UUID
-	 * from perturbing the generaion of deterministic security
-	 * state values.
-	 */
-	if (!strcmp(dir->i_sb->s_type->name, "tmpfs"))
-		memset(args->out.dir.s_uuid, 0xff,
-		       sizeof(args->out.dir.s_uuid));
-
 	return 0;
 }
 

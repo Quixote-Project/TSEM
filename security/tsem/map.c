@@ -8,6 +8,8 @@
  * coefficients.
  */
 
+#include <linux/magic.h>
+
 #include "tsem.h"
 
 static int get_COE_mapping(struct tsem_event *ep, u8 *mapping)
@@ -200,7 +202,10 @@ static int add_inode(struct shash_desc *shash, struct tsem_inode_cell *inode)
 	if (retn)
 		goto done;
 
-	p = (u8 *) inode->s_uuid;
+	if (inode->s_magic == TMPFS_MAGIC)
+		p = (u8 *) uuid_null.b;
+	else
+		p = (u8 *) inode->s_uuid;
 	size = sizeof(inode->s_uuid);
 	retn = crypto_shash_update(shash, p, size);
 
