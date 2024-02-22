@@ -530,17 +530,39 @@ static int fill_dentry_path(const struct path *path,
 	if (retn)
 		return retn;
 
-	if (d_backing_inode(path->dentry)) {
-		dentry->have_inode = true;
-		fill_inode(d_backing_inode(path->dentry), &dentry->inode);
+	if (!d_backing_inode(path->dentry))
+		return 0;
 
-		tsip = tsem_inode(d_backing_inode(path->dentry));
-		dentry->inode.created = tsip->created;
-		dentry->inode.creator = tsip->creator;
-		dentry->inode.instance = tsip->instance;
-		memcpy(dentry->inode.owner, tsip->owner, tsem_digestsize());
-	}
+	dentry->have_inode = true;
+	fill_inode(d_backing_inode(path->dentry), &dentry->inode);
 
+	tsip = tsem_inode(d_backing_inode(path->dentry));
+	dentry->inode.created = tsip->created;
+	dentry->inode.creator = tsip->creator;
+	dentry->inode.instance = tsip->instance;
+	memcpy(dentry->inode.owner, tsip->owner, tsem_digestsize());
+
+	dentry->path.created = tsip->created;
+	dentry->path.creator = tsip->creator;
+	dentry->path.instance = tsip->instance;
+	memcpy(dentry->path.owner, tsip->owner, tsem_digestsize());
+
+	return 0;
+}
+
+static int get_inode(struct tsem_inode_args *args)
+{
+	int retn;
+	struct inode *dir = args->in.dir;
+	struct dentry *dentry = args->in.dentry;
+
+	memset(&args->out, '\0', sizeof(args->out));
+
+	retn = fill_dentry(dentry, &args->out.dentry);
+	if (retn)
+		return retn;
+
+	fill_inode(dir, &args->out.dir);
 	return 0;
 }
 
@@ -1350,10 +1372,12 @@ int tsem_event_init(struct tsem_event *ep)
 	case TSEM_KEY_PERMISSION:
 		get_key_perm(&ep->CELL.key);
 		break;
-	case TSEM_INODE_CREATE:
-	case TSEM_INODE_MKDIR:
 	case TSEM_INODE_RMDIR:
 	case TSEM_INODE_UNLINK:
+		retn = get_inode(&ep->CELL.inode);
+		break;
+	case TSEM_INODE_CREATE:
+	case TSEM_INODE_MKDIR:
 		retn = get_inode_create(&ep->CELL.inode);
 		break;
 	case TSEM_INODE_LINK:
