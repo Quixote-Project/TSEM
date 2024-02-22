@@ -138,8 +138,8 @@ static int generate_pseudonym(char *pathname, u8 *pseudonym)
 	if (retn)
 		goto done;
 
-	retn = crypto_shash_finup(shash, pathname, tsem_digestsize(),
-				  pseudonym);
+	retn = crypto_shash_finup(shash, pathname, size, pseudonym);
+
  done:
 	return retn;
 }
