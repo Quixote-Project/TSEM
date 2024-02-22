@@ -738,6 +738,9 @@ struct tsem_model {
 	struct mutex pseudonym_mutex;
 	struct list_head pseudonym_list;
 
+	struct mutex mount_mutex;
+	struct list_head mount_list;
+
 	unsigned int magazine_size;
 	spinlock_t magazine_lock;
 	unsigned long *magazine_index;
@@ -940,6 +943,11 @@ struct tsem_COE {
  *
  */
 struct tsem_inode_cell {
+	bool created;
+	u64 creator;
+	u64 instance;
+	u8 owner[HASH_MAX_DIGESTSIZE];
+
 	uid_t uid;
 	gid_t gid;
 	umode_t mode;
@@ -949,16 +957,71 @@ struct tsem_inode_cell {
 };
 
 /**
+ * struct tsem_inode_instance - Instance information for a created inode.
+ * @list: List of inode owners.
+ * @creator: The id number of the security modeling namespace that is
+ *	     creating an inode.
+ * @instance: The instance number of an inode being created under a
+ *	      given directory.
+ * @pathname: A pointer to the dentry name that the inode is being
+ *	      created under.
+ * @owner: The TASK_ID of the process creating the inode.
+ * @pathname: A pointer to allocated memory holding the null-terminated
+ *	      pathname for the inode.
+ *
+ * This structure is used to convey information about the owner and
+ * instance number of an inode created in a security modeling namespace.
+ *
+ * This structure serves three distinct purposes.
+ *
+ * A linked list of these structures is used to convey ownership and
+ * instance information about a created inode from the
+ * tsem_inode_create() function to the tsem_inode_init_security()
+ * function so that this information can be attached to the inode via
+ * the tsem_inode structure.
+ *
+ * Secondly, a linked list of inode ownership information is
+ * maintained for inodes that are created in a security modeling
+ * namespace and used as mountpoints.  This list is maintained in the
+ * security model description for the namespace.  Since the inode that
+ * is 'covering' the mountpoint is different than the inode describing
+ * the directory created for the mountpoint the ownership information
+ * for the inode needs to carried as a characteristic of the model.
+ *
+ * The final use of this structure is to track the instances of an
+ * inode created by a TASK_ID.  This list is carried by the directory
+ * in which the temporary files/directories are created.
+ */
+struct tsem_inode_instance {
+	struct list_head list;
+
+	u64 creator;
+	u64 instance;
+	u8 owner[HASH_MAX_DIGESTSIZE];
+	char *pathname;
+};
+
+/**
  * struct tsem_path - TSEM path information.
+ * @created: A flag to indicate that the path was created in the
+ *	     context of the current security modeling namespace.
+ * @creator: The id of the security modeling namespace that created
+ *	     the path.
+ * @instance: The instance number of an inode that was created.
+ * @owner: The TASK_ID of the process that created the path.
  * @dev: The device number that the filesystem is mounted on.
- * @devname: The name of the device if it is not device based.
  * @pathname: The pathname from the root.
  *
  * The tsem_path structure is used to carry information about the
- * pathname of a filesystem object that is an argument to a security
- * event handler.
+ * pathname and ownership of a filesystem object that is an argument
+ * to a security event handler.
  */
 struct tsem_path {
+	bool created;
+	u64 creator;
+	u64 instance;
+	u8 owner[HASH_MAX_DIGESTSIZE];
+
 	dev_t dev;
 	char *pathname;
 };
@@ -1906,22 +1969,32 @@ struct tsem_event_point {
 
 /**
  * struct tsem_inode - TSEM inode status structure.
- * @mutex: The mutex that will protect the list of struct
- *	   tsem_inode_digest structures that have been created for the
- *	   inode containing a struct tsem_inode structure.
- * @list: The list structure that points to the list of struct
- *	  tsem_inode_structures.
+ * @create_mutex: The mutex that protects the create_list.
+ * @create_list: The list of structures that contain ownership and instance
+ *		 information for an inode created under a directory.
+ * @d.instance_mutex: The mutex protecting the instance_list.
+ * @d.instance_list: The list of task identities that have created inodes
+ *		     under a directory and the instance count of inodes
+ *		     that has been created by individual task identities.
+ * @f.digest_mutex: The mutex protecting the digest_list.
+ * @f.digest_list: A list of structures containing the various digest
+ *		   values that have been calculated for a file.
  * @status: The digest collection state of the inode.  See the
  *	    discussion of enum tsem_inode_state for what information
  *	    is conveyed by the value of this structure member.
+ * @created: A boolean flag to indicate that this inode was created
+ *	     in the context of the security modeling namespace.
+ * @creator: The identity of the security modeling namespace that
+ *	     created the inode.
+ * @instance: The instance number of the inode.
  * @owner: The identity of the task that created the inode.
  *
- * This structure is the second of the two primary control structures
- * that are implemented through the LSM blob functionality.  It is
+ * This structure is one of the TSEM control structures that are
+ * implemented through the LSM blob functionality.  It is
  * automatically created when the inode structure is created for
  * system resources that are referenced by a struct inode structure.
  *
- * This structure has two primary purposes.  The status member is used
+ * This structure has three primary purposes.  The status member is used
  * to signal that the tsem_file_open() function should return that
  * permission to access the file is returned when the security hook is
  * invoked by the integrity_kernel_read() function.  See the
@@ -1933,17 +2006,34 @@ struct tsem_event_point {
  * required since there is no concept of a fixed digest function for
  * TSEM as each modeling namespace can have its own digest function.
  *
- * Each digest value in use has a struct tsem_inode_digest structure
+ * The third purpose is to track the ownership information for the
+ * inode.  The ownership information allows an inode to be tracked to
+ * individual instances of inodes that are created by a specific
+ * task identity.
+ *
+ * The fourth purpose is maintain the list of digest values that have
+ * been computed for a file that the inode is attached to.  Each
+ * digest value in use has a struct tsem_inode_digest structure
  * allocated for it.  The digest_list member of this structure points
  * to a list of these structures.
  *
  * The mutex implemented in this structure should be held by any
- * process that is accessing the list.
+ * process that is accessing the list of these structures.
  */
 struct tsem_inode {
-	struct mutex mutex;
+	struct mutex create_mutex;
+	struct list_head create_list;
+
+	struct mutex instance_mutex;
+	struct list_head instance_list;
+
+	struct mutex digest_mutex;
 	struct list_head digest_list;
+
 	enum tsem_inode_state status;
+	bool created;
+	u64 creator;
+	u64 instance;
 	u8 owner[HASH_MAX_DIGESTSIZE];
 };
 

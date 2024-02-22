@@ -43,7 +43,10 @@ static struct tsem_model root_model = {
 	.forensics_end_mutex = __MUTEX_INITIALIZER(root_model.forensics_end_mutex),
 
 	.pseudonym_mutex = __MUTEX_INITIALIZER(root_model.pseudonym_mutex),
-	.pseudonym_list = LIST_HEAD_INIT(root_model.pseudonym_list)
+	.pseudonym_list = LIST_HEAD_INIT(root_model.pseudonym_list),
+
+	.mount_mutex = __MUTEX_INITIALIZER(root_model.mount_mutex),
+	.mount_list = LIST_HEAD_INIT(root_model.mount_list)
 };
 
 static struct tsem_context root_context;
@@ -801,24 +804,71 @@ static int tsem_inode_alloc_security(struct inode *inode)
 {
 	struct tsem_inode *tsip = tsem_inode(inode);
 
-	mutex_init(&tsip->mutex);
+	mutex_init(&tsip->digest_mutex);
 	INIT_LIST_HEAD(&tsip->digest_list);
+
+	mutex_init(&tsip->create_mutex);
+	INIT_LIST_HEAD(&tsip->create_list);
+
+	mutex_init(&tsip->instance_mutex);
+	INIT_LIST_HEAD(&tsip->instance_list);
 
 	return 0;
 }
 
+static int tsem_inode_init_security(struct inode *inode, struct inode *dir,
+				    const struct qstr *qstr,
+				    const char **name, void **value,
+				    size_t *len)
+{
+	u8 *owner = tsem_task(current)->task_id;
+	struct tsem_inode *tsip = tsem_inode(inode);
+	struct tsem_inode_instance *entry, *retn = NULL;
+
+	mutex_lock(&tsem_inode(dir)->create_mutex);
+	list_for_each_entry(entry, &tsem_inode(dir)->create_list, list) {
+		if (memcmp(entry->owner, owner, tsem_digestsize()) == 0 &&
+		    !strcmp(qstr->name, entry->pathname))
+			retn = entry;
+	}
+
+	if (retn) {
+		tsip->created = true;
+		tsip->creator = retn->creator;
+		tsip->instance = retn->instance;
+		memcpy(tsip->owner, retn->owner, tsem_digestsize());
+		list_del(&retn->list);
+	}
+	mutex_unlock(&tsem_inode(dir)->create_mutex);
+
+	if (!retn && S_ISREG(inode->i_mode))
+		WARN_ONCE(true, "Cannot find inode ownership information.");
+
+	return -EOPNOTSUPP;
+}
+
 static void tsem_inode_free_security(struct inode *inode)
 {
+	struct tsem_inode_instance *owner, *tmp_owner;
 	struct tsem_inode_digest *digest, *tmp_digest;
-
-	if (bypass_filesystem(inode))
-		return;
 
 	list_for_each_entry_safe(digest, tmp_digest,
 				 &tsem_inode(inode)->digest_list, list) {
 		list_del(&digest->list);
 		kfree(digest->name);
 		kfree(digest);
+	}
+
+	list_for_each_entry_safe(owner, tmp_owner,
+				 &tsem_inode(inode)->create_list, list) {
+		list_del(&owner->list);
+		kfree(owner);
+	}
+
+	list_for_each_entry_safe(owner, tmp_owner,
+				 &tsem_inode(inode)->instance_list, list) {
+		list_del(&owner->list);
+		kfree(owner);
 	}
 }
 
@@ -1613,8 +1663,6 @@ static int tsem_inode_create(struct inode *dir, struct dentry *dentry,
 
 	if (bypass_event())
 		return 0;
-	if (bypass_filesystem(dir))
-		return 0;
 
 	ep = tsem_event_allocate(TSEM_INODE_CREATE, NOLOCK);
 	if (!ep)
@@ -1655,6 +1703,9 @@ static int tsem_inode_link(struct dentry *old_dentry, struct inode *dir,
 static int tsem_inode_unlink(struct inode *dir, struct dentry *dentry)
 {
 	struct tsem_event *ep;
+
+	if (unlikely(!tsem_ready))
+		return 0;
 
 	if (bypass_event())
 		return 0;
@@ -2070,6 +2121,7 @@ static struct security_hook_list tsem_hooks[] __ro_after_init = {
 
 	LSM_HOOK_INIT(bprm_committing_creds, tsem_bprm_committing_creds),
 	LSM_HOOK_INIT(inode_alloc_security, tsem_inode_alloc_security),
+	LSM_HOOK_INIT(inode_init_security, tsem_inode_init_security),
 	LSM_HOOK_INIT(inode_free_security, tsem_inode_free_security),
 
 	LSM_HOOK_INIT(file_open, tsem_file_open),

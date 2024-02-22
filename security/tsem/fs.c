@@ -369,8 +369,14 @@ static void show_path(struct seq_file *c, char *key, char *term,
 		tsem_fs_show_key(c, "major", ",", "%u", MAJOR(path->dev));
 		tsem_fs_show_key(c, "minor", "}, ", "%u", MINOR(path->dev));
 	}
-	tsem_fs_show_key(c, "pathname", "}", "%s", path->pathname);
 
+	if (path->created) {
+		tsem_fs_show_key(c, "owner", ",", "%*phN", tsem_digestsize(),
+				 path->owner);
+		tsem_fs_show_key(c, "instance", ",", "%llu", path->instance);
+	}
+
+	tsem_fs_show_key(c, "pathname", "}", "%s", path->pathname);
 	seq_puts(c, term);
 }
 

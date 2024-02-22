@@ -617,6 +617,9 @@ struct tsem_model *tsem_model_allocate(size_t size)
 	mutex_init(&model->pseudonym_mutex);
 	INIT_LIST_HEAD(&model->pseudonym_list);
 
+	mutex_init(&model->mount_mutex);
+	INIT_LIST_HEAD(&model->mount_list);
+
 	if (magazine_allocate(model, size)) {
 		kfree(model);
 		model = NULL;
@@ -638,6 +641,7 @@ void tsem_model_free(struct tsem_context *ctx)
 	struct tsem_event_point *ep, *tmp_ep;
 	struct tsem_event *tentry, *tmp_tentry;
 	struct pseudonym *sentry, *tmp_sentry;
+	struct tsem_inode_instance *ientry, *tmp_ientry;
 	struct tsem_model *model = ctx->model;
 
 	list_for_each_entry_safe(ep, tmp_ep, &model->point_list, list) {
@@ -655,6 +659,12 @@ void tsem_model_free(struct tsem_context *ctx)
 				 list) {
 		list_del(&tentry->list);
 		tsem_event_put(tentry);
+	}
+
+	list_for_each_entry_safe(ientry, tmp_ientry, &model->mount_list,
+				 list) {
+		list_del(&ientry->list);
+		kfree(ientry);
 	}
 
 	if (ctx->sealed) {

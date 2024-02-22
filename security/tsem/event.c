@@ -18,6 +18,11 @@
 
 static struct kmem_cache *event_cachep;
 
+static bool created_inode(struct tsem_inode *tsip)
+{
+	return tsip->created && tsip->creator == tsem_context(current)->id;
+}
+
 static void refill_event_magazine(struct work_struct *work)
 {
 	unsigned int index;
@@ -47,6 +52,35 @@ static void refill_event_magazine(struct work_struct *work)
 		kmem_cache_free(event_cachep, ep);
 		WARN_ONCE(true, "Refilling event magazine with no slots.\n");
 	}
+}
+
+static int register_inode_create(struct inode *inode, u64 instance,
+				 char *pathname)
+{
+	char *p;
+	struct tsem_inode_instance *tio;
+	struct tsem_inode *tsip = tsem_inode(inode);
+
+	tio = kzalloc(sizeof(*tio), GFP_KERNEL);
+	if (!tio)
+		return -ENOMEM;
+
+	p = strrchr(pathname, '/');
+	if (!p) {
+		kfree(tio);
+		return -EINVAL;
+	}
+
+	tio->pathname = ++p;
+	tio->creator = tsem_context(current)->id;
+	tio->instance = instance;
+	memcpy(tio->owner, tsem_task(current)->task_id, tsem_digestsize());
+
+	mutex_lock(&tsip->create_mutex);
+	list_add_tail(&tio->list, &tsip->create_list);
+	mutex_unlock(&tsip->create_mutex);
+
+	return 0;
 }
 
 static void get_COE(struct tsem_COE *COE)
@@ -172,9 +206,37 @@ static char *get_path_dentry(const struct dentry *dentry)
 	return retpath;
 }
 
+static void _fill_mount_path(struct tsem_inode *tsip, struct tsem_path *path)
+{
+	struct tsem_inode_instance *entry, *retn = NULL;
+
+	mutex_lock(&tsem_model(current)->mount_mutex);
+	list_for_each_entry(entry, &tsem_model(current)->mount_list, list) {
+		if (!strcmp(entry->pathname, path->pathname))
+			retn = entry;
+	}
+
+	if (retn) {
+		path->created = true;
+		path->creator = retn->creator;
+		path->instance = retn->instance;
+		memcpy(path->owner, retn->owner, tsem_digestsize());
+	}
+	mutex_unlock(&tsem_model(current)->mount_mutex);
+}
+
 static int fill_path(const struct path *in, struct tsem_path *path)
 {
 	int retn;
+	struct tsem_model *model = tsem_model(current);
+	struct tsem_inode *tsip = tsem_inode(d_backing_inode(in->dentry));
+
+	if (created_inode(tsip)) {
+		path->created = tsip->created;
+		path->creator = tsip->creator;
+		path->instance = tsip->instance;
+		memcpy(path->owner, tsip->owner, tsem_digestsize());
+	}
 
 	retn = get_root(in->dentry, path);
 	if (retn)
@@ -185,6 +247,9 @@ static int fill_path(const struct path *in, struct tsem_path *path)
 		if (IS_ERR(path->pathname))
 			retn = PTR_ERR(path->pathname);
 	}
+
+	if (model && !list_empty(&model->mount_list))
+		_fill_mount_path(tsip, path);
 
  done:
 	return retn;
@@ -332,7 +397,12 @@ static int add_file_digest(struct file *file, struct tsem_file_args *args)
 	inode = file_inode(file);
 	tsip = tsem_inode(inode);
 
-	mutex_lock(&tsip->mutex);
+	if (created_inode(tsip)) {
+		memcpy(args->out.digest, ctx->zero_digest, tsem_digestsize());
+		return 0;
+	}
+
+	mutex_lock(&tsip->digest_mutex);
 	if (!ctx->external) {
 		retn = tsem_model_has_pseudonym(tsip, args->out.path.pathname);
 		if (retn < 0)
@@ -380,7 +450,7 @@ static int add_file_digest(struct file *file, struct tsem_file_args *args)
 	tsip->status = TSEM_INODE_COLLECTED;
 
  done:
-	mutex_unlock(&tsip->mutex);
+	mutex_unlock(&tsip->digest_mutex);
 	return retn;
 }
 
@@ -399,6 +469,7 @@ static void fill_inode(struct inode *inode, struct tsem_inode_cell *ip)
 	ip->s_magic = inode->i_sb->s_magic;
 	memcpy(ip->s_id, inode->i_sb->s_id, sizeof(ip->s_id));
 	memcpy(ip->s_uuid, inode->i_sb->s_uuid.b, sizeof(ip->s_uuid));
+	memcpy(ip->owner, tsem_inode(inode)->owner, tsem_digestsize());
 }
 
 static void fill_creds(const struct cred *cp, struct tsem_COE *tcp)
@@ -429,6 +500,7 @@ static void fill_creds(const struct cred *cp, struct tsem_COE *tcp)
 static int fill_dentry(struct dentry *dp, struct tsem_dentry *dentry)
 {
 	int retn;
+	struct tsem_inode *tsip;
 
 	retn = fill_path_dentry(dp, &dentry->path);
 	if (retn)
@@ -437,6 +509,12 @@ static int fill_dentry(struct dentry *dp, struct tsem_dentry *dentry)
 	if (d_backing_inode(dp)) {
 		dentry->have_inode = true;
 		fill_inode(d_backing_inode(dp), &dentry->inode);
+
+		tsip = tsem_inode(d_backing_inode(dp));
+		dentry->inode.created = tsip->created;
+		dentry->inode.creator = tsip->creator;
+		dentry->inode.instance = tsip->instance;
+		memcpy(dentry->inode.owner, tsip->owner, tsem_digestsize());
 	}
 
 	return 0;
@@ -446,6 +524,7 @@ static int fill_dentry_path(const struct path *path,
 			    struct tsem_dentry *dentry)
 {
 	int retn;
+	struct tsem_inode *tsip;
 
 	retn = fill_path(path, &dentry->path);
 	if (retn)
@@ -454,25 +533,82 @@ static int fill_dentry_path(const struct path *path,
 	if (d_backing_inode(path->dentry)) {
 		dentry->have_inode = true;
 		fill_inode(d_backing_inode(path->dentry), &dentry->inode);
+
+		tsip = tsem_inode(d_backing_inode(path->dentry));
+		dentry->inode.created = tsip->created;
+		dentry->inode.creator = tsip->creator;
+		dentry->inode.instance = tsip->instance;
+		memcpy(dentry->inode.owner, tsip->owner, tsem_digestsize());
 	}
 
 	return 0;
 }
 
+static u64 _get_task_inode_instance(struct tsem_inode *tsip)
+{
+	u64 instance = 0;
+	u8 *task_id = tsem_task(current)->task_id;
+	struct tsem_inode_instance *entry, *owner = NULL;
+
+	mutex_lock(&tsip->instance_mutex);
+	list_for_each_entry(entry, &tsip->instance_list, list) {
+		if (!memcmp(entry->owner, task_id, tsem_digestsize()))
+			owner = entry;
+	}
+
+	if (owner)
+		instance = ++owner->instance;
+	else {
+		entry = kzalloc(sizeof(*entry), GFP_KERNEL);
+		if (entry) {
+			instance = 1;
+			entry->instance = instance;
+			memcpy(entry->owner, task_id, tsem_digestsize());
+			list_add_tail(&entry->list, &tsip->instance_list);
+		}
+	}
+
+	mutex_unlock(&tsip->instance_mutex);
+	return instance;
+}
+
 static int get_inode_create(struct tsem_inode_args *args)
 {
 	int retn;
+	u64 instance;
 	struct inode *dir = args->in.dir;
 	struct dentry *dentry = args->in.dentry;
 
 	memset(&args->out, '\0', sizeof(args->out));
 
+	instance = _get_task_inode_instance(tsem_inode(dir));
+	if (!instance)
+		return -ENOMEM;
+
 	retn = fill_dentry(dentry, &args->out.dentry);
 	if (retn)
 		return retn;
 
+	args->out.dentry.inode.created = true;
+	args->out.dentry.inode.creator = tsem_context(current)->id;
+	args->out.dentry.inode.instance = instance;
+	memcpy(args->out.dentry.inode.owner, tsem_task(current)->task_id,
+	       tsem_digestsize());
+
+	args->out.dentry.path.created = true;
+	args->out.dentry.path.creator = tsem_context(current)->id;
+	args->out.dentry.path.instance = instance;
+	memcpy(args->out.dentry.path.owner, tsem_task(current)->task_id,
+	       tsem_digestsize());
+
 	fill_inode(dir, &args->out.dir);
-	return 0;
+
+	retn = register_inode_create(dir, instance,
+				     args->out.dentry.path.pathname);
+	if (retn)
+		kfree(args->out.dentry.path.pathname);
+
+	return retn;
 }
 
 static int get_inode_link(struct tsem_inode_args *args)
@@ -941,6 +1077,8 @@ static int get_kernel_file(struct tsem_kernel_args *args)
 static int get_sb_mount(struct tsem_sb_args *args)
 {
 	int retn = -ENOMEM;
+	struct tsem_model *model = tsem_model(current);
+	struct tsem_inode_instance *tsio = NULL;
 	const char *dev_name = args->in.dev_name;
 	const char *type = args->in.type;
 	const struct path *path = args->in.path;
@@ -960,11 +1098,31 @@ static int get_sb_mount(struct tsem_sb_args *args)
 	}
 
 	retn = fill_path(path, &args->out.path);
+	if (retn)
+		goto done;
+
+	if (model && args->out.path.created) {
+		tsio = kzalloc(sizeof(*tsio), GFP_KERNEL);
+		if (!tsio) {
+			retn = -ENOMEM;
+			goto done;
+		}
+
+		tsio->creator = args->out.path.creator;
+		tsio->instance = args->out.path.instance;
+		tsio->pathname = args->out.path.pathname;
+		memcpy(tsio->owner, args->out.path.owner, tsem_digestsize());
+
+		mutex_lock(&model->mount_mutex);
+		list_add_tail(&tsio->list, &model->mount_list);
+		mutex_unlock(&model->mount_mutex);
+	}
 
  done:
 	if (retn) {
 		kfree(args->out.dev_name);
 		kfree(args->out.type);
+		kfree(tsio);
 	}
 	return retn;
 }

@@ -4,7 +4,8 @@
  * Copyright (C) 2023 Enjellic Systems Development, LLC
  * Author: Dr. Greg Wettstein <greg@enjellic.com>
  *
- * This file implements mapping of events into security event points.
+ * This file implements mapping of events into security state
+ * coefficients.
  */
 
 #include "tsem.h"
@@ -113,6 +114,36 @@ static int add_str(struct shash_desc *shash, char *str)
 	return retn;
 }
 
+static int add_temp_path(struct shash_desc *shash, char *pathname,
+			 u64 instance, u8 *owner)
+{
+	char *p, ch = '\0';
+	int retn;
+
+	p = strrchr(pathname, '/');
+	if (!p)
+		return -EINVAL;
+
+	++p;
+	ch = *p;
+	if (ch)
+		*p = '\0';
+	retn = add_str(shash, pathname);
+	if (ch)
+		*p = ch;
+	if (retn)
+		goto done;
+
+	retn = add_u64(shash, instance);
+	if (retn)
+		goto done;
+
+	retn = crypto_shash_update(shash, owner, tsem_digestsize());
+
+ done:
+	return retn;
+}
+
 static int add_path(struct shash_desc *shash, struct tsem_path *path)
 {
 	int retn;
@@ -126,7 +157,11 @@ static int add_path(struct shash_desc *shash, struct tsem_path *path)
 			goto done;
 	}
 
-	retn = add_str(shash, path->pathname);
+	if (path->created) {
+		retn = add_temp_path(shash, path->pathname, path->instance,
+				     path->owner);
+	} else
+		retn = add_str(shash, path->pathname);
 
  done:
 	return retn;
@@ -189,7 +224,13 @@ static int add_dentry(struct shash_desc *shash, struct tsem_dentry *dentry)
 			goto done;
 	}
 
-	retn = add_str(shash, dentry->path.pathname);
+	if (dentry->inode.created &&
+	    dentry->inode.creator == tsem_context(current)->id) {
+		retn = add_temp_path(shash, dentry->path.pathname,
+				     dentry->inode.instance,
+				     dentry->inode.owner);
+	} else
+		retn = add_str(shash, dentry->path.pathname);
 
  done:
 	return retn;
@@ -509,6 +550,25 @@ static int add_inode_rename(struct shash_desc *shash, struct tsem_event *ep)
 		goto done;
 
 	retn = add_dentry(shash, &args->out.new_dentry);
+
+ done:
+	return retn;
+
+}
+
+static int add_inode_create(struct shash_desc *shash, struct tsem_event *ep)
+{
+	int retn = 0;
+	struct tsem_inode_args *args = &ep->CELL.inode;
+
+	retn = add_inode(shash, &args->out.dir);
+	if (retn)
+		goto done;
+
+	retn = add_dentry(shash, &ep->CELL.inode.out.dentry);
+	if (retn)
+		goto done;
+	retn = add_u16(shash, ep->CELL.inode.mode);
 
  done:
 	return retn;
@@ -1000,6 +1060,13 @@ static int get_cell_mapping(struct tsem_event *ep, u8 *mapping)
 		break;
 
 	case TSEM_INODE_CREATE:
+		retn = add_inode_create(shash, ep);
+		if (retn)
+			goto done;
+
+		retn = crypto_shash_final(shash, mapping);
+		break;
+
 	case TSEM_INODE_MKDIR:
 		retn = add_inode(shash, &ep->CELL.inode.out.dir);
 		if (retn)
